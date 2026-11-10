@@ -201,6 +201,7 @@
     if (a === 'meta') return editarMeta();
     if (a === 'saldo') return editarSaldo();
     if (a === 'turmas') { S.tab = 0; render(); return window.scrollTo(0, 0); }
+    if (a === 'fxog') { const og = b.dataset.og; fxFech[og] = !fxFech[og]; try { localStorage.setItem('cc.fxFech', JSON.stringify(fxFech)); } catch (er) {} return render(); }
     if (a === 'vermes') { S.tab = 6; render(); return window.scrollTo(0, 0); }
     if (a === 'tog') {
       if (b.dataset.src === 'mov') { const x = c.mov.find((m) => m.id === b.dataset.id); if (x) x.pago = !x.pago; }
@@ -217,6 +218,7 @@
     S.__parcPadrao = 1; save();
   }
   /* ===== aba Financeiro: resultado separado entre turmas diretas e turmas de parceiro ===== */
+  let fxFech = {}; try { fxFech = JSON.parse(localStorage.getItem('cc.fxFech') || '{}') || {}; } catch (er) {}
   window.v3x = function v3x() {
     parceiroPadrao();
     const t = tot();
@@ -250,7 +252,8 @@
           <td class="n">${l.custo ? `<b class="${lu >= 0 ? 'g' : 'r'}">${PCT(dv(lu, l.total))}</b>` : '<span class="mu">sem custo</span>'}</td>
           <td class="n fxacts"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button><button class="ib del" data-act="${l.k === 't' ? 'delt' : 'delpc'}" data-id="${l.id}" title="Excluir">Excluir</button></td></tr>`; };
     const tabela = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => a.ano - b.ano || String(a.nome).localeCompare(String(b.nome), 'pt-BR')); if (!ls.length) return '';
-      return `<tr class="fxy" style="--oc:${corOg(og)}"><td colspan="8"><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · fechado ${BRL(x.f)} · recebido ${BRL(x.r)} · a receber ${BRL(x.a)}${x.c ? ' · margem ' + PCT(x.m) : ''}</small></td></tr>` + ls.map(linhaT).join(''); }).join('');
+      const fe = !!fxFech[og];
+      return `<tr class="fxy${fe ? ' fech' : ''}" style="--oc:${corOg(og)}" data-vm="fxog" data-og="${esc(og)}" title="${fe ? 'Expandir' : 'Retrair'}"><td colspan="8"><span class="fxar">${fe ? '▸' : '▾'}</span><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · fechado ${BRL(x.f)} · recebido ${BRL(x.r)} · a receber ${BRL(x.a)}${x.c ? ' · margem ' + PCT(x.m) : ''}</small></td></tr>` + (fe ? '' : ls.map(linhaT).join('')); }).join('');
 
     const lanc = S.lanc || [], pend = lanc.filter((l) => !l.pago), pago = lanc.filter((l) => l.pago);
     const desp = (l) => `<div class="vmrow${l.pago ? ' pago' : ''}" style="grid-template-columns:22px minmax(0,1fr) 120px auto"><button class="vmck${l.pago ? ' on' : ''}" data-act="tog" data-id="${l.id}" title="${l.pago ? 'Voltar para a pagar' : 'Marcar como paga'}"></button><span class="vmd">${esc(l.desc)}</span><span class="vmv s">${BRL(l.valor)}</span><span class="vmact"><button data-act="del" data-id="${l.id}">Excluir</button></span></div>`;
@@ -344,6 +347,8 @@
 .fxmg div{display:flex;align-items:center;gap:8px;font-size:13px}.fxmg b{margin-left:auto}
 .fxt tr.fxy td{border-left:3px solid var(--oc)}
 .fxt tr.fxy .fxdot{margin-right:8px}
+.fxt tr.fxy{cursor:pointer;user-select:none}.fxt tr.fxy:hover td{background:#131d29}
+.fxt tr.fxy .fxar{display:inline-block;width:14px;color:var(--mu);font-size:11px}
 .fxbars{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-height:420px;overflow-y:auto}
 .fxbar{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) 150px;gap:14px;align-items:center;background:none;border:0;border-radius:8px;color:var(--tx);padding:7px 6px;font:inherit;text-align:left;cursor:pointer}
 .fxbar:hover{background:var(--pn2)}
