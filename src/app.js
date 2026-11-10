@@ -17,7 +17,7 @@ const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agost
 /* ===== estado ===== */
 let cfg=null,cards=new Map(),events=new Map(),clients=new Map(),contracts=new Map(),modal=null,dragId=null,view='quadro',curModule='dashboard';
 const F={q:'',r:'',p:'',e:'',late:false,hide:false,st:'',cli:''};
-const sortL={k:'col',dir:1};
+const sortL={k:'prazo',dir:1};
 const pref=(k,d)=>{try{const v=localStorage.getItem('pref_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const setPref=(k,v)=>{try{localStorage.setItem('pref_'+k,JSON.stringify(v))}catch(e){}};
 try{localStorage.removeItem('pref_folded')}catch(e){}   /* colunas recolhidas saíram na 1.2.4 */
@@ -183,7 +183,6 @@ function renderBoard(){
 /* ===== lista ===== */
 const LCOLS=[
  {k:'title',n:'Turma / cliente',v:c=>(c.title||'').toLowerCase()},
- {k:'col',n:'Etapa',v:c=>colIdx(c)},
  {k:'cli',n:'Cliente',v:c=>cliName(c.clientId).toLowerCase()||'~'},
  {k:'labels',n:'Etiquetas',v:c=>lbls(c).map(l=>l.n).join(' ').toLowerCase()},
  {k:'prazo',n:'Prazo',v:c=>c.prazo||'9999'},
@@ -192,14 +191,14 @@ const LCOLS=[
  {k:'qtd',n:'Convites',v:c=>n0(c.luxo)+n0(c.simp)},
  {k:'check',n:'Checklist',v:c=>{const k=chk(c);return k.n?k.d/k.n:-1}},
  {k:'atualizado',n:'Atualizado',v:c=>-(c.atualizado||c.criado||0)}];
+let listFechados=new Set(pref('listFechados',[]));
 function renderList(){
  const def=LCOLS.find(x=>x.k===sortL.k)||LCOLS[1];
  const rows=[...cards.entries()].filter(([,c])=>visible(c)).sort((a,b)=>{const x=def.v(a[1]),y=def.v(b[1]);return(x<y?-1:x>y?1:((a[1].ord||0)-(b[1].ord||0)))*sortL.dir});
  const fmtAt=t=>{if(!t)return'—';const d=new Date(t);return d.getDate()+' '+MES[d.getMonth()]+' '+String(d.getFullYear()).slice(2)};
- $('tbl').innerHTML=`<thead><tr>${LCOLS.map(x=>`<th data-sort="${x.k}" class="${x.k===sortL.k?'sorted':''}">${x.n}${x.k===sortL.k?(sortL.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>${rows.map(([id,c])=>{
-  const col=colById(colOf(c)),d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
+ const linha=([id,c])=>{
+  const d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
   return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
-  <td><span class="stage"><i style="background:${PAL[col.c]||PAL.cinza}"></i>${esc(col.name)}</span></td>
   <td>${esc(cliName(c.clientId)||'—')}</td>
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
   <td>${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="note">—</span>'}</td>
@@ -207,7 +206,20 @@ function renderList(){
   <td>${esc(c.resp||'—')}</td>
   <td class="num">${q?fmtN(q):'—'}</td>
   <td>${k.n?`<div class="mini"><div class="bar"><i style="width:${k.d/k.n*100}%;background:${k.d===k.n?'var(--green)':'var(--teal)'}"></i></div><span class="note">${k.d}/${k.n}</span></div>`:'<span class="note">—</span>'}</td>
-  <td class="note">${fmtAt(c.atualizado||c.criado)}</td></tr>`}).join('')||`<tr><td colspan="${LCOLS.length}" class="note" style="text-align:center;padding:24px">Nenhum cartão com estes filtros.</td></tr>`}</tbody>`}
+  <td class="note">${fmtAt(c.atualizado||c.criado)}</td></tr>`};
+ /* um grupo por etapa, na ordem do quadro; clique no cabeçalho para retrair ou expandir */
+ const grupos=C().cols.map(col=>[col,rows.filter(([,c])=>colOf(c)===col.id)]).filter(([,l])=>l.length);
+ const corpo=grupos.map(([col,l])=>{
+  const fechado=listFechados.has(col.id),qt=l.reduce((s,[,c])=>s+n0(c.luxo)+n0(c.simp),0),at=l.filter(([,c])=>{const d=dueInfo(c);return d&&d.cls==='late'}).length;
+  return `<tr class="lgrp${fechado?' fechado':''}" data-lg="${esc(col.id)}" tabindex="0" aria-expanded="${!fechado}"><td colspan="${LCOLS.length}"><span class="car">${fechado?'▸':'▾'}</span><i style="background:${PAL[col.c]||PAL.cinza}"></i><b>${esc(col.name)}</b><em>${l.length}</em>${qt?`<small>${fmtN(qt)} convites</small>`:''}${at?`<small class="r">${at} atrasado(s)</small>`:''}</td></tr>`+(fechado?'':l.map(linha).join(''))}).join('');
+ $('listbar').innerHTML=grupos.length?`<span class="note">${grupos.length} etapa(s) · ${rows.length} pedido(s)</span><span class="hsp"></span><button class="btn ghost sm" data-lgall="abrir">Expandir tudo</button><button class="btn ghost sm" data-lgall="fechar">Recolher tudo</button>`:'';
+ $('tbl').innerHTML=`<thead><tr>${LCOLS.map(x=>`<th data-sort="${x.k}" class="${x.k===sortL.k?'sorted':''}">${x.n}${x.k===sortL.k?(sortL.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>${corpo||`<tr><td colspan="${LCOLS.length}" class="note" style="text-align:center;padding:24px">Nenhum cartão com estes filtros.</td></tr>`}</tbody>`}
+function toggleGrupo(id){if(listFechados.has(id))listFechados.delete(id);else listFechados.add(id);setPref('listFechados',[...listFechados]);renderList()}
+document.addEventListener('click',e=>{
+ if(modal)return;
+ const g=e.target.closest('[data-lg]');if(g)return toggleGrupo(g.dataset.lg);
+ const a=e.target.closest('[data-lgall]');if(a){listFechados=a.dataset.lgall==='fechar'?new Set(C().cols.map(c=>c.id)):new Set();setPref('listFechados',[...listFechados]);renderList()}});
+document.addEventListener('keydown',e=>{if(!modal&&(e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-lg]')){e.preventDefault();toggleGrupo(e.target.dataset.lg)}});
 
 /* ===== calendário: ver agenda.js ===== */
 function render(){
@@ -432,7 +444,7 @@ document.addEventListener('click',e=>{
   const add=t.closest('[data-add]');if(add)return openCard(null,add.dataset.add);
   const th=t.closest('th[data-sort]');if(th){const k=th.dataset.sort;if(sortL.k===k)sortL.dir*=-1;else{sortL.k=k;sortL.dir=1}return render()}
   if(t.closest('#vCal'))return;   /* o calendário trata os próprios cliques (agenda.js) */
-  if(t.closest('[data-sub],[data-ovr],[data-ovt]'))return;
+  if(t.closest('[data-sub],[data-ovr],[data-ovt],[data-lg],[data-lgall]'))return;
   const el=t.closest('[data-id]');if(el)return openCard(el.dataset.id);
   return}
  if(t.classList.contains('ov')&&downOv){modal=null;return renderModal()}

@@ -427,3 +427,17 @@ body.withside{display:block}
 .ck.ckbtn{cursor:pointer}.ck.ckbtn:hover{border-color:var(--bd2)}
 .seg .segn{font-style:normal;font-size:11px;background:var(--card2);color:var(--mu);border-radius:99px;padding:0 7px;margin-left:4px}
 .seg button.on .segn{background:#13262a;color:var(--teal)}
+
+/* lista agrupada por etapa (retrair / expandir) */
+.listbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0}
+.listbar .hsp{flex:1}
+.tbl tr.lgrp td{background:#0f161e;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--bd2);position:sticky;top:37px;z-index:1}
+.tbl tr.lgrp:hover td{background:#141e29}
+.tbl tr.lgrp td{font-size:13px}
+.tbl tr.lgrp .car{display:inline-block;width:14px;color:var(--mu);font-size:11px}
+.tbl tr.lgrp i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;vertical-align:0}
+.tbl tr.lgrp b{font-weight:700;letter-spacing:.2px}
+.tbl tr.lgrp em{font-style:normal;font-size:11px;color:var(--mu);background:var(--card2);border-radius:99px;padding:1px 8px;margin-left:8px}
+.tbl tr.lgrp small{margin-left:12px;color:var(--mu);font-size:12px}.tbl tr.lgrp small.r{color:var(--red)}
+.tbl tr.lgrp:focus-visible td{outline:2px solid var(--teal);outline-offset:-2px}
+.tbl td:first-child,.tbl th:first-child{min-width:280px}
