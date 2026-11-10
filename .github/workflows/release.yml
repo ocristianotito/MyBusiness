@@ -1,5 +1,7 @@
 # Gera o instalador do Windows e publica a Release quando a versão do package.json muda na main.
 # A Release (tag vX.Y.Z) leva o latest.yml que o programa instalado consulta para se atualizar sozinho.
+# Depois gera o .dmg do Mac (universal: Intel e Apple Silicon) e anexa à mesma Release, se ainda não estiver lá.
+# Sem assinatura da Apple: o app recebe assinatura local (ad-hoc) e no Mac a atualização é manual (o programa avisa).
 # Também dá para rodar à mão em Actions → Publicar versão → Run workflow.
 name: Publicar versão
 
@@ -44,3 +46,50 @@ jobs:
         run: npx electron-builder --win nsis --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mac:
+    needs: windows
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Ver se o Mac já está nesta versão
+        id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -q '\.dmg$'; then
+            echo "O .dmg da v$v já está publicado; nada a fazer."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.ver.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Montar o programa (Intel + Apple Silicon)
+        if: steps.ver.outputs.skip != 'true'
+        run: npx electron-builder --mac dir --universal --publish never
+
+      - name: Assinatura local (ad-hoc), necessária para abrir no Apple Silicon
+        if: steps.ver.outputs.skip != 'true'
+        run: |
+          app="dist/mac-universal/Cristiano Convites.app"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --verbose=2 "$app"
+
+      - name: Gerar o .dmg
+        if: steps.ver.outputs.skip != 'true'
+        run: npx electron-builder --mac dmg --universal --prepackaged "dist/mac-universal/Cristiano Convites.app" --publish never
+
+      - name: Anexar o .dmg à Release
+        if: steps.ver.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "v${{ steps.ver.outputs.version }}" dist/*.dmg --repo "$GITHUB_REPOSITORY" --clobber

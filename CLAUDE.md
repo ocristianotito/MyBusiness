@@ -50,6 +50,15 @@ o workflow à mão (Actions → Publicar versão → Run workflow); versões já
    e cria a Release `vX.Y.Z` com `latest.yml`; os programas instalados baixam sozinhos.
 3. Esta sessão não pode criar Releases nem enviar tags: sempre use esse fluxo.
 
+## Mac
+- O workflow também tem o job `mac` (macos-latest): gera o `.dmg` universal (Intel + Apple Silicon), assina ad-hoc
+  (`codesign --sign -`, sem conta Apple) e anexa à mesma Release `vX.Y.Z`, se ainda não houver `.dmg` nela.
+- Sem assinatura da Apple não há instalação automática: no Mac, `checkMac()` (main.js) consulta a última Release
+  e a barra do `update.js` oferece "Baixar" o `.dmg` (o usuário arrasta para Aplicativos, substituindo).
+- Primeira abertura no Mac: Ajustes do Sistema → Privacidade e Segurança → "Abrir Mesmo Assim".
+- No Mac há menu do topo (`menuMac()`), obrigatório para Cmd+C/V/Z/Q; Cmd+Q passa por `quitApp` (salva e envia à nuvem).
+  Os dados ficam em `~/Library/Application Support/Producao Cristiano Convites/`.
+
 ## Testar localmente
 - `npm start` abre o programa (a atualização automática só roda no programa instalado).
 - `npm run dist` gera o instalador em `dist/` (no Linux, precisa do Wine).

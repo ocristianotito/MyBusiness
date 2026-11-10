@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 
 app.setName('Cristiano Convites');
+const MAC = process.platform === 'darwin';
 // A pasta de dados mantém o nome antigo de propósito: renomear o programa não pode separar ninguém dos seus dados.
 app.setPath('userData', process.env.CC_DATA_DIR || path.join(app.getPath('appData'), 'Producao Cristiano Convites'));   // CC_DATA_DIR: só para testes
 app.commandLine.appendSwitch('lang', 'pt-BR');
@@ -215,7 +216,26 @@ function checkUpdates(why) {
   if (!app.isPackaged || upd.state === 'ready' || upd.state === 'downloading') return Promise.resolve();
   lastCheck = Date.now();
   ulog('procurando (' + why + ')');
+  if (MAC) return checkMac();
   return autoUpdater.checkForUpdates().catch((e) => ulog('erro ao procurar: ' + ((e && e.message) || e)));
+}
+/* No Mac o programa não tem assinatura da Apple, então não dá para instalar sozinho:
+   avisa que há versão nova e abre o download do .dmg. */
+const REPO = 'ocristianotito/MyBusiness';
+const novaQue = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+async function checkMac() {
+  try {
+    const { net } = require('electron');
+    const r = await net.fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cristiano-convites' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const rel = await r.json(), v = String(rel.tag_name || '').replace(/^v/, '');
+    const dmg = (rel.assets || []).find((a) => /\.dmg$/i.test(a.name));
+    if (v && dmg && novaQue(v, app.getVersion())) {
+      const novo = upd.state !== 'mac' || upd.version !== v;
+      upd = { state: 'mac', version: v, url: dmg.browser_download_url };
+      if (novo) { ulog('versão nova para Mac: ' + v); sendUpd(); }
+    } else if (upd.state !== 'mac') upd = { state: 'none', version: v };
+  } catch (e) { const msg = String((e && e.message) || e).slice(0, 300); ulog('erro: ' + msg); if (upd.state !== 'mac') upd = { state: 'error', msg }; }
 }
 function readyToInstall() {
   if (!win || win.isDestroyed() || !win.isVisible()) { ulog('instalando com a janela oculta'); quitApp(true); }
@@ -223,6 +243,11 @@ function readyToInstall() {
 }
 function setupUpdater() {
   if (!app.isPackaged) return;
+  if (MAC) {
+    setTimeout(() => checkUpdates('ao abrir'), 5000);
+    setInterval(() => checkUpdates('a cada 30 min'), 30 * 60 * 1000);
+    return;
+  }
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = { info: (m) => ulog('info ' + m), warn: (m) => ulog('aviso ' + m), error: (m) => ulog('erro ' + m), debug: () => {} };
@@ -242,10 +267,12 @@ ipcMain.handle('update:get', () => upd);
 ipcMain.handle('update:check', async () => {
   if (!app.isPackaged) return { state: 'dev' };
   if (upd.state === 'ready' || upd.state === 'downloading') return upd;
+  if (MAC && upd.state === 'mac') return upd;
   await checkUpdates('pedido na tela');
   return upd;
 });
-ipcMain.handle('update:install', () => { if (upd.state === 'ready') { ulog('instalando (pedido na tela)'); quitApp(true); } });
+ipcMain.handle('update:install', () => {
+  if (upd.state === 'mac' && upd.url) { ulog('abrindo download ' + upd.version); shell.openExternal(upd.url); return; } if (upd.state === 'ready') { ulog('instalando (pedido na tela)'); quitApp(true); } });
 ipcMain.handle('update:postpone', (_e, minutes) => {
   clearTimeout(postponeTimer);
   const m = Math.min(Math.max(+minutes || 10, 1), 120);
@@ -390,8 +417,10 @@ async function flushRenderer() {
     ]);
   } catch (e) {}
 }
+let saindo = false;
 async function quitApp(install) {
-  if (quitting) return;
+  if (quitting || saindo) return;
+  saindo = true;
   await flushRenderer();
   if (nuvem) await nuvem.encerrar().catch(() => {});
   quitting = true;
@@ -413,21 +442,20 @@ async function hideToTray() {
   win.hide();
   if (!trayHintShown && Notification.isSupported()) {
     trayHintShown = true;
-    new Notification({ title: 'Cristiano Convites continua aberto', body: 'Fica aqui perto do relógio para avisar dos lembretes. Para sair, clique com o botão direito no ícone e escolha Sair.', icon: path.join(__dirname, 'icon.png') }).show();
+    new Notification({ title: 'Cristiano Convites continua aberto', body: MAC ? 'Fica no Dock e na barra de menus para avisar dos lembretes. Para sair, use Cmd+Q.' : 'Fica aqui perto do relógio para avisar dos lembretes. Para sair, clique com o botão direito no ícone e escolha Sair.', icon: path.join(__dirname, 'icon.png') }).show();
   }
 }
 function createTray() {
-  const img = nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 16, height: 16 });
+  const img = nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: MAC ? 18 : 16, height: MAC ? 18 : 16 });
   tray = new Tray(img);
   tray.setToolTip('Cristiano Convites');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Abrir Cristiano Convites', click: showWindow },
-    { label: 'Procurar atualizações', click: () => { upd.state === 'ready' ? readyToInstall() : checkUpdates('menu da bandeja'); } },
+    { label: 'Procurar atualizações', click: () => { if (upd.state === 'mac') { showWindow(); sendUpd(); } else if (upd.state === 'ready') readyToInstall(); else checkUpdates('menu da bandeja'); } },
     { type: 'separator' },
     { label: 'Sair', click: () => quitApp(false) }
   ]));
-  tray.on('click', showWindow);
-  tray.on('double-click', showWindow);
+  if (!MAC) { tray.on('click', showWindow); tray.on('double-click', showWindow); }   // no Mac o clique abre o menu
 }
 
 function createWindow() {
@@ -458,8 +486,35 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
 }
 
-Menu.setApplicationMenu(null);
-app.setAppUserModelId('br.com.cristianoconvites.producao');   // notificações do Windows com o nome do programa
-app.on('before-quit', () => { quitting = true; });
+/* No Mac o menu do topo é obrigatório para Cmd+C, Cmd+V, Cmd+Z e Cmd+Q funcionarem. */
+function menuMac() {
+  return Menu.buildFromTemplate([
+    { label: 'Cristiano Convites', submenu: [
+      { role: 'about', label: 'Sobre o Cristiano Convites' },
+      { label: 'Procurar atualizações…', click: () => { showWindow(); if (upd.state === 'mac') sendUpd(); else if (win) win.webContents.executeJavaScript('window.__checkUpdates && window.__checkUpdates()').catch(() => {}); } },
+      { type: 'separator' },
+      { role: 'hide', label: 'Ocultar Cristiano Convites' }, { role: 'hideOthers', label: 'Ocultar outros' }, { role: 'unhide', label: 'Mostrar tudo' },
+      { type: 'separator' },
+      { label: 'Sair do Cristiano Convites', accelerator: 'Cmd+Q', click: () => quitApp(false) }
+    ] },
+    { label: 'Editar', submenu: [
+      { role: 'undo', label: 'Desfazer' }, { role: 'redo', label: 'Refazer' }, { type: 'separator' },
+      { role: 'cut', label: 'Recortar' }, { role: 'copy', label: 'Copiar' }, { role: 'paste', label: 'Colar' }, { role: 'selectAll', label: 'Selecionar tudo' }
+    ] },
+    { label: 'Janela', submenu: [
+      { role: 'minimize', label: 'Minimizar' }, { role: 'zoom', label: 'Zoom' },
+      { label: 'Fechar janela', accelerator: 'Cmd+W', click: () => { if (win && !win.isDestroyed()) win.close(); } },
+      { type: 'separator' }, { role: 'togglefullscreen', label: 'Tela cheia' }
+    ] }
+  ]);
+}
+Menu.setApplicationMenu(MAC ? menuMac() : null);
+if (!MAC) app.setAppUserModelId('br.com.cristianoconvites.producao');   // notificações do Windows com o nome do programa
+app.on('before-quit', (e) => {
+  if (quitting) return;
+  if (MAC) { e.preventDefault(); quitApp(false); return; }   // Cmd+Q ou Sair pelo Dock: salva e envia para a nuvem antes
+  quitting = true;
+});
+app.on('activate', () => showWindow());   // clique no ícone do Dock
 app.whenReady().then(() => { loadData(); createWindow(); createTray(); setupUpdater(); setupNuvem(); });
 app.on('window-all-closed', () => { if (quitting) app.quit(); });

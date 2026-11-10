@@ -41,15 +41,25 @@
       install();
     }, 1000);
   }
+  var macVista = '';
+  function mac(s) {
+    mount(); clearTimeout(hideT); stop(); macVista = s.version;
+    bar.innerHTML = '<span>Versão <b></b> disponível. No Mac a instalação é manual: baixe, abra o arquivo e arraste o programa para Aplicativos (substituir). Seus dados continuam.</span>' +
+      '<button data-u="go" style="' + btn + 'background:#2DB5AE;color:#06201f">Baixar</button>' +
+      '<button data-u="x" style="' + btn + 'background:#16202b;color:#E6EDF3">Depois</button>';
+    bar.querySelector('b').textContent = s.version || '';
+    bar.style.display = 'flex';
+  }
   function show(s) {
     if (!s) return;
+    if (s.state === 'mac') { if (macVista !== s.version || bar.style.display === 'none') mac(s); return; }
     if (s.state === 'ready') countdown(s);
     else if (s.state === 'downloading' && !shownDl) { shownDl = true; msg('Baixando a versão ' + (s.version || 'nova') + ' em segundo plano…', 5000); }
   }
   bar.addEventListener('click', function (e) {
     var u = e.target.getAttribute('data-u'); if (!u) return;
     if (u === 'x') { bar.style.display = 'none'; return; }
-    if (u === 'go') { install(); return; }
+    if (u === 'go') { if (macVista) { api.instalarAtualizacao(); bar.style.display = 'none'; return; } install(); return; }
     if (u === 'later') { stop(); api.adiarAtualizacao(10); msg('Combinado: atualizo daqui a 10 minutos.', 5000); }
   });
   api.onAtualizacao(show);
@@ -67,6 +77,7 @@
     msg('Procurando atualizações…');
     api.verificarAtualizacao().then(function (s) {
       if (s.state === 'ready') countdown(s);
+      else if (s.state === 'mac') mac(s);
       else if (s.state === 'downloading') msg('Baixando a versão ' + s.version + (s.percent ? ' (' + s.percent + '%)' : '') + '. Quando terminar, o programa reinicia sozinho.', 7000);
       else if (s.state === 'dev') msg('Atualização automática só funciona no programa instalado.', 5000);
       else if (s.state === 'error') msg(motivo(s.msg), 12000);

@@ -7,7 +7,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis --x64 --publish never"
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "electron-builder --mac dmg --universal --publish never"
   },
   "build": {
     "appId": "br.com.cristianoconvites.producao",
@@ -36,6 +37,18 @@
       "owner": "ocristianotito",
       "repo": "MyBusiness",
       "releaseType": "release"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.png",
+      "category": "public.app-category.business",
+      "identity": null,
+      "hardenedRuntime": false,
+      "artifactName": "Cristiano-Convites-${version}-mac.${ext}"
+    },
+    "dmg": {
+      "title": "Cristiano Convites ${version}",
+      "artifactName": "Cristiano-Convites-${version}-mac.${ext}"
     }
   },
   "devDependencies": {
