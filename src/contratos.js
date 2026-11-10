@@ -138,27 +138,38 @@ const PAPER_CSS = `.paper{font-family:Arial,"Segoe UI",sans-serif;font-size:10.5
 .paper .sig.tst span{margin-top:2px}`;
 
 /* ----- lista ----- */
+function ctLinha(id, k, assin) {
+  const s = CT_SIT[k.status || 'rascunho'], da = parseD(k.assinadoEm || '');
+  const extra = assin ? (da ? ' · assinado em ' + da.getDate() + ' ' + MES[da.getMonth()] + ' ' + da.getFullYear() : ' · data da assinatura não registrada') + (k.colacao && parseD(k.colacao) ? ' · colação ' + parseD(k.colacao).toLocaleDateString('pt-BR') : '') : '';
+  return `<div class="ctrow" data-ct="${esc(id)}"><span class="cki" style="--c:${assin ? '#34D399' : '#2DB5AE'}">${ShellIcon('contratos', 17)}</span>
+     <div class="ctinfo"><b>${esc(ctTitulo(k).toUpperCase())}</b><small>${esc(k.produto || 'Convite')} · ${n0(k.qtd)} unid. · ${E.brl(ctTotal(k))}${extra}</small></div>
+     <span class="sit" style="--c:${s.c}">${s.n}</span>
+     <button class="ib" data-cta="pdf" data-id="${esc(id)}" title="Baixar PDF">PDF</button><button class="ib" data-cta="edit" data-id="${esc(id)}" title="Editar">Editar</button><button class="ib del" data-cta="del" data-id="${esc(id)}" title="Excluir">Excluir</button></div>`;
+}
+let ctVista = 'mes';
 function renderContratos() {
   const box = $('mod-contratos');
   const all = [...contracts.entries()];
   const meses = [...new Set(all.map(([, k]) => ymOf(k)).concat([new Date().toISOString().slice(0, 7)]))].sort().reverse();
   if (!ctMes || !meses.includes(ctMes)) ctMes = meses[0];
   const doMes = all.filter(([, k]) => ymOf(k) === ctMes).sort((a, b) => (b[1].atualizado || 0) - (a[1].atualizado || 0));
+  const assinados = all.filter(([, k]) => k.status === 'assinado').sort((a, b) => String(b[1].assinadoEm || '').localeCompare(String(a[1].assinadoEm || '')) || (b[1].atualizado || 0) - (a[1].atualizado || 0));
   const st = (s) => doMes.filter(([, k]) => (k.status || 'rascunho') === s).length;
   const val = doMes.reduce((s, [, k]) => s + ctTotal(k), 0);
-  const kpi = (ic, v, l, col) => `<div class="ck"><span class="cki" style="--c:${col}">${ShellIcon(ic, 18)}</span><div><b>${v}</b><span>${l}</span></div></div>`;
+  const kpi = (ic, v, l, col, act) => `<div class="ck${act ? ' ckbtn' : ''}"${act ? ` data-cta="${act}" role="button" tabindex="0"` : ''}><span class="cki" style="--c:${col}">${ShellIcon(ic, 18)}</span><div><b>${v}</b><span>${l}</span></div></div>`;
   const e = emp(), faltaEmp = !e.cnpj || !e.sede;
-  box.innerHTML = `<header class="pagehead"><span class="phicon">${ShellIcon('contratos', 19)}</span><div><h1>Contratos</h1><small>${doMes.length} contrato(s) em ${ymNome(ctMes)}</small></div>
-   <span class="phsp"></span><select id="ctmes" class="hsel" aria-label="Mês">${meses.map((m) => `<option value="${m}"${m === ctMes ? ' selected' : ''}>${ymNome(m)}</option>`).join('')}</select>
+  const seg = `<div class="seg" style="margin-left:18px"><button data-cta="vmes" class="${ctVista === 'mes' ? 'on' : ''}">Do mês</button><button data-cta="vass" class="${ctVista === 'assinados' ? 'on' : ''}">Assinados <em class="segn">${assinados.length}</em></button></div>`;
+  const corpo = ctVista === 'assinados'
+    ? `<div class="ckpis c4">${kpi('contratos', assinados.length, 'Contratos assinados', '#34D399')}${kpi('financeiro', E.brl(assinados.reduce((s, [, k]) => s + ctTotal(k), 0)), 'Valor contratado', '#2DB5AE')}${kpi('demandas', fmtN(assinados.reduce((s, [, k]) => s + n0(k.qtd), 0)), 'Convites contratados', '#A78BFA')}${kpi('clientes', new Set(assinados.map(([, k]) => k.clientId || ctTitulo(k))).size, 'Turmas / clientes', '#60A5FA')}</div>
+       ${assinados.length ? assinados.map(([id, k]) => ctLinha(id, k, true)).join('') : `<div class="emptybox">${ShellIcon('contratos', 30)}<b>Nenhum contrato assinado ainda</b><p>Quando a comissão assinar, abra o contrato e mude a situação para "Assinado": ele aparece aqui, com a data da assinatura.</p></div>`}`
+    : `<div class="ckpis c4">${kpi('financeiro', E.brl(val), 'Valor no mês', '#2DB5AE')}${kpi('contratos', st('rascunho'), 'Rascunhos', '#F0A53F')}${kpi('demandas', st('enviado'), 'Enviados', '#60A5FA')}${kpi('contratos', st('assinado'), 'Assinados no mês · ver todos', '#34D399', 'vass')}</div>
+       ${doMes.length ? doMes.map(([id, k]) => ctLinha(id, k, false)).join('') : `<div class="emptybox">${ShellIcon('contratos', 30)}<b>Nenhum contrato em ${ymNome(ctMes)}</b><p>Clique em "Novo contrato", escolha o cliente e preencha os dados: o programa monta o seu modelo e gera o PDF.</p><button class="btn" data-cta="novo">+ Novo contrato</button></div>`}`;
+  box.innerHTML = `<header class="pagehead"><span class="phicon">${ShellIcon('contratos', 19)}</span><div><h1>Contratos</h1><small>${ctVista === 'assinados' ? assinados.length + ' contrato(s) assinado(s) no total' : doMes.length + ' contrato(s) em ' + ymNome(ctMes)}</small></div>${seg}
+   <span class="phsp"></span>${ctVista === 'mes' ? `<select id="ctmes" class="hsel" aria-label="Mês">${meses.map((m) => `<option value="${m}"${m === ctMes ? ' selected' : ''}>${ymNome(m)}</option>`).join('')}</select>` : ''}
    <button class="btn ghost sm" data-cta="emp">Dados da empresa</button><button class="btn sm" data-cta="novo">+ Novo contrato</button></header>
   <div class="mbody"><div class="mwrap">
    ${faltaEmp ? `<div class="banner o">Preencha os <b>dados da empresa</b> (CNPJ, endereço, telefone e e-mail) uma vez; eles entram em todos os contratos. <button class="linkbtn" data-cta="emp">Preencher agora</button></div>` : ''}
-   <div class="ckpis c4">${kpi('financeiro', E.brl(val), 'Valor no mês', '#2DB5AE')}${kpi('contratos', st('rascunho'), 'Rascunhos', '#F0A53F')}${kpi('demandas', st('enviado'), 'Enviados', '#60A5FA')}${kpi('contratos', st('assinado'), 'Assinados', '#34D399')}</div>
-   ${doMes.length ? doMes.map(([id, k]) => { const s = CT_SIT[k.status || 'rascunho']; return `<div class="ctrow" data-ct="${esc(id)}"><span class="cki" style="--c:#2DB5AE">${ShellIcon('contratos', 17)}</span>
-     <div class="ctinfo"><b>${esc(ctTitulo(k).toUpperCase())}</b><small>${esc(k.produto || 'Convite')} · ${n0(k.qtd)} unid. · ${E.brl(ctTotal(k))}</small></div>
-     <span class="sit" style="--c:${s.c}">${s.n}</span>
-     <button class="ib" data-cta="pdf" data-id="${esc(id)}" title="Baixar PDF">PDF</button><button class="ib" data-cta="edit" data-id="${esc(id)}" title="Editar">Editar</button><button class="ib del" data-cta="del" data-id="${esc(id)}" title="Excluir">Excluir</button></div>`; }).join('') :
-   `<div class="emptybox">${ShellIcon('contratos', 30)}<b>Nenhum contrato em ${ymNome(ctMes)}</b><p>Clique em "Novo contrato", escolha o cliente e preencha os dados: o programa monta o seu modelo e gera o PDF.</p><button class="btn" data-cta="novo">+ Novo contrato</button></div>`}
+   ${corpo}
   </div></div>`;
 }
 
@@ -218,6 +229,8 @@ function renderCt() {
 function readCt() {
   const k = modal.k, v = (id) => { const e = $(id); return e ? e.value : ''; };
   k.status = v('t-status'); k.clientId = v('t-cli');
+  if (k.status === 'assinado' && !k.assinadoEm) k.assinadoEm = isoD(today());   /* data da assinatura, registrada sozinha */
+  if (k.status !== 'assinado') delete k.assinadoEm;
   document.querySelectorAll('[data-p][data-f]').forEach((el) => { const p = k.contratantes[+el.dataset.p]; if (p) p[el.dataset.f] = el.value; });
   document.querySelectorAll('[data-pg]').forEach((el) => { const p = k.contratantes[+el.dataset.pg]; if (p) p.genero = el.value; });
   k.curso = v('t-curso').trim(); k.instituicao = v('t-inst').trim(); k.turma = v('t-turma').trim(); k.colacao = v('t-colacao');
@@ -280,6 +293,7 @@ $('mod-contratos').addEventListener('click', (e) => {
   if (b) {
     const a = b.dataset.cta, id = b.dataset.id;
     if (a === 'novo') return openCt(null);
+    if (a === 'vmes' || a === 'vass') { ctVista = a === 'vass' ? 'assinados' : 'mes'; return renderContratos(); }
     if (a === 'emp') { modal = { t: 'emp', e: emp() }; return renderModal(); }
     if (a === 'edit') return openCt(id);
     if (a === 'pdf') return gerarPdf(contracts.get(id));

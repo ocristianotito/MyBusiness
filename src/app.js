@@ -96,10 +96,11 @@ async function init(){
   const d=await window.api.load();
   cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));events=new Map(Object.entries(d.events||{}));
   clients=new Map(Object.entries(d.clients||{}));contracts=new Map(Object.entries(d.contracts||{}));
-  /* pedido do dono (1.2.7): tirar do quadro as etapas Edição de fotos, Criação convites, Aprovação e Impressão.
+  /* pedido do dono (1.2.7): tirar do quadro as etapas Contratos assinados (agora na aba Contratos), Edição de fotos,
+     Criação convites, Aprovação e Impressão.
      Só sai a etapa que estiver vazia, para nenhum pedido ficar sem etapa. Roda uma vez. */
   if(cfg&&Array.isArray(cfg.cols)&&!cfg.semEtapasVazias127){
-   const tirar=['EDIÇÃO DE FOTOS','CRIAÇÃO CONVITES','APROVAÇÃO','IMPRESSÃO'],usada=id=>[...cards.values()].some(c=>c.col===id);
+   const tirar=['CONTRATOS ASSINADOS','EDIÇÃO DE FOTOS','CRIAÇÃO CONVITES','APROVAÇÃO','IMPRESSÃO'],usada=id=>[...cards.values()].some(c=>c.col===id);
    cfg=Object.assign({},cfg,{cols:cfg.cols.filter(c=>!(tirar.includes(String(c.name||'').trim().toUpperCase())&&!usada(c.id))),semEtapasVazias127:1});
    persist()}
   /* pedido do dono (1.2.7): checklist de produção novo, no padrão e nos pedidos que usam o antigo. Roda uma vez. */

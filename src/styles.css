@@ -423,3 +423,7 @@ body.withside{display:block}
 .rrow small{color:var(--mu);font-size:11px}
 .lockp .btn{display:inline-flex;align-items:center;gap:7px}
 @media(max-width:1180px){.dgrid{grid-template-columns:1fr}.ckpis{grid-template-columns:repeat(3,minmax(0,1fr))}.ctgrid{grid-template-columns:1fr}.ctprev{display:none}}
+
+.ck.ckbtn{cursor:pointer}.ck.ckbtn:hover{border-color:var(--bd2)}
+.seg .segn{font-style:normal;font-size:11px;background:var(--card2);color:var(--mu);border-radius:99px;padding:0 7px;margin-left:4px}
+.seg button.on .segn{background:#13262a;color:var(--teal)}
