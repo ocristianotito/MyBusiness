@@ -1,7 +1,7 @@
 {
   "name": "producao-cristiano-convites",
   "productName": "Produção Cristiano Convites",
-  "version": "1.3.0",
+  "version": "1.2.1",
   "description": "Gestão da produção de convites de formatura",
   "author": "Cristiano Convites",
   "main": "src/main.js",
