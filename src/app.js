@@ -4,7 +4,9 @@ const PAL={teal:'#2DB5AE',azul:'#60A5FA',roxo:'#A78BFA',laranja:'#F0A53F',verde:
 const PALN={teal:'Teal',azul:'Azul',roxo:'Roxo',laranja:'Laranja',verde:'Verde',vermelho:'Vermelho',cinza:'Cinza'};
 const DEF_CFG={brand:'Cristiano Convites',
  cols:[{id:'pedido',name:'Pedido / briefing',c:'cinza'},{id:'arte',name:'Arte e layout',c:'roxo'},{id:'aprov',name:'Aprovação do cliente',c:'laranja'},{id:'grafica',name:'Gráfica',c:'azul'},{id:'acab',name:'Acabamento',c:'teal'},{id:'mont',name:'Montagem e conferência',c:'teal'},{id:'entregue',name:'Entregue',c:'verde'}],
- check:['Layout aprovado pelo cliente','Arquivo enviado à gráfica','Impressão conferida','Hotstamp','Corte / faca','Lacre','Montagem','Conferência de nomes','Embalagem']};
+ check:['Edição de foto','Criação Brasão','Criação Convite','Correção','Aprovação','Assinatura boneca','Impressão','Entrega']};
+const CHECK_ANTIGO=['Layout aprovado pelo cliente','Arquivo enviado à gráfica','Impressão conferida','Hotstamp','Corte / faca','Lacre','Montagem','Conferência de nomes','Embalagem'];
+const CHECK_EQUIV={'Layout aprovado pelo cliente':'Aprovação','Impressão conferida':'Impressão'};
 const MODELOS=['23x17,5 cm','25x18 cm','20x22 cm','24x22 cm','27x25 cm','Simples 15x22 cm','Caixa','Miolo 16 páginas'];
 const PRIO={alta:'Alta',media:'Média',baixa:'Baixa'};
 const PRIO_RANK={alta:0,media:1,baixa:2,'':3};
@@ -99,6 +101,19 @@ async function init(){
   if(cfg&&Array.isArray(cfg.cols)&&!cfg.semEtapasVazias127){
    const tirar=['EDIÇÃO DE FOTOS','CRIAÇÃO CONVITES','APROVAÇÃO','IMPRESSÃO'],usada=id=>[...cards.values()].some(c=>c.col===id);
    cfg=Object.assign({},cfg,{cols:cfg.cols.filter(c=>!(tirar.includes(String(c.name||'').trim().toUpperCase())&&!usada(c.id))),semEtapasVazias127:1});
+   persist()}
+  /* pedido do dono (1.2.7): checklist de produção novo, no padrão e nos pedidos que usam o antigo. Roda uma vez. */
+  if(!(cfg&&cfg.checklist127)){
+   const novo=DEF_CFG.check;
+   cfg=Object.assign({},C(),{check:novo.slice(),checklist127:1});
+   cards.forEach((c,id)=>{
+    const l=Array.isArray(c.check)?c.check:[];
+    if(!l.some(x=>x&&CHECK_ANTIGO.includes(x.t)))return;   /* pedido sem o checklist antigo: não mexe */
+    const feitos=new Set(l.filter(x=>x&&x.d&&CHECK_EQUIV[x.t]).map(x=>CHECK_EQUIV[x.t]));
+    const proprios=l.filter(x=>x&&!CHECK_ANTIGO.includes(x.t)&&!novo.includes(x.t));
+    const mesmos=new Map(l.filter(x=>x&&novo.includes(x.t)).map(x=>[x.t,!!x.d]));
+    cards.set(id,Object.assign({},c,{check:novo.map(t=>({t,d:feitos.has(t)||!!mesmos.get(t)})).concat(proprios)}));
+   });
    persist()}
   setSync('on','Salvo no computador');
  }catch(e){setSync('err','Erro ao abrir os dados');$('banner').innerHTML=`<div class="banner r">Não foi possível abrir o arquivo de dados: ${esc(e.message||e)}</div>`}
