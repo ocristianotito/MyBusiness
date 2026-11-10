@@ -825,7 +825,7 @@ function render(){
  document.querySelectorAll('.mscroll').forEach(e=>sc[e.dataset.m]=e.scrollLeft);
  document.getElementById('nav').innerHTML=[6,0,1,2,3,4,5].map(i=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${TABS[i]}</button>`).join('');
  let html;
- try{html=lista!=null?vL():[v0,v1,v2,v3,v4,v5,v6][S.tab]()}
+ try{html=lista!=null?vL():[v0,v1,v2,(window.v3x||v3),v4,v5,v6][S.tab]()}
  catch(err){html='<div class="panel"><h3 class="r">Erro ao montar a tela</h3><p>'+esc(err&&err.message)+'</p></div>'}
  document.getElementById('app').innerHTML=html;
  let mh='';

@@ -204,6 +204,7 @@
     if (a === 'meta') return editarMeta();
     if (a === 'saldo') return editarSaldo();
     if (a === 'turmas') { S.tab = 0; render(); return window.scrollTo(0, 0); }
+    if (a === 'vermes') { S.tab = 6; render(); return window.scrollTo(0, 0); }
     if (a === 'tog') {
       if (b.dataset.src === 'mov') { const x = c.mov.find((m) => m.id === b.dataset.id); if (x) x.pago = !x.pago; }
       else { const k = b.dataset.id + '|' + mes; c.recSt[k] = Object.assign({}, c.recSt[k] || {}); c.recSt[k].pago = !c.recSt[k].pago; }
@@ -211,6 +212,64 @@
     }
   });
 
+  /* ===== aba Financeiro (resultado das turmas e parceiros), no mesmo estilo da Visão do mês ===== */
+  window.v3x = function v3x() {
+    const t = tot(), fech = t.T + t.PT, rec = t.R + t.PR, arec = t.A + t.PA, custo = t.C + t.PC, lucro = fech - custo;
+    const marg = fech ? lucro / fech : 0, pr = fech ? rec / fech : 0;
+    const linhas = []
+      .concat((S.turmas || []).filter((x) => x.total > 0).map((x) => ({ k: 't', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
+      .concat((S.parc || []).filter((x) => x.total > 0).map((x) => ({ k: 'p', id: x.id, nome: x.nome, sub: x.parceiro || 'Parceiro', ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
+    const comCusto = linhas.filter((l) => l.custo > 0).length;
+    const porFalta = linhas.slice().sort((a, b) => (b.total - b.rec) - (a.total - a.rec));
+    const maxT = Math.max(1, ...linhas.map((l) => l.total));
+    const barras = porFalta.map((l) => {
+      const fr = l.total - l.rec, w = l.total / maxT * 100;
+      return `<button class="fxbar" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" title="${esc(l.nome)}: recebido ${BRL(l.rec)} de ${BRL(l.total)}">
+        <span class="fxn"><b>${esc(l.nome)}</b><small>${l.k === 't' ? 'Turma' : 'Parceiro'} · ${l.ano}</small></span>
+        <span class="fxtrack"><span class="fxfill" style="width:${w}%"><i class="r" style="width:${l.total ? l.rec / l.total * 100 : 0}%"></i></span></span>
+        <span class="fxv"><b class="o">${BRL(fr)}</b><small>de ${BRL(l.total)}</small></span></button>`;
+    }).join('');
+    const anos = [...new Set(linhas.map((l) => l.ano))].sort((a, b) => a - b);
+    const tabela = anos.map((a) => {
+      const ls = linhas.filter((l) => l.ano === a), tf = ls.reduce((s, l) => s + l.total, 0), tr = ls.reduce((s, l) => s + l.rec, 0);
+      return `<tr class="fxy"><td colspan="8">${a}<small>${ls.length} cliente(s) · fechado ${BRL(tf)} · recebido ${BRL(tr)} · a receber ${BRL(tf - tr)}</small></td></tr>` + ls.map((l) => {
+        const p = l.total ? l.rec / l.total : 0, lu = l.total - l.custo;
+        return `<tr><td><b>${esc(l.nome)}</b><small>${esc(l.sub || '')}</small></td><td><span class="vmcat ${l.k === 't' ? 'turmas' : 'parceiros'}">${l.k === 't' ? 'Turma' : 'Parceiro'}</span></td>
+          <td class="n">${BRL(l.total)}</td><td class="n g">${BRL(l.rec)}</td><td class="n o">${BRL(l.total - l.rec)}</td>
+          <td><div class="fxp"><div class="vmbar"><i style="width:${Math.min(100, p * 100)}%;${p >= 0.9999 ? 'background:var(--g)' : ''}"></i></div><span>${PCT(p)}</span></div></td>
+          <td class="n">${l.custo ? `<b class="${lu >= 0 ? 'g' : 'r'}">${PCT(dv(lu, l.total))}</b>` : '<span class="mu">sem custo</span>'}</td>
+          <td class="n"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button></td></tr>`;
+      }).join('');
+    }).join('');
+    const lanc = S.lanc || [], pend = lanc.filter((l) => !l.pago), pago = lanc.filter((l) => l.pago);
+    const desp = (l) => `<div class="vmrow${l.pago ? ' pago' : ''}" style="grid-template-columns:22px minmax(0,1fr) 120px auto"><button class="vmck${l.pago ? ' on' : ''}" data-act="tog" data-id="${l.id}" title="${l.pago ? 'Voltar para a pagar' : 'Marcar como paga'}"></button><span class="vmd">${esc(l.desc)}</span><span class="vmv s">${BRL(l.valor)}</span><span class="vmact"><button data-act="del" data-id="${l.id}">Excluir</button></span></div>`;
+    return `<div class="vm">
+    <div class="vmtop"><h2>Resultado das turmas e parceiros</h2><span class="note">tudo o que já foi fechado, independente do mês</span></div>
+    <div class="vmcards">
+     <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto</div><b class="${lucro >= 0 ? 'g' : 'r'}">${BRL(lucro)}</b>
+      <div class="vmmeta"><span>${custo ? 'margem <b>' + PCT(marg) + '</b> · fechado − custo' : 'informe o custo das turmas para ver o lucro'}</span><span>${PCT(pr)} recebido</span></div><div class="vmbar"><i style="width:${Math.min(100, pr * 100)}%"></i></div></div>
+     <div class="vmc"><div class="vmcl"><span class="vmci">⇄</span>Movimento</div>
+      <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g">${BRL(rec)}</b></div><div class="vmmv"><span class="vmpi s" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o">${BRL(arec)}</b></div></div>
+     <div class="vmc"><div class="vmcl"><span class="vmci">◎</span>Custos e despesas</div>
+      <div class="vmmv"><span class="vmpi s">↗</span>Custo informado<b class="r">${BRL(custo)}</b></div><div class="vmmv"><span class="vmpi s">↗</span>Despesas pagas<b>${BRL(t.desp)}</b></div></div>
+    </div>
+    <div class="vmrow2">
+     <div class="vmc"><div class="vmcl">Recebido × a receber por cliente <small>maior saldo primeiro · clique para abrir</small><span class="sp"></span><span class="lg"><i class="en"></i>Recebido</span><span class="lg"><i style="background:var(--o)"></i>A receber</span></div>
+      <div class="fxbars">${barras || '<p class="note">Nenhuma turma ou parceiro com valor preenchido.</p>'}</div></div>
+     <div class="vmc vmgc"><div class="vmcl">Margem<span class="sp"></span></div>
+      ${gauge(Math.max(0, marg))}<div class="vmgp"><b>${custo ? PCT(marg) : '—'}</b><small>de margem</small></div>
+      <div class="vmgf"><small>Fechado</small><b>${BRL(fech)}</b></div>
+      <div class="vmfoot"><span>Custo informado</span><b>${comCusto} de ${linhas.length} <small>clientes</small></b></div></div>
+    </div>
+    <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas e parceiros</b><em>${linhas.length}</em><span class="sp"></span><button class="btn sm" data-act="parc" style="margin:0">+ convite com parceiro</button></div>
+     <div class="fxtw"><table class="fxt"><thead><tr><th>Cliente</th><th>Tipo</th><th class="n">Fechado</th><th class="n">Recebido</th><th class="n">A receber</th><th>Progresso</th><th class="n">Margem</th><th></th></tr></thead><tbody>${tabela || '<tr><td colspan="8" class="mu" style="padding:16px">Nada fechado ainda.</td></tr>'}</tbody></table></div></div>
+    <div class="vmcols">
+     <div class="vmpanel"><div class="vmph"><span class="vmpi s">↗</span><b>Despesas a pagar</b><em>${pend.length}</em><span class="sp"></span><b class="r">${BRL(t.pend)}</b><button class="btn sm" data-vm="add" data-tipo="s" style="margin:0 0 0 10px">+ nova despesa</button></div>
+      ${pend.map(desp).join('') || '<div class="vmempty">Nenhuma despesa pendente aqui. As despesas do dia a dia ficam na <button class="linkb" data-vm="vermes">Visão do mês</button>.</div>'}</div>
+     <div class="vmpanel"><div class="vmph"><span class="vmpi e">✓</span><b>Despesas pagas</b><em>${pago.length}</em><span class="sp"></span><b>${BRL(t.desp)}</b></div>
+      ${pago.map(desp).join('') || '<div class="vmempty">Nenhuma despesa paga registrada aqui.</div>'}</div>
+    </div></div>`;
+  };
   const css = document.createElement('style');
   css.textContent = `.vm{max-width:1240px;margin:0 auto}
 .vmtop{display:flex;align-items:center;gap:8px;margin:0 0 16px}.vmtop h2{margin:0 8px 0 6px;font-size:20px}.vmtop .btn{margin:0}
@@ -260,6 +319,20 @@
 .vmempty{padding:12px 16px;color:var(--mu);font-size:12px;border-top:1px solid #1a2532}
 .linkb{background:none;border:0;color:var(--teal);font:inherit;font-size:12px;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;text-transform:none;letter-spacing:0}
 .vmdlg{max-width:560px}.vmdlg h2{margin-bottom:4px}
+.fxbars{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-height:420px;overflow-y:auto}
+.fxbar{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) 150px;gap:14px;align-items:center;background:none;border:0;border-radius:8px;color:var(--tx);padding:7px 6px;font:inherit;text-align:left;cursor:pointer}
+.fxbar:hover{background:var(--pn2)}
+.fxn b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fxn small{color:var(--mu);font-size:11px}
+.fxtrack{height:12px;background:#0b1118;border-radius:99px;overflow:hidden}
+.fxfill{display:block;height:100%;background:rgba(246,173,59,.75);border-radius:99px;overflow:hidden}.fxfill i{display:block;height:100%;background:var(--teal)}
+.fxv{text-align:right}.fxv b{display:block;font-size:13px;font-variant-numeric:tabular-nums}.fxv small{color:var(--mu);font-size:11px}
+.fxtw{overflow-x:auto}.fxt{width:100%;border-collapse:collapse}
+.fxt th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);text-align:left;padding:10px 14px;background:#0f1620;border-bottom:1px solid var(--bd);font-weight:600;white-space:nowrap}
+.fxt td{padding:9px 14px;border-bottom:1px solid #1a2532;font-size:13px;vertical-align:middle;white-space:nowrap}
+.fxt td small{display:block;color:var(--mu);font-size:11px}.fxt .n{text-align:right;font-variant-numeric:tabular-nums}.fxt .mu{color:var(--mu)}
+.fxt tbody tr:hover td{background:var(--pn2)}
+.fxt tr.fxy td{background:#0f1620;color:var(--teal);font-weight:700;font-size:13px;padding:8px 14px}.fxt tr.fxy td small{display:inline;margin-left:12px;font-weight:400;color:var(--mu)}
+.fxp{display:flex;align-items:center;gap:8px;min-width:130px}.fxp .vmbar{flex:1}.fxp span{font-size:12px;color:var(--mu);width:44px;text-align:right}
 @media(max-width:1100px){.vmcards,.vmrow2,.vmcols{grid-template-columns:1fr}}`;
   document.head.appendChild(css);
 })();
