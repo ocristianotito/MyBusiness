@@ -140,44 +140,72 @@ header{padding-top:12px}
 .appmenu button:hover{background:var(--pn2)}
 </style>
 <script>
-/* Ponte com o programa: os dados ficam no arquivo do computador, não só no navegador. */
+/* Ponte com o programa: os dados ficam no arquivo do computador, protegidos pela senha do Financeiro. */
 (function(){
- var KEY='dashboard_convites_v2';
- try{var s=window.api.finLoadSync();if(s)localStorage.setItem(KEY,s);}catch(e){}
- var orig=Storage.prototype.setItem,t=null,pend=null;
+ var KEY='dashboard_convites_v2',SYNC_KEYS=['dashboard_convites_v2_base','dashboard_convites_v2_sync'];
+ var orig=Storage.prototype.setItem,origRm=Storage.prototype.removeItem,t=null,pend=null,blocked=false,empty=false;
+ function wipe(){try{origRm.call(localStorage,KEY);SYNC_KEYS.forEach(function(k){origRm.call(localStorage,k)})}catch(e){}}
+ var s=null;try{s=window.api.finLoadSync()}catch(e){}
+ if(s==='LOCKED'){blocked=true;wipe();document.documentElement.style.visibility='hidden';window.api.ir('producao');}
+ else if(s){try{orig.call(localStorage,KEY,s)}catch(e){}}
+ else{wipe();empty=true}
  function mark(c,txt){var e=document.getElementById('appsave');if(e){e.className='appsave '+c;e.lastChild.textContent=txt}}
- function flush(){if(pend==null)return Promise.resolve();var p=pend;pend=null;mark('busy','Salvando…');
+ function flush(){if(blocked||pend==null)return Promise.resolve();var p=pend;pend=null;mark('busy','Salvando…');
   return window.api.finSave(p).then(function(r){mark(r&&r.ok?'':'err',r&&r.ok?'Salvo no computador':'Erro ao salvar')})}
  Storage.prototype.setItem=function(k,v){orig.call(this,k,v);
-  if(this===window.localStorage&&k===KEY){pend=v;mark('busy','Salvando…');clearTimeout(t);t=setTimeout(flush,300)}};
- window.__beforeUpdate=flush;
- window.addEventListener('beforeunload',function(){if(pend!=null){window.api.finSaveSync(pend);pend=null}});
+  if(!blocked&&this===window.localStorage&&k===KEY){empty=false;pend=v;mark('busy','Salvando…');clearTimeout(t);t=setTimeout(flush,300)}};
+ function leave(page){return flush().then(function(){wipe();return window.api.ir(page)})}
+ window.__beforeUpdate=function(){return flush().then(wipe)};
+ window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
+ /* tranca sozinho depois de 15 minutos sem uso */
+ var last=Date.now();['mousemove','mousedown','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,function(){last=Date.now()},{passive:true})});
+ setInterval(function(){if(Date.now()-last>15*60*1000)leave('producao')},30000);
  /* downloads: PDF, relatório e backup abrem a janela "Salvar como" do Windows */
  var dl={save:function(o){var d=o.data;
   var p=(d instanceof Blob)?d.arrayBuffer().then(function(b){return new Uint8Array(b)}):Promise.resolve(d);
   return p.then(function(x){return window.api.saveFile(o.filename,x)}).then(function(r){if(!r.ok){var e=new Error('declined');e.code='declined';throw e}})}};
  window.claude={use:function(n){return Promise.resolve(n==='downloads'?dl:null)}};
+ function dialog(html){var o=document.createElement('div');o.className='ov';o.innerHTML='<div class="dlg" style="max-width:440px">'+html+'</div>';document.body.appendChild(o);return o}
+ function changePw(){
+  var o=dialog('<h2>Alterar senha do Financeiro</h2><div class="sub">A nova senha passa a valer na próxima vez que você entrar.</div>'+
+   '<div style="display:grid;gap:12px"><label>Senha atual<input id="cp0" type="password" autocomplete="off"></label><label>Nova senha<input id="cp1" type="password" autocomplete="off"></label><label>Repita a nova senha<input id="cp2" type="password" autocomplete="off"></label></div>'+
+   '<p id="cperr" style="color:var(--r);min-height:18px;margin:10px 0 0"></p><div class="acts"><button class="btn ghost" data-cp="x">Cancelar</button><button class="btn" data-cp="ok">Salvar nova senha</button></div>');
+  var g=function(id){return o.querySelector('#'+id)};g('cp0').focus();
+  function go(){var a=g('cp1').value;if(a.length<4){g('cperr').textContent='A senha precisa ter pelo menos 4 caracteres.';return}
+   if(a!==g('cp2').value){g('cperr').textContent='As duas senhas novas não são iguais.';return}
+   window.api.senhaDefinir(a,g('cp0').value).then(function(r){if(!r.ok){g('cperr').textContent=r.error||'Não foi possível alterar.';return}o.remove();mark('','Senha alterada')})}
+  o.addEventListener('click',function(e){var c=e.target.getAttribute('data-cp');if(c==='x'||e.target===o)o.remove();if(c==='ok')go()});
+  o.addEventListener('keydown',function(e){if(e.key==='Enter')go();if(e.key==='Escape')o.remove()})}
+ function doImport(){flush().then(function(){return window.api.importar()}).then(function(r){if(!r.ok){if(r.error)alert(r.error);return}
+  var msg=r.kind==='fin'?'Este é um backup do Dashboard de Convites ('+r.turmas+' turmas).\n\nImportar SUBSTITUI todos os dados do Financeiro. A Produção não muda.'
+   :'Backup completo com '+r.cards+' cartões de produção'+(r.hasFin?' e o Financeiro':'')+'.\n\nImportar SUBSTITUI os dados atuais'+(r.hasFin?' da Produção e do Financeiro':' da Produção')+'.';
+  if(!confirm(msg+'\n\nO estado atual continua no backup automático de hoje. Continuar?'))return;
+  window.api.aplicarImport().then(function(x){if(x.ok){wipe();window.api.ir('financeiro')}})})}
+ document.addEventListener('DOMContentLoaded',function(){
+  if(blocked)return;var vazio=false;try{vazio=!S.turmas.length&&!S.parc.length}catch(e){vazio=empty}
+  if(!vazio)return;
+  var b=document.createElement('div');b.id='finEmpty';
+  b.style.cssText='margin:16px 24px 0;padding:14px 16px;border:1px solid var(--teal);border-radius:12px;background:var(--pn);display:flex;gap:14px;align-items:center;flex-wrap:wrap';
+  b.innerHTML='<div style="flex:1;min-width:240px"><b>O Financeiro ainda não tem dados.</b><div class="note" style="margin-top:4px">Importe o backup do Dashboard de Convites (arquivo .json) para trazer turmas, formandos, pagamentos, orçamentos e parceiros.</div></div><button class="btn" data-bk="import" style="margin:0">Importar backup</button>';
+  var h=document.querySelector('header');if(h&&h.parentNode)h.parentNode.insertBefore(b,h.nextSibling)});
  document.addEventListener('click',function(e){
-  var t=e.target,menu=document.getElementById('appMenu');
-  if(t.closest&&t.closest('[data-goto]')){var g=t.closest('[data-goto]').dataset.goto;flush().then(function(){window.api.ir(g)});return}
-  if(t.id==='appBk'){menu.hidden=!menu.hidden;return}
-  if(menu&&!menu.hidden&&!(t.closest&&t.closest('.appmenuwrap')))menu.hidden=true;
-  var bk=t.dataset&&t.dataset.bk;if(!bk)return;menu.hidden=true;
+  var el=e.target,menu=document.getElementById('appMenu');
+  var go=el.closest&&el.closest('[data-goto]');if(go){leave(go.dataset.goto);return}
+  if(el.id==='appBk'){menu.hidden=!menu.hidden;return}
+  if(menu&&!menu.hidden&&!(el.closest&&el.closest('.appmenuwrap')))menu.hidden=true;
+  var bk=el.dataset&&el.dataset.bk;if(!bk)return;if(menu)menu.hidden=true;
+  if(bk==='senha')return changePw();
+  if(bk==='import')return doImport();
   flush().then(function(){
    if(bk==='pasta')return window.api.abrirBackups();
    if(bk==='update')return window.__checkUpdates&&window.__checkUpdates();
    if(bk==='export')return window.api.exportar().then(function(r){if(r.ok)alert('Backup salvo em:\n'+r.path);else if(r.error)alert(r.error)});
-   if(bk==='import')return window.api.importar().then(function(r){if(!r.ok){if(r.error)alert(r.error);return}
-    var msg=r.kind==='fin'?'Este é um backup do Dashboard de Convites ('+r.turmas+' turmas).\n\nImportar SUBSTITUI todos os dados do Financeiro. A Produção não muda.'
-     :'Backup completo com '+r.cards+' cartões de produção'+(r.hasFin?' e o Financeiro':'')+'.\n\nImportar SUBSTITUI os dados atuais'+(r.hasFin?' da Produção e do Financeiro':' da Produção')+'.';
-    if(!confirm(msg+'\n\nO estado atual continua no backup automático de hoje. Continuar?'))return;
-    window.api.aplicarImport().then(function(x){if(x.ok){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}})});
   })});
 })();
 </script>
 </head>
 <body>
-<header><div class="appbar"><b class="appbrand">Cristiano Convites</b><div class="modsw" role="tablist" aria-label="Área"><button data-goto="producao">Produção</button><button class="on" aria-selected="true">Financeiro</button></div><span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span><div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button><div class="appmenu" id="appMenu" hidden><button data-bk="export">Exportar backup (produção + financeiro)…</button><button data-bk="import">Importar backup…</button><button data-bk="pasta">Abrir pasta de backups automáticos</button><button data-bk="update">Verificar atualizações (versão <span data-ver></span>)</button></div></div></div><div hidden><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm" id="bsync" style="margin:0">⟳ Sincronizar</button><span id="syncst" class="note">Só neste aparelho</span><button class="btn sm ghost" id="bkx" style="margin:0">Exportar backup</button><button class="btn sm ghost" id="bki" style="margin:0">Importar backup</button><input type="file" id="bkf" accept=".json" hidden></div></div><nav id="nav"></nav></header>
+<header><div class="appbar"><b class="appbrand">Cristiano Convites</b><div class="modsw" role="tablist" aria-label="Área"><button data-goto="producao">Produção</button><button class="on" aria-selected="true">Financeiro</button></div><span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span><div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button><div class="appmenu" id="appMenu" hidden><button data-bk="export">Exportar backup (produção + financeiro)…</button><button data-bk="import">Importar backup…</button><button data-bk="pasta">Abrir pasta de backups automáticos</button><button data-bk="update">Verificar atualizações (versão <span data-ver></span>)</button><button data-bk="senha">Alterar senha do Financeiro</button></div></div></div><div hidden><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm" id="bsync" style="margin:0">⟳ Sincronizar</button><span id="syncst" class="note">Só neste aparelho</span><button class="btn sm ghost" id="bkx" style="margin:0">Exportar backup</button><button class="btn sm ghost" id="bki" style="margin:0">Importar backup</button><input type="file" id="bkf" accept=".json" hidden></div></div><nav id="nav"></nav></header>
 <main id="app"></main>
 <div id="modal"></div>
 <script>

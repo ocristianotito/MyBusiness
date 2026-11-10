@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld('api', {
   verificarAtualizacao: () => ipcRenderer.invoke('update:check'),
   instalarAtualizacao: () => ipcRenderer.invoke('update:install'),
   onAtualizacao: (cb) => ipcRenderer.on('update:status', (_e, s) => cb(s)),
+  // senha do financeiro
+  senhaStatus: () => ipcRenderer.invoke('sec:status'),
+  senhaEntrar: (pw) => ipcRenderer.invoke('sec:unlock', pw),
+  senhaDefinir: (nova, atual) => ipcRenderer.invoke('sec:set', nova, atual),
+  trancar: () => ipcRenderer.invoke('sec:lock'),
   // navegação
   ir: (page) => ipcRenderer.invoke('app:goto', page),
   abrirLink: (url) => ipcRenderer.invoke('app:openExternal', url)

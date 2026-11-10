@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 
 app.setName('Produção Cristiano Convites');
@@ -13,6 +14,7 @@ const DATA_FILE = path.join(DATA_DIR, 'dados.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const SEED_FILE = path.join(__dirname, 'seed.json');
 const KEEP_BACKUPS = 30;
+const SEC_FILE = path.join(DATA_DIR, 'seguranca.json');
 const PAGES = { producao: 'index.html', financeiro: 'financeiro.html' };
 
 let win = null;
@@ -70,6 +72,38 @@ function persist() {
   listBackups().slice(KEEP_BACKUPS).forEach(f => { try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch (e) {} });
 }
 
+/* ----- senha do financeiro -----
+   A senha bloqueia o acesso pelo programa (não criptografa o arquivo de dados).
+   Esqueceu a senha: feche o programa e apague o arquivo seguranca.json da pasta de dados. */
+let unlocked = false, fails = 0, waitUntil = 0;
+function secGet() { try { const s = readJson(SEC_FILE); return s && s.salt && s.hash ? s : null; } catch (e) { return null; } }
+const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 64).toString('hex');
+function checkPw(pw) {
+  const s = secGet(); if (!s) return false;
+  const a = Buffer.from(hashPw(pw, s.salt), 'hex'), b = Buffer.from(s.hash, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+const finAllowed = () => !!secGet() && unlocked;
+ipcMain.handle('sec:status', () => ({ hasPassword: !!secGet(), unlocked }));
+ipcMain.handle('sec:unlock', (_e, pw) => {
+  const now = Date.now();
+  if (now < waitUntil) return { ok: false, wait: Math.ceil((waitUntil - now) / 1000) };
+  if (checkPw(pw)) { unlocked = true; fails = 0; return { ok: true }; }
+  fails++; if (fails >= 5) { waitUntil = now + 30000; fails = 0; return { ok: false, wait: 30 }; }
+  return { ok: false };
+});
+ipcMain.handle('sec:set', (_e, newPw, oldPw) => {
+  newPw = String(newPw || '');
+  if (newPw.length < 4) return { ok: false, error: 'A senha precisa ter pelo menos 4 caracteres.' };
+  if (secGet() && !checkPw(oldPw)) return { ok: false, error: 'A senha atual está incorreta.' };
+  const salt = crypto.randomBytes(16).toString('hex');
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  writeAtomic(SEC_FILE, { salt, hash: hashPw(newPw, salt), criadaEm: new Date().toISOString() });
+  unlocked = true;
+  return { ok: true };
+});
+ipcMain.handle('sec:lock', () => { unlocked = false; });
+
 /* ----- produção ----- */
 ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: d.cfg, cards: d.cards }; });
 ipcMain.handle('data:save', (_e, obj) => {
@@ -79,8 +113,12 @@ ipcMain.handle('data:save', (_e, obj) => {
 });
 
 /* ----- financeiro (texto JSON do estado do dashboard) ----- */
-ipcMain.on('fin:loadSync', (e) => { const d = loadData(); e.returnValue = d.fin ? JSON.stringify(d.fin) : null; });
+ipcMain.on('fin:loadSync', (e) => {
+  if (!finAllowed()) { e.returnValue = 'LOCKED'; return; }
+  const d = loadData(); e.returnValue = d.fin ? JSON.stringify(d.fin) : null;
+});
 function saveFin(str) {
+  if (!finAllowed()) return false;
   try { const o = JSON.parse(str); if (!validFin(o)) return false; loadData(); current.fin = o; persist(); return true; }
   catch (e) { return false; }
 }
@@ -89,6 +127,7 @@ ipcMain.on('fin:saveSync', (e, str) => { e.returnValue = saveFin(str); });
 
 /* ----- backup completo ----- */
 ipcMain.handle('data:export', async () => {
+  if (secGet() && !unlocked) return { ok: false, error: 'Digite a senha do financeiro para exportar o backup.' };
   loadData();
   const name = 'backup-cristiano-convites-' + new Date().toISOString().slice(0, 10) + '.json';
   const r = await dialog.showSaveDialog(win, {
@@ -103,6 +142,7 @@ ipcMain.handle('data:export', async () => {
 
 // Lê um arquivo e diz o que ele contém; só aplica depois da confirmação (data:applyImport).
 ipcMain.handle('data:import', async () => {
+  if (secGet() && !unlocked) return { ok: false, error: 'Digite a senha do financeiro para importar um backup.' };
   const r = await dialog.showOpenDialog(win, {
     title: 'Importar backup', properties: ['openFile'],
     filters: [{ name: 'Backup (JSON)', extensions: ['json'] }]
@@ -122,6 +162,7 @@ ipcMain.handle('data:import', async () => {
 });
 ipcMain.handle('data:applyImport', () => {
   if (!pendingImport) return { ok: false };
+  if (secGet() && !unlocked) return { ok: false };
   loadData();
   const { kind, data } = pendingImport; pendingImport = null;
   if (kind === 'full') { current.cfg = data.cfg || null; current.cards = data.cards; if (validFin(data.fin)) current.fin = data.fin; }
@@ -173,7 +214,13 @@ ipcMain.handle('update:install', () => { if (upd.state === 'ready') setImmediate
 ipcMain.handle('app:version', () => app.getVersion());
 
 /* ----- navegação e utilidades ----- */
-ipcMain.handle('app:goto', (_e, page) => { if (PAGES[page] && win) win.loadFile(path.join(__dirname, PAGES[page])); });
+ipcMain.handle('app:goto', (_e, page) => {
+  if (!PAGES[page] || !win) return { ok: false };
+  if (page === 'financeiro' && !finAllowed()) return { ok: false, locked: true };
+  if (page !== 'financeiro') unlocked = false;   // sair do financeiro tranca de novo
+  win.loadFile(path.join(__dirname, PAGES[page]));
+  return { ok: true };
+});
 ipcMain.handle('app:openBackups', () => { fs.mkdirSync(BACKUP_DIR, { recursive: true }); return shell.openPath(BACKUP_DIR); });
 ipcMain.handle('app:openExternal', (_e, url) => { if (/^https:\/\//i.test(String(url))) shell.openExternal(url); });
 

@@ -70,6 +70,8 @@ function delCard(id){cards.delete(id);persist();render()}
 function saveCfg(next){cfg=next;persist();render()}
 
 async function init(){
+ window.api.trancar();
+ try{localStorage.removeItem('dashboard_convites_v2')}catch(e){}
  try{
   const d=await window.api.load();
   cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));
@@ -198,6 +200,7 @@ function renderModal(){
  const m=$('modal');
  if(!modal){m.innerHTML='';return}
  if(modal.t==='cfg')return renderCfg();
+ if(modal.t==='pw')return renderPw();
  const c=modal.c,k=chk(c),cols=C().cols,fmtAt=t=>t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
  m.innerHTML=`<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mt">
  <h2 id="mt">${modal.id?esc(c.title||'Cartão'):'Novo pedido'}</h2><div class="sub">${modal.id?'Edite as informações e clique em Salvar (Ctrl+Enter).':'Preencha o que souber agora; dá para completar depois.'}</div>
@@ -273,12 +276,42 @@ function readCfg(){const c=modal.c;
  const t=$('c-check');if(t)c.check=t.value.split('\n').map(s=>s.trim()).filter(Boolean)}
 
 /* ===== backup ===== */
-async function doMenu(m){
+/* ===== senha do Financeiro ===== */
+async function openFin(){await flushNow();const st=await window.api.senhaStatus();modal={t:'pw',mode:st.hasPassword?'enter':'create',next:'fin'};renderModal()}
+function renderPw(){
+ const c=modal.mode==='create',fin=modal.next==='fin';
+ const title=c?'Criar senha do Financeiro':(fin?'Financeiro protegido':'Senha do Financeiro');
+ const sub=c?'Escolha uma senha para proteger os dados financeiros. Ela será pedida toda vez que você entrar no Financeiro.'
+  :(fin?'Digite a senha para entrar no Financeiro.':'O backup inclui os dados financeiros. Digite a senha para continuar.');
+ $('modal').innerHTML=`<div class="ov"><div class="dlg narrow pw" role="dialog" aria-modal="true" aria-labelledby="pwt">
+ <div class="lock" aria-hidden="true"></div><h2 id="pwt">${title}</h2><div class="sub">${sub}</div>
+ <label>Senha<input id="pw1" type="password" autocomplete="off"></label>
+ ${c?'<label style="margin-top:12px">Repita a senha<input id="pw2" type="password" autocomplete="off"></label><p class="note">Pelo menos 4 caracteres. Anote num lugar seguro.</p>':''}
+ <p class="pwerr" id="pwerr" role="alert"></p>
+ ${c?'':'<p class="note">Esqueceu a senha? Feche o programa, abra a pasta de dados (Backup → Abrir pasta de backups automáticos e volte uma pasta) e apague o arquivo <b>seguranca.json</b>. Nenhum dado é apagado; você cria uma senha nova ao entrar.</p>'}
+ <div class="acts"><button class="btn ghost" data-act="close">Cancelar</button><button class="btn" data-act="pwok">${c?'Criar senha e entrar':'Entrar'}</button></div></div></div>`;
+ setTimeout(()=>{const e=$('pw1');if(e)e.focus()},30)}
+async function submitPw(){
+ const p1=$('pw1').value,err=$('pwerr');err.textContent='';
+ if(modal.mode==='create'){
+  if(p1.length<4){err.textContent='A senha precisa ter pelo menos 4 caracteres.';return $('pw1').focus()}
+  if(p1!==$('pw2').value){err.textContent='As duas senhas não são iguais.';return $('pw2').focus()}
+  const r=await window.api.senhaDefinir(p1);if(!r.ok){err.textContent=r.error||'Não foi possível criar a senha.';return}
+ }else{
+  const r=await window.api.senhaEntrar(p1);
+  if(!r.ok){err.textContent=r.wait?`Muitas tentativas erradas. Aguarde ${r.wait} segundos.`:'Senha incorreta.';$('pw1').select();return}
+ }
+ const next=modal.next;modal=null;renderModal();
+ if(next==='fin'){const r=await window.api.ir('financeiro');if(!r||!r.ok)toast('Não foi possível abrir o Financeiro.')}
+ else doMenu(next,true)}
+
+async function doMenu(m,ok){
  $('menu').hidden=true;$('bMenu').setAttribute('aria-expanded','false');
- if(m==='export'){await flushNow();const r=await window.api.exportar();if(r.ok)toast('Backup salvo em '+r.path);else if(r.error)toast(r.error);return}
+ if((m==='export'||m==='import')&&!ok){const st=await window.api.senhaStatus();if(st.hasPassword&&!st.unlocked){modal={t:'pw',mode:'enter',next:m};return renderModal()}}
+ if(m==='export'){await flushNow();const r=await window.api.exportar();window.api.trancar();if(r.ok)toast('Backup salvo em '+r.path);else if(r.error)toast(r.error);return}
  if(m==='pasta'){window.api.abrirBackups();return}
  if(m==='update'){if(window.__checkUpdates)window.__checkUpdates();return}
- if(m==='import'){await flushNow();const r=await window.api.importar();if(!r.ok){if(r.error)toast(r.error);return}
+ if(m==='import'){await flushNow();const r=await window.api.importar();if(!r.ok){window.api.trancar();if(r.error)toast(r.error);return}
   const what=r.kind==='fin'?`Este é um backup do <b>Dashboard de Convites</b> (${r.turmas} turmas). Importar <b>substitui todos os dados do Financeiro</b>. A Produção não muda.`
    :`O arquivo tem ${r.cards} cartões${r.hasFin?' e os dados do Financeiro':''}. Importar <b>substitui</b> os ${cards.size} cartões e a configuração atuais${r.hasFin?' e também todo o Financeiro':''}.`;
   modal={t:'import'};$('modal').innerHTML=`<div class="ov"><div class="dlg narrow"><h2>Importar backup</h2>
@@ -293,7 +326,7 @@ document.addEventListener('click',e=>{
  if(!t.closest('.menuwrap')&&!$('menu').hidden){$('menu').hidden=true;$('bMenu').setAttribute('aria-expanded','false')}
  if(t.id==='bMenu'){const mm=$('menu');mm.hidden=!mm.hidden;t.setAttribute('aria-expanded',String(!mm.hidden));return}
  if(t.dataset.m)return doMenu(t.dataset.m);
- if(t.dataset.goto){flushNow().then(()=>window.api.ir(t.dataset.goto));return}
+ if(t.dataset.goto){openFin();return}
  if(t.id==='bNew')return openCard(null);
  if(t.id==='bCfg')return openCfg();
  const vb=t.closest('#views button');if(vb)return setView(vb.dataset.view);
@@ -308,8 +341,9 @@ document.addEventListener('click',e=>{
   return}
  if(t.classList.contains('ov')&&downOv){modal=null;return renderModal()}
  const act=t.dataset.act;
- if(act==='close'){modal=null;return renderModal()}
- if(modal.t==='import'&&act==='doimport'){modal=null;renderModal();window.api.aplicarImport().then(r=>{if(r.ok)location.reload()});return}
+ if(act==='close'){modal=null;window.api.trancar();return renderModal()}
+ if(modal.t==='pw'&&act==='pwok')return submitPw();
+ if(modal.t==='import'&&act==='doimport'){modal=null;renderModal();window.api.aplicarImport().then(r=>{if(r.ok)window.api.ir('producao')});return}
  if(modal.t==='card'){
   if(act==='save')return saveModal();
   if(act==='trello')return window.api.abrirLink(modal.c.trello);
@@ -340,7 +374,8 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
  const ctrl=e.ctrlKey||e.metaKey;
- if(e.key==='Escape'){if(modal){modal=null;renderModal()}else if(!$('menu').hidden){$('menu').hidden=true}return}
+ if(e.key==='Enter'&&modal&&modal.t==='pw'&&(e.target.id==='pw1'||e.target.id==='pw2')){e.preventDefault();return submitPw()}
+ if(e.key==='Escape'){if(modal){modal=null;window.api.trancar();renderModal()}else if(!$('menu').hidden){$('menu').hidden=true}return}
  if(ctrl&&e.key==='Enter'&&modal&&modal.t==='card'){e.preventDefault();return saveModal()}
  if(ctrl&&(e.key==='n'||e.key==='N')&&!modal){e.preventDefault();return openCard(null)}
  if(ctrl&&(e.key==='f'||e.key==='F')&&!modal){e.preventDefault();$('fq').focus();$('fq').select();return}
