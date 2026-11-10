@@ -678,7 +678,7 @@ function lrow(T,a,rg,qt){
  const I=(f,v,cls,mode,ph)=>`<input class="${cls||''}" data-la="${a.id}|${f}" value="${esc(v)}"${mode?` inputmode="${mode}"`:''}${ph!=null?` placeholder="${esc(ph)}"`:''} autocomplete="off">`;
  const nc='style="text-align:right;white-space:nowrap"';
  const CT=(f,h)=>{const t=(a.cm&&a.cm[f])||'';return `<td class="cmc${t?' hascm':''}">${h}<button class="cmb" data-cm="${f}" data-aid="${a.id}" title="${t?'Editar comentário':'Adicionar comentário'}">💬</button>${t?`<div class="cmtip">${esc(t)}</div>`:''}</td>`};
- return `<tr><td>${I('nome',a.nome,'nm b')}</td>`
+ return `<tr class="${c.sit==='ok'?'quit':''}"><td>${I('nome',a.nome,'nm b')}</td>`
  +(rg?`<td>${I('rg',a.rg)}</td><td>${I('cpf',a.cpf)}</td><td>${I('tel',a.tel)}</td>`:'')
  +(qt?`<td>${I('luxo',nz(a.luxo),'n','numeric')}</td><td>${I('simp',nz(a.simp),'n','numeric')}</td><td>${I('foto',nz(a.foto),'n','numeric')}</td><td>${I('qv',nz(a.qv),'n','numeric','0')}</td><td ${nc} data-lv="${a.id}">${BRL(VU()*qv)}</td><td>${I('qf',nz(a.qf),'n','numeric','0')}</td><td ${nc} data-lf="${a.id}">${BRL(FF()*qf)}</td>`:'')
  +`${CT('vf',I('vf',c.vf?fin(c.vf):'','n b'+(c.ov?' ovr':''),'decimal'))}${CT('ent',I('ent',fmtIn(nz(a.ent)),'n g','decimal',fin(c.vf*T.pe/100)))}${CT('pago',I('pago',fmtIn(nz(a.pago)),'n g','decimal'))}<td class="o" data-lr="${a.id}">${BRL(c.rest)}</td><td>${I('forma',a.forma)}</td><td data-ls="${a.id}">${badge(c.sit)}</td><td><button class="xdel s" data-act="dela" data-aid="${a.id}" title="Excluir formando">✕</button></td></tr>`}
@@ -781,7 +781,7 @@ function lpatch(){
  T.alunos.forEach(a=>{
   const c=lcalc(T,a),qv=+a.qv||0,qf=+a.qf||0,g=k=>document.querySelector('[data-la="'+a.id+'|'+k+'"]');
   const re=document.querySelector('[data-lr="'+a.id+'"]');if(re)re.textContent=BRL(c.rest);
-  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se)se.innerHTML=badge(c.sit);
+  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr)tr.classList.toggle('quit',c.sit==='ok')}
   const ve=document.querySelector('[data-lv="'+a.id+'"]');if(ve)ve.textContent=BRL(VU()*qv);
   const fe=document.querySelector('[data-lf="'+a.id+'"]');if(fe)fe.textContent=BRL(FF()*qf);
   const vi=g('vf');if(vi){vi.classList.toggle('ovr',c.ov);if(document.activeElement!==vi)vi.value=c.vf?fin(c.vf):''}

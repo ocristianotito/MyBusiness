@@ -154,3 +154,12 @@ body.fin .btn.full{margin:0 0 10px}
 /* seletores com largura fixa: a lista aberta continua mostrando o nome inteiro */
 .filters select{width:132px;max-width:none;text-overflow:ellipsis}
 @media(min-width:1600px){.filters select{width:150px}}
+/* formando quitado: a linha inteira fica num verde-esmeralda próprio (diferente do verde dos valores) */
+body.fin .lt tr.quit>td{background:#0d2a22}
+body.fin .lt tr.quit>td:first-child{box-shadow:inset 4px 0 0 #10B981}
+body.fin .lt tr.quit input{background:#0f3329;border-color:#1d5a47;color:#d1fae5}
+body.fin .lt tr.quit input.g,body.fin .lt tr.quit td.o{color:#6ee7b7}
+body.fin .lt tr.quit:focus-within>td{background:#11372d!important}
+body.fin .lt tr.quit:focus-within>td:first-child{box-shadow:inset 4px 0 0 #10B981}
+body.fin .lt tr.quit:focus-within input:not(:focus){background:#123d31;border-color:#22684f}
+body.fin .lt tr.quit input.ovr{background:#2a2410;border-color:#8a6d00;color:#f4d27a}

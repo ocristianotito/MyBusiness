@@ -48,6 +48,10 @@ const num=s=>{s=String(s==null?'':s).replace(/R\$|%|\s/g,'').replace(/[−–]/g
  const p=s.match(/[+-]?[^+-]+/g);if(!p||p.join('')!==s)return NaN;
  let t=0;for(const x of p){const v=num1(x.replace(/^[+-]/,''));if(isNaN(v))return NaN;t+=x[0]==='-'?-v:v}
  return Math.round(t*100)/100};""")
+# linha inteira em verde quando o formando está quitado (e atualiza ao digitar)
+rep(r""" return `<tr><td>${I('nome',a.nome,'nm b')}</td>`""", r""" return `<tr class="${c.sit==='ok'?'quit':''}"><td>${I('nome',a.nome,'nm b')}</td>`""")
+rep(r"""  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se)se.innerHTML=badge(c.sit);""",
+    r"""  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr)tr.classList.toggle('quit',c.sit==='ok')}""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
