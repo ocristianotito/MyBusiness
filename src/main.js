@@ -369,6 +369,13 @@ function setupNuvem() {
     config, emulador, dataDir: DATA_DIR, safeStorage,
     getCurrent: () => loadData(),
     salvarLocal: () => { try { writeAtomic(DATA_FILE, current); } catch (e) {} },
+    copiaAntes: () => {   // cópia do arquivo antes de aplicar o que veio de outro aparelho (fica em backups/, guarda as 20 últimas)
+      const d = new Date(), z = (n) => String(n).padStart(2, '0');
+      const nome = 'antes-da-nuvem-' + d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()) + '.json';
+      fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      writeAtomic(path.join(BACKUP_DIR, nome), current);
+      fs.readdirSync(BACKUP_DIR).filter((f) => /^antes-da-nuvem-/.test(f)).sort().reverse().slice(20).forEach((f) => { try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch (e) {} });
+    },
     aplicarRemoto: (partes) => { if (win && !win.isDestroyed()) win.webContents.send('dados:remoto', partes); },
     avisar: (st) => { if (win && !win.isDestroyed()) win.webContents.send('nuvem:status', st); },
     perguntar: async () => {

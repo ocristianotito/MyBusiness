@@ -123,8 +123,11 @@ module.exports = function criarNuvem(o) {
   function conciliar(remoto) {
     const c = o.getCurrent(), s = sync(); let aplicou = [];
     ultimoRemoto = remoto;
+    let copia = false;
+    const antes = () => { if (!copia) { copia = true; try { o.copiaAntes && o.copiaAntes(); } catch (e) {} } };
     for (const p of PARTES) {
       const r = remoto[p], rt = r ? r.ts : 0, lt = s.ts[p] || 0;
+      if (r && !fila.has(p) && (rt > lt || vazio(p, c[p])) && !vazio(p, c[p])) antes();   // vai trocar dados deste computador
       const rv = r && vazio(p, r.valor), lv = vazio(p, c[p]);
       if (r && !rv && lv) {   // vazio aqui e com dados na nuvem: vale a nuvem, mesmo que mais antiga
         fila.delete(p); c[p] = r.valor; s.ts[p] = rt; if (!s.n) s.n = {}; s.n[p] = r.n; aplicou.push(p);
