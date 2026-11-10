@@ -1,0 +1,36 @@
+# Gera o instalador do Windows e publica a Release quando uma tag v* é enviada (ex.: v1.2.0).
+# O programa instalado consulta as Releases para se atualizar sozinho.
+name: Publicar versão
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Conferir versão da tag
+        shell: bash
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "A tag $GITHUB_REF_NAME não bate com a versão v$v do package.json"; exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Gerar instalador e publicar Release
+        run: npx electron-builder --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
