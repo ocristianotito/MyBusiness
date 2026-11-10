@@ -92,6 +92,7 @@ module.exports = function criarNuvem(o) {
         const n = Math.max(1, Math.ceil(json.length / PEDACO)), antes = (s.n && s.n[p]) || 0;
         for (let i = 0; i < n; i++) b.set(doc(colecao(), p + '__' + i), { s: json.slice(i * PEDACO, (i + 1) * PEDACO) });
         for (let i = n; i < antes; i++) b.delete(doc(colecao(), p + '__' + i));
+        if (vazio(p, c[p])) s.ts[p] = 1;   // vazio sobe com data "antiga": qualquer aparelho com dados ganha dele
         b.set(doc(colecao(), p), { ts: s.ts[p] || Date.now(), n, dev, tam: json.length });
         if (!s.n) s.n = {}; s.n[p] = n;
       }
@@ -134,6 +135,8 @@ module.exports = function criarNuvem(o) {
       } else if (r && rv && !lv && rt > lt) {   // a nuvem ficou vazia mas aqui há dados: não apaga, envia de volta
         o.log('nuvem vazia em ' + p + ': mantidos os dados deste computador');
         s.ts[p] = Date.now(); fila.add(p);
+      } else if (r && rv && lv && rt > 1 && !fila.has(p)) {   // vazio nos dois lados com data recente: regrava com data antiga
+        s.ts[p] = 1; fila.add(p);
       } else if (r && rt > lt && !fila.has(p)) {
         c[p] = r.valor; s.ts[p] = rt; if (!s.n) s.n = {}; s.n[p] = r.n; aplicou.push(p);
       } else if (!fila.has(p) && (lt > rt || (!r && temValor(c[p])))) {
