@@ -45,7 +45,8 @@
     "jspdf-autotable": "^3.8.2"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "firebase": "^10.14.1"
   },
   "repository": {
     "type": "git",

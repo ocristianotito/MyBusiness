@@ -31,6 +31,13 @@ contextBridge.exposeInMainWorld('api', {
   onAbrirCompromisso: (cb) => ipcRenderer.on('agenda:open', (_e, r) => cb(r)),
   // contratos
   gerarPdf: (html, filename) => ipcRenderer.invoke('pdf:save', html, filename),
+  // nuvem (sincronização entre aparelhos)
+  nuvemStatus: () => ipcRenderer.invoke('nuvem:status'),
+  nuvemEntrar: (email, senha) => ipcRenderer.invoke('nuvem:entrar', email, senha),
+  nuvemSair: () => ipcRenderer.invoke('nuvem:sair'),
+  nuvemAgora: () => ipcRenderer.invoke('nuvem:agora'),
+  onNuvem: (cb) => ipcRenderer.on('nuvem:status', (_e, s) => cb(s)),
+  onDadosRemotos: (cb) => ipcRenderer.on('dados:remoto', (_e, p) => cb(p)),
   // navegação
   ir: (page) => ipcRenderer.invoke('app:goto', page),
   abrirLink: (url) => ipcRenderer.invoke('app:openExternal', url)

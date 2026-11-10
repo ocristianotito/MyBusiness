@@ -21,6 +21,17 @@ Textos da interface e mensagens em português do Brasil.
 - `src/agenda-core.js`: regras da agenda (repetição, lembretes), usadas pela tela e pelo processo principal
 - `src/agenda.js`: calendário da Produção (Mês/Semana, compromissos, arrastar, próximos 14 dias)
 
+## Nuvem (Firebase: sincronização entre Windows, Mac e iPhone)
+- `src/nuvem.js` (processo principal): partes `cfg, cards, events, clients, contracts, fin` em
+  `usuarios/{uid}/partes/{parte}` (meta `{ts, n, dev, tam}`) + pedaços `{parte}__{i}` com o JSON (até 700 mil caracteres cada).
+  Vale a parte com `ts` mais recente; `dados.json` guarda `_sync.ts` e continua sendo a cópia local (funciona sem internet).
+- `src/nuvem-ui.js`: indicador no rodapé do menu e janela de entrar/desconectar (nas duas páginas).
+- `src/nuvem-config.js`: configuração pública do projeto `cristiano-convites` (não é senha).
+- Login: e-mail/senha do Firebase Auth; a senha fica criptografada com `safeStorage` em `nuvem.json`. Registro em `nuvem.log`.
+- Regras do Firestore (no console): só `request.auth.uid == uid` lê/grava `usuarios/{uid}/**`.
+- Testar com o simulador: `firebase emulators:start --only auth,firestore` e abrir o programa com
+  `CC_NUVEM_EMULADOR=1` (e `CC_DATA_DIR=<pasta>` para simular outro computador).
+
 ## Dados
 - Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, events, clients, contracts, fin}`), com backup diário em `backups/`.
   O programa se chama "Cristiano Convites" desde a 1.2.3, mas a pasta de dados mantém o nome antigo: não renomeie.

@@ -59,6 +59,17 @@ let saveTimer=null,saving=false,dirty=false;
 function snapshot(){return{v:1,cfg,cards:Object.fromEntries(cards),events:Object.fromEntries(events),clients:Object.fromEntries(clients),contracts:Object.fromEntries(contracts)}}
 async function flushNow(){clearTimeout(saveTimer);while(saving)await new Promise(r=>setTimeout(r,50));await flush()}
 window.__beforeUpdate=()=>flushNow();
+/* dados que chegaram de outro aparelho pela nuvem */
+let remotoPendente=false;
+async function recarregarDados(){
+ const d=await window.api.load();
+ cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));events=new Map(Object.entries(d.events||{}));
+ clients=new Map(Object.entries(d.clients||{}));contracts=new Map(Object.entries(d.contracts||{}));render()}
+if(window.api.onDadosRemotos)window.api.onDadosRemotos(async partes=>{
+ if(!partes.some(p=>['cfg','cards','events','clients','contracts'].includes(p)))return;
+ if(window.__busy()){remotoPendente=true;toast('Chegaram atualizações de outro aparelho: elas aparecem quando você fechar esta janela.');return}
+ await flushNow();await recarregarDados();toast('Atualizado com outro aparelho')});
+window.__toastNuvem=m=>toast(m);
 window.__busy=()=>!!(modal&&['card','ev','cfg','pw','import','cli','ct','emp'].includes(modal.t));
 function persist(){dirty=true;setSync('warn','Salvando…');clearTimeout(saveTimer);saveTimer=setTimeout(flush,250)}
 async function flush(){
@@ -304,7 +315,7 @@ function openCard(id,col,prazo){
  modal={t:'card',id,c,confirm:false};renderModal()}
 function renderModal(){
  const m=$('modal');
- if(!modal){m.innerHTML='';return}
+ if(!modal){m.innerHTML='';if(remotoPendente){remotoPendente=false;recarregarDados()}return}
  if(modal.t==='cfg')return renderCfg();
  if(modal.t==='pw')return renderPw();
  if(modal.t==='ev')return renderEv();

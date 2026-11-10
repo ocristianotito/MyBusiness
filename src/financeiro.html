@@ -164,6 +164,12 @@ header{padding-top:12px}
  /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
  window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
+ /* dados do Financeiro que chegaram de outro aparelho pela nuvem: recarrega se não houver edição aberta */
+ var remoto=false;
+ function aplicaRemoto(){if(pend!=null||document.querySelector('.ov')){remoto=true;mark('busy','Atualização de outro aparelho: aplica ao fechar a janela');return}remoto=false;wipe();window.api.ir('financeiro')}
+ if(window.api.onDadosRemotos)window.api.onDadosRemotos(function(p){if(p.indexOf('fin')>=0)aplicaRemoto()});
+ setInterval(function(){if(remoto&&pend==null&&!document.querySelector('.ov'))aplicaRemoto()},2000);
+ window.__toastNuvem=function(m){mark('',m)};
  window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
  /* tranca sozinho depois de 15 minutos sem uso */
  var last=Date.now();['mousemove','mousedown','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,function(){last=Date.now()},{passive:true})});
@@ -1124,5 +1130,6 @@ document.addEventListener('drop',e=>{
 render();
 </script>
 <script src="update.js"></script>
+<script src="nuvem-ui.js"></script>
 </body>
 </html>

@@ -95,6 +95,12 @@ bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
  /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
  window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
+ /* dados do Financeiro que chegaram de outro aparelho pela nuvem: recarrega se não houver edição aberta */
+ var remoto=false;
+ function aplicaRemoto(){if(pend!=null||document.querySelector('.ov')){remoto=true;mark('busy','Atualização de outro aparelho: aplica ao fechar a janela');return}remoto=false;wipe();window.api.ir('financeiro')}
+ if(window.api.onDadosRemotos)window.api.onDadosRemotos(function(p){if(p.indexOf('fin')>=0)aplicaRemoto()});
+ setInterval(function(){if(remoto&&pend==null&&!document.querySelector('.ov'))aplicaRemoto()},2000);
+ window.__toastNuvem=function(m){mark('',m)};
  window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
  /* tranca sozinho depois de 15 minutos sem uso */
  var last=Date.now();['mousemove','mousedown','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,function(){last=Date.now()},{passive:true})});
@@ -143,7 +149,7 @@ bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
   })});
 })();
 </script>'''
-k = doc.rfind('</body>'); doc = doc[:k] + '<script src="update.js"></script>\n' + doc[k:]
+k = doc.rfind('</body>'); doc = doc[:k] + '<script src="update.js"></script>\n<script src="nuvem-ui.js"></script>\n' + doc[k:]
 k = doc.find('</head>'); doc = doc[:k] + '<link rel="stylesheet" href="shell.css">\n' + style + '\n' + bridge + '\n' + doc[k:]
 k = doc.find('</head>'); doc = doc[:k] + '<link rel="stylesheet" href="tema.css">\n' + doc[k:]   # tema único: por último
 # Sem dados de clientes no código (o repositório é público): as planilhas embutidas viram listas vazias.

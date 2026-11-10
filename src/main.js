@@ -1,5 +1,5 @@
 // Processo principal: janela, arquivo de dados (produção + financeiro) e backups.
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, Notification, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, Notification, nativeImage, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -7,7 +7,7 @@ const { autoUpdater } = require('electron-updater');
 
 app.setName('Cristiano Convites');
 // A pasta de dados mantém o nome antigo de propósito: renomear o programa não pode separar ninguém dos seus dados.
-app.setPath('userData', path.join(app.getPath('appData'), 'Producao Cristiano Convites'));
+app.setPath('userData', process.env.CC_DATA_DIR || path.join(app.getPath('appData'), 'Producao Cristiano Convites'));   // CC_DATA_DIR: só para testes
 app.commandLine.appendSwitch('lang', 'pt-BR');
 
 const DATA_DIR = app.getPath('userData');
@@ -109,7 +109,15 @@ ipcMain.handle('sec:lock', () => { unlocked = false; });
 ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: d.cfg, cards: d.cards, events: d.events || {}, clients: d.clients || {}, contracts: d.contracts || {} }; });
 ipcMain.handle('data:save', (_e, obj) => {
   if (!validFull(obj)) return { ok: false, error: 'Dados inválidos' };
-  try { loadData(); current.cfg = obj.cfg; current.cards = obj.cards; ['events', 'clients', 'contracts'].forEach((k) => { if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) current[k] = obj[k]; }); persist(); return { ok: true }; }
+  try {
+    loadData();
+    const antes = {}; ['cfg', 'cards', 'events', 'clients', 'contracts'].forEach((k) => { antes[k] = JSON.stringify(current[k] == null ? null : current[k]); });
+    current.cfg = obj.cfg; current.cards = obj.cards;
+    ['events', 'clients', 'contracts'].forEach((k) => { if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) current[k] = obj[k]; });
+    const mudou = Object.keys(antes).filter((k) => JSON.stringify(current[k] == null ? null : current[k]) !== antes[k]);
+    if (mudou.length && nuvem) nuvem.marcar(mudou);
+    persist(); return { ok: true };
+  }
   catch (e) { return { ok: false, error: String(e.message || e) }; }
 });
 
@@ -120,7 +128,7 @@ ipcMain.on('fin:loadSync', (e) => {
 });
 function saveFin(str) {
   if (!finAllowed()) return false;
-  try { const o = JSON.parse(str); if (!validFin(o)) return false; loadData(); current.fin = o; persist(); return true; }
+  try { const o = JSON.parse(str); if (!validFin(o)) return false; loadData(); const mudou = JSON.stringify(current.fin) !== JSON.stringify(o); current.fin = o; if (mudou && nuvem) nuvem.marcar(['fin']); persist(); return true; }
   catch (e) { return false; }
 }
 ipcMain.handle('fin:save', (_e, str) => ({ ok: saveFin(str) }));
@@ -168,6 +176,7 @@ ipcMain.handle('data:applyImport', () => {
   const { kind, data } = pendingImport; pendingImport = null;
   if (kind === 'full') { current.cfg = data.cfg || null; current.cards = data.cards; current.events = data.events || {}; current.clients = data.clients || {}; current.contracts = data.contracts || {}; if (validFin(data.fin)) current.fin = data.fin; }
   else current.fin = data;
+  if (nuvem) nuvem.marcar(kind === 'full' ? nuvem.PARTES : ['fin']);
   persist();
   return { ok: true, kind };
 });
@@ -322,6 +331,39 @@ ipcMain.handle('pdf:save', async (_e, html, filename) => {
   } finally { if (!pw.isDestroyed()) pw.destroy(); }
 });
 
+/* ----- sincronização na nuvem (Firebase) ----- */
+let nuvem = null;
+const NUVEM_LOG = path.join(DATA_DIR, 'nuvem.log');
+function nlog(m) { try { if (fs.existsSync(NUVEM_LOG) && fs.statSync(NUVEM_LOG).size > 200000) fs.writeFileSync(NUVEM_LOG, ''); fs.appendFileSync(NUVEM_LOG, new Date().toISOString() + ' ' + m + '\n'); } catch (e) {} }
+function setupNuvem() {
+  const emulador = process.env.CC_NUVEM_EMULADOR === '1';
+  const config = Object.assign({}, require('./nuvem-config'), emulador ? { projectId: 'demo-cristiano' } : {});
+  nuvem = require('./nuvem')({
+    config, emulador, dataDir: DATA_DIR, safeStorage,
+    getCurrent: () => loadData(),
+    salvarLocal: () => { try { writeAtomic(DATA_FILE, current); } catch (e) {} },
+    aplicarRemoto: (partes) => { if (win && !win.isDestroyed()) win.webContents.send('dados:remoto', partes); },
+    avisar: (st) => { if (win && !win.isDestroyed()) win.webContents.send('nuvem:status', st); },
+    perguntar: async () => {
+      const r = await dialog.showMessageBox(win, {
+        type: 'question', title: 'Sincronizar com a nuvem',
+        message: 'Já existem dados na nuvem e também neste computador.',
+        detail: 'Qual versão deve valer daqui para a frente?\n\n• Dados da nuvem: este computador passa a ter o que está na nuvem (recomendado se você já usa o programa em outro aparelho).\n• Dados deste computador: a nuvem passa a ter o que está aqui.\n\nA versão que sair continua guardada no backup automático de hoje.',
+        buttons: ['Usar os dados da nuvem', 'Enviar os dados deste computador', 'Cancelar'], defaultId: 0, cancelId: 2, noLink: true
+      });
+      if (r.response === 0) { persist(); return 'nuvem'; }
+      if (r.response === 1) return 'local';
+      return null;
+    },
+    log: nlog
+  });
+  nuvem.iniciar().catch((e) => nlog('falha ao iniciar: ' + (e && e.message)));
+}
+ipcMain.handle('nuvem:status', () => (nuvem ? nuvem.status() : { estado: 'desligado' }));
+ipcMain.handle('nuvem:entrar', (_e, email, senha) => nuvem.entrar(String(email || '').trim(), String(senha || '')));
+ipcMain.handle('nuvem:sair', () => nuvem.sair());
+ipcMain.handle('nuvem:agora', () => nuvem.sincronizarAgora());
+
 /* ----- navegação e utilidades ----- */
 let currentPage = 'producao';
 ipcMain.handle('app:goto', (_e, page) => {
@@ -351,6 +393,7 @@ async function flushRenderer() {
 async function quitApp(install) {
   if (quitting) return;
   await flushRenderer();
+  if (nuvem) await nuvem.encerrar().catch(() => {});
   quitting = true;
   if (install) autoUpdater.quitAndInstall(true, true);   // silencioso e reabre o programa
   else app.quit();
@@ -418,5 +461,5 @@ function createWindow() {
 Menu.setApplicationMenu(null);
 app.setAppUserModelId('br.com.cristianoconvites.producao');   // notificações do Windows com o nome do programa
 app.on('before-quit', () => { quitting = true; });
-app.whenReady().then(() => { loadData(); createWindow(); createTray(); setupUpdater(); });
+app.whenReady().then(() => { loadData(); createWindow(); createTray(); setupUpdater(); setupNuvem(); });
 app.on('window-all-closed', () => { if (quitting) app.quit(); });
