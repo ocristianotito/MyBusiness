@@ -243,7 +243,8 @@
         <span class="fxn"><b>${esc(l.nome)}</b><small>${l.ano}${l.sub ? ' · ' + esc(l.sub) : ''}</small></span>
         <span class="fxtrack"><span class="fxfill" style="width:${l.total / maxT * 100}%"><i style="width:${l.total ? l.rec / l.total * 100 : 0}%"></i></span></span>
         <span class="fxv"><b class="o">${BRL(l.total - l.rec)}</b><small>de ${BRL(l.total)}</small></span></button>`;
-    const barras = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => (b.total - b.rec) - (a.total - a.rec)); return ls.length ? `<div class="fxsec" style="--oc:${corOg(og)}"><span class="fxdot"></span>${esc(nomeOg(og))}<small>a receber ${BRL(x.a)}</small></div>` + ls.map(barra).join('') : ''; }).join('');
+    const barras = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => (b.total - b.rec) - (a.total - a.rec)); const fe = !!fxFech['b:' + og];
+      return ls.length ? `<button type="button" class="fxsec${fe ? ' fech' : ''}" style="--oc:${corOg(og)}" data-vm="fxog" data-og="b:${esc(og)}" title="${fe ? 'Expandir' : 'Retrair'}"><span class="fxar">${fe ? '▸' : '▾'}</span><span class="fxdot"></span>${esc(nomeOg(og))}<small>${fe ? ls.length + ' turma(s) · ' : ''}a receber ${BRL(x.a)}</small></button>` + (fe ? '' : ls.map(barra).join('')) : ''; }).join('');
 
     const linhaT = (l) => { const p = l.total ? l.rec / l.total : 0, lu = l.total - l.custo;
       return `<tr><td><b>${esc(l.nome)}</b><small>${esc(l.sub || '')}</small></td><td class="mu">${l.ano}</td>
@@ -342,6 +343,8 @@
 .fxogk small{display:block;color:var(--mu);font-size:11px;margin-bottom:2px}.fxogk b{font-size:17px;font-variant-numeric:tabular-nums}
 .fxsplit{display:flex}.fxsplit i{border-radius:0!important}
 .fxsec{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--tx);font-weight:700;padding:10px 6px 4px}
+.fxsec{width:100%;background:none;border:0;border-radius:8px;font-family:inherit;cursor:pointer;text-align:left;user-select:none}.fxsec:hover{background:#131d29}
+.fxsec .fxar{display:inline-block;width:12px;color:var(--mu);font-size:11px}
 .fxsec small{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--mu);font-weight:400;font-size:12px}
 .fxmg{display:flex;flex-direction:column;gap:8px;margin:16px 0 8px;text-align:left}
 .fxmg div{display:flex;align-items:center;gap:8px;font-size:13px}.fxmg b{margin-left:auto}
