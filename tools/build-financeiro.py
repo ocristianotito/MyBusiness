@@ -25,9 +25,9 @@ rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'vend
 rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', 'vendor/jspdf.plugin.autotable.min.js')
 # aba nova "Visão do mês" (fluxo.js), mostrada primeiro e aberta ao entrar
 rep("const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros'];",
-    "const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros','Visão do mês'];")
+    "const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Turmas e parceiros','Pagamentos','Convites com parceiros','Visão do mês'];")
 rep("document.getElementById('nav').innerHTML=TABS.map((n,i)=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${n}</button>`).join('');",
-    "document.getElementById('nav').innerHTML=[6,0,1,2,3,4,5].map(i=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${TABS[i]}</button>`).join('');")
+    "document.getElementById('nav').innerHTML=[6,3,1].map(i=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${TABS[i]}</button>`).join('');")
 rep("[v0,v1,v2,v3,v4,v5][S.tab]()", "[v0,v1,v2,(window.v3x||v3),v4,v5,v6][S.tab]()")
 rep("let S=load(),lista=null,modal=null,pendFocus=null;", "let S=load(),lista=null,modal=null,pendFocus=null;S.tab=6;")
 doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", " if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}\n if(a==='add'){const d=prompt('Descrição da despesa:');", 1)
@@ -41,16 +41,17 @@ assert m, 'cabeçalho não encontrado'
 header = ('<header><div class="appbar">'
           '<span class="finicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16 15h2"/><path d="M6 6V5a2 2 0 0 1 2-2h8"/></svg></span>'
           '<div class="fintit"><h1>Financeiro</h1><small>Fechamento do mês · protegido por senha</small></div>'
-          '<span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span>'
-          '<div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button>'
-          '<div class="appmenu" id="appMenu" hidden>'
-          '<button data-bk="export">Exportar backup (produção + financeiro)…</button>'
+          '</div>'
+          '<div hidden>' + m.group(1) + '</div><nav id="nav"></nav></header>')
+doc = doc[:m.start()] + header + doc[m.end():]
+rodape = ('<span class="sync appsave" id="appsave"><i></i><span>Salvo no computador</span></span>'
+          '<div class="appmenuwrap"><button class="sbtn" id="appBk" aria-haspopup="true">Backup</button>'
+          '<div class="appmenu sidemenu" id="appMenu" hidden>'
+          '<button data-bk="export">Exportar backup (tudo)…</button>'
           '<button data-bk="import">Importar backup…</button>'
           '<button data-bk="pasta">Abrir pasta de backups automáticos</button>'
           '<button data-bk="update">Verificar atualizações (versão <span data-ver></span>)</button>'
-          '<button data-bk="senha">Alterar senha do Financeiro</button></div></div></div>'
-          '<div hidden>' + m.group(1) + '</div><nav id="nav"></nav></header>')
-doc = doc[:m.start()] + header + doc[m.end():]
+          '<button data-bk="senha">Alterar senha do Financeiro</button></div></div>')
 
 style = '''<style>
 header{padding-top:12px}
@@ -66,12 +67,14 @@ header{padding-top:12px}
 .appsave i{width:8px;height:8px;border-radius:50%;background:var(--g);display:inline-block}
 .appsave.busy i{background:var(--o)}.appsave.err i{background:var(--r)}
 .appmenuwrap{position:relative}
+.appmenu.sidemenu{position:fixed;left:16px;bottom:64px;top:auto;right:auto}
+#side .appsave{width:100%;padding:0 4px}
 .appmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:6px;min-width:290px;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.45)}
 .appmenu button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--tx);padding:9px 10px;border-radius:7px;cursor:pointer;font:inherit;font-size:13px}
 .appmenu button:hover{background:var(--pn2)}
 </style>'''
 
-bridge = '''<script>
+bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
 /* Ponte com o programa: os dados ficam no arquivo do computador, protegidos pela senha do Financeiro. */
 (function(){
  var KEY='dashboard_convites_v2',SYNC_KEYS=['dashboard_convites_v2_base','dashboard_convites_v2_sync'];
@@ -118,6 +121,7 @@ bridge = '''<script>
   if(!confirm(msg+'\\n\\nO estado atual continua no backup automático de hoje. Continuar?'))return;
   window.api.aplicarImport().then(function(x){if(x.ok){wipe();window.api.ir('financeiro')}})})}
  document.addEventListener('DOMContentLoaded',function(){
+  var sf=document.getElementById('sfootBtns');if(sf&&!document.getElementById('appsave')){sf.innerHTML=RODAPE;try{document.getElementById('appBk').innerHTML=ShellIcon('gear',15)+' Backup'}catch(e){}}
   if(blocked)return;var vazio=false;try{vazio=!S.turmas.length&&!S.parc.length}catch(e){vazio=empty}
   if(!vazio)return;
   var b=document.createElement('div');b.id='finEmpty';

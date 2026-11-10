@@ -260,9 +260,6 @@ body.withside{display:block}
 #vOverview{overflow-y:auto}
 .pagehead .views{margin-left:18px;padding-left:16px;border-left:1px solid var(--bd)}
 /* rodapé do menu lateral */
-.sbtn{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer}
-.sbtn:hover{border-color:var(--bd2)}
-#side .sync{width:100%;padding:0 4px}
 .sidemenu{position:fixed!important;left:16px;bottom:64px;top:auto!important;right:auto!important;min-width:280px;z-index:40}
 /* coluna lateral das demandas */
 .subside{width:248px;flex-shrink:0;border-right:1px solid var(--bd);background:#0c1218;overflow-y:auto;padding:16px 10px}

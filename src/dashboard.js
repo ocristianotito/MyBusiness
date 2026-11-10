@@ -96,9 +96,6 @@ function renderDashboard() {
      ${hoje.length ? hoje.map(({ id, ev }) => `<button class="arow" data-dev="${esc(id)}" data-date="${isoD(t0)}"><i style="background:${(AgendaCore.TIPOS[ev.tipo] || AgendaCore.TIPOS.outro).c}"></i><span><b>${esc(ev.title)}</b><small>${ev.allDay ? 'Dia inteiro' : esc(ev.start + (ev.end ? '–' + ev.end : ''))}${ev.local ? ' · ' + esc(ev.local) : ''}</small></span></button>`).join('') : '<p class="note">Nenhum compromisso hoje.</p>'}</div>
     <div class="dpanel"><div class="dph"><b>Equipe</b><small>pedidos em produção por responsável</small></div>
      ${respL.length ? respL.map(([r, x]) => `<div class="rrow"><span class="av${r === 'Sem responsável' ? ' empty' : ''}">${r === 'Sem responsável' ? '' : esc(initials(r))}</span><div><div class="rtop"><b>${esc(r)}</b><em>${x.n}</em></div><div class="bar"><i style="width:${x.n / respMax * 100}%;background:var(--teal)"></i></div><small>${x.s} vence${x.s === 1 ? '' : 'm'} esta semana</small></div></div>`).join('') : '<p class="note">Nenhum pedido em produção.</p>'}</div>
-    <div class="dpanel lockp"><div class="dph"><b>O mês em dinheiro</b></div>
-     <p class="note">Recebido, despesas, lucro e meta do mês ficam no Financeiro, protegidos pela sua senha.</p>
-     <button class="btn sm" data-dash="fin">${ShellIcon('lock', 14)} Abrir o Financeiro</button></div>
    </div></div>
   </div></div>`;
 }

@@ -11,7 +11,9 @@ Textos da interface e mensagens em português do Brasil.
 - `src/shell.js` + `shell.css`: menu lateral compartilhado pelas duas páginas (`window.__shellNav(modulo)`)
 - `src/index.html` + `app.js` + `styles.css`: página principal; `app.js` tem os dados, a navegação entre módulos e as Demandas
 - `src/dashboard.js`, `src/clientes.js`, `src/contratos.js` (+ `extenso.js`): os outros módulos da página principal
-- `src/fluxo.js`: aba "Visão do mês" do Financeiro (fluxo de caixa, dados em `fin.cx`)
+- `src/fluxo.js`: abas "Visão do mês" (fluxo de caixa, dados em `fin.cx`) e "Turmas e parceiros" (`v3x`) do Financeiro.
+  O Financeiro mostra só 3 abas (Visão do mês, Turmas e parceiros, Orçamentos); as outras do Dashboard antigo
+  repetiam os mesmos números e ficam escondidas (`[6,3,1]` em `tools/build-financeiro.py`).
 - `src/financeiro.html`: Financeiro, gerado por `tools/build-financeiro.py` a partir de
   `tools/dashboard-de-convites.html` (fora do git, porque contém dados de clientes).
   Se essa fonte não existir, edite `src/financeiro.html` direto.
@@ -29,7 +31,6 @@ Textos da interface e mensagens em português do Brasil.
 ## Publicar uma versão nova (atualização automática)
 **Só publique quando o dono pedir.** Ele prefere juntar várias alterações numa versão só.
 Até lá, faça commits e push na `main` **sem mudar `version`** no `package.json` (sem essa mudança o workflow não roda).
-A 1.2.7 foi cancelada antes de publicar: `package.json` já está em 1.2.7, que é o número da próxima versão.
 Na hora de publicar, mude qualquer coisa no `package.json` (ex.: `version`, se for subir para 1.2.8) ou rode
 o workflow à mão (Actions → Publicar versão → Run workflow); versões já publicadas são ignoradas.
 1. Aumente `version` no `package.json` no mesmo commit da mudança. O dono prefere subir o último número

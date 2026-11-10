@@ -28,3 +28,8 @@ body.withside{padding-left:var(--sh-w)}
 .pagehead small{display:block;color:var(--sh-mu);font-size:12px;margin-top:2px}
 .pagehead .phsp{flex:1}
 .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--sh-bd);background:var(--sh-card);border-radius:10px;padding:7px 12px;font-size:12px;color:var(--sh-tx);white-space:nowrap}
+.sbtn{display:inline-flex;align-items:center;gap:6px;background:var(--sh-card2);border:1px solid var(--sh-bd);color:var(--sh-tx);border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer}
+.sbtn:hover{border-color:#2a3746}
+#side .sync{width:100%;padding:0 4px;font-size:12px;color:var(--sh-mu);display:flex;align-items:center;gap:6px}
+#side .sync i{width:8px;height:8px;border-radius:50%;background:var(--sh-mu);display:inline-block}
+#side .sync.on i,#side .appsave i{background:#34D399}#side .sync.warn i,#side .appsave.busy i{background:#F0A53F}#side .sync.err i,#side .appsave.err i{background:#F87171}

@@ -80,7 +80,6 @@
   /* ----- a tela ----- */
   window.v6 = function v6() {
     const c = cx(), r = resumo(mes), lucro = r.ePago - r.sPago, meta = +S.meta || 0, pm = meta ? r.ePago / meta : 0, sal = saldo(mes), g = grafico();
-    const t = (typeof tot === 'function') ? tot() : null;
     const linha = (x) => `<div class="vmrow${x.pago ? ' pago' : ''}"><button class="vmck${x.pago ? ' on' : ''}" data-vm="tog" data-src="${x.src}" data-id="${x.id}" title="${x.pago ? 'Marcar como não pago' : 'Marcar como pago'}" aria-pressed="${x.pago}"></button>
       <span class="vmd">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}</span><span class="vmcat ${x.grupo}">${CAT[x.grupo] || ''}</span><span class="vmdia">${x.dia ? String(x.dia).padStart(2, '0') : '—'}</span>
       <span class="vmv ${x.tipo}">${x.valor == null ? `<button class="vmdef" data-vm="edit" data-src="${x.src}" data-id="${x.id}">definir</button>` : BRL(x.valor)}</span>
@@ -108,8 +107,6 @@
       <div class="vmgf"><small>Faltam para a meta</small><b>${meta ? BRL(Math.max(0, meta - r.ePago)) : 'defina a meta'}</b></div>
       <div class="vmfoot"><span>Recebido</span><b>${BRL(r.ePago)} <small>${meta ? 'de ' + BRL(meta) : '· meta não definida'}</small></b></div></div>
     </div>
-    ${t ? `<div class="vmc vmturmas"><div class="vmcl">Turmas e parceiros <small>o que já foi fechado com as comissões</small><span class="sp"></span><button class="linkb" data-vm="turmas">Ver turmas e formandos</button></div>
-      <div class="vmtk"><div><small>Fechado</small><b>${BRL(t.T + t.PT)}</b></div><div><small>Recebido</small><b class="g">${BRL(t.R + t.PR)}</b></div><div><small>A receber</small><b class="o">${BRL(t.A + t.PA)}</b></div><div><small>Custo informado</small><b class="r">${BRL(t.C + t.PC)}</b></div></div></div>` : ''}
     ${r.semValor ? `<div class="vmwarn">⚠ ${r.semValor} lançamento(s) ainda sem valor: clique em "definir" para preencher.</div>` : ''}
     <div class="vmcols">${painel('e')}${painel('s')}</div>
     <p class="note">Marque o círculo quando o dinheiro entrar ou sair. O lucro, o movimento, o saldo e o gráfico contam só o que está marcado como pago. Lançamentos com ↻ se repetem todo mês.</p>
@@ -251,7 +248,7 @@
           <td class="n">${BRL(l.total)}</td><td class="n g">${BRL(l.rec)}</td><td class="n o">${BRL(l.total - l.rec)}</td>
           <td><div class="fxp"><div class="vmbar"><i style="width:${Math.min(100, p * 100)}%;${p >= 0.9999 ? 'background:var(--g)' : ''}"></i></div><span>${PCT(p)}</span></div></td>
           <td class="n">${l.custo ? `<b class="${lu >= 0 ? 'g' : 'r'}">${PCT(dv(lu, l.total))}</b>` : '<span class="mu">sem custo</span>'}</td>
-          <td class="n"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button></td></tr>`; };
+          <td class="n fxacts"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button><button class="ib del" data-act="${l.k === 't' ? 'delt' : 'delpc'}" data-id="${l.id}" title="Excluir">Excluir</button></td></tr>`; };
     const tabela = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => a.ano - b.ano || String(a.nome).localeCompare(String(b.nome), 'pt-BR')); if (!ls.length) return '';
       return `<tr class="fxy" style="--oc:${corOg(og)}"><td colspan="8"><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · fechado ${BRL(x.f)} · recebido ${BRL(x.r)} · a receber ${BRL(x.a)}${x.c ? ' · margem ' + PCT(x.m) : ''}</small></td></tr>` + ls.map(linhaT).join(''); }).join('');
 
@@ -259,14 +256,14 @@
     const desp = (l) => `<div class="vmrow${l.pago ? ' pago' : ''}" style="grid-template-columns:22px minmax(0,1fr) 120px auto"><button class="vmck${l.pago ? ' on' : ''}" data-act="tog" data-id="${l.id}" title="${l.pago ? 'Voltar para a pagar' : 'Marcar como paga'}"></button><span class="vmd">${esc(l.desc)}</span><span class="vmv s">${BRL(l.valor)}</span><span class="vmact"><button data-act="del" data-id="${l.id}">Excluir</button></span></div>`;
     const dir = (porOg[0] || [])[1] || resumoOg([]), par = porOg.slice(1).reduce((a, [, x]) => ({ f: a.f + x.f, l: a.l + x.l }), { f: 0, l: 0 });
     return `<div class="vm">
-    <div class="vmtop"><h2>Resultado das turmas</h2><span class="note">diretas e de parceiro, tudo o que já foi fechado</span></div>
+    <div class="vmtop"><h2>Turmas e parceiros</h2><span class="note">diretas e de parceiro, tudo o que já foi fechado</span><span class="sp" style="flex:1"></span><button class="btn ghost sm" data-act="parc">+ turma de parceiro</button><button class="btn sm" data-act="addt">+ nova turma</button></div>
     <div class="vmcards">
      <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto · total</div><b class="${G.l >= 0 ? 'g' : 'r'}">${BRL(G.l)}</b>
       <div class="vmmeta"><span>diretas <b>${BRL(dir.l)}</b> · parceiro <b>${BRL(par.l)}</b></span><span>margem ${G.c ? PCT(G.m) : '—'}</span></div><div class="vmbar fxsplit"><i style="width:${G.f ? dir.f / G.f * 100 : 0}%;background:var(--teal)"></i><i style="width:${G.f ? par.f / G.f * 100 : 0}%;background:var(--p)"></i></div></div>
      <div class="vmc"><div class="vmcl"><span class="vmci">⇄</span>Movimento · total</div>
       <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g">${BRL(G.r)}</b></div><div class="vmmv"><span class="vmpi" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o">${BRL(G.a)}</b></div></div>
-     <div class="vmc"><div class="vmcl"><span class="vmci">◎</span>Custos e despesas</div>
-      <div class="vmmv"><span class="vmpi s">↗</span>Custo informado<b class="r">${BRL(G.c)}</b></div><div class="vmmv"><span class="vmpi s">↗</span>Despesas pagas<b>${BRL(t.desp)}</b></div></div>
+     <div class="vmc"><div class="vmcl"><span class="vmci">◎</span>Custo informado · total</div>
+      <div class="vmmv"><span class="vmpi" style="background:#13262a;color:var(--teal)">●</span>Diretas<b class="r">${BRL(dir.c)}</b></div><div class="vmmv"><span class="vmpi" style="background:#1d1a33;color:var(--p)">●</span>Parceiro<b class="r">${BRL(G.c - dir.c)}</b></div></div>
     </div>
     <div class="fxogs">${porOg.map(ogCard).join('')}</div>
     <div class="vmrow2">
@@ -277,13 +274,14 @@
       <div class="fxmg">${porOg.map(([og, x]) => `<div style="--oc:${corOg(og)}"><span class="fxdot"></span>${esc(nomeOg(og))}<b>${x.c ? PCT(x.m) : '—'}</b></div>`).join('')}</div>
       <div class="vmfoot"><span>Fechado no total</span><b>${BRL(G.f)}</b></div></div>
     </div>
-    <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas por origem</b><em>${linhas.length}</em><span class="sp"></span><button class="btn sm" data-act="parc" style="margin:0">+ turma de parceiro</button></div>
+    <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas por origem</b><em>${linhas.length}</em><span class="sp"></span></div>
      <div class="fxtw"><table class="fxt"><thead><tr><th>Turma</th><th>Ano</th><th class="n">Fechado</th><th class="n">Recebido</th><th class="n">A receber</th><th>Progresso</th><th class="n">Margem</th><th></th></tr></thead><tbody>${tabela || '<tr><td colspan="8" class="mu" style="padding:16px">Nada fechado ainda.</td></tr>'}</tbody></table></div></div>
-    <div class="vmcols">
-     <div class="vmpanel"><div class="vmph"><span class="vmpi s">↗</span><b>Despesas a pagar</b><em>${pend.length}</em><span class="sp"></span><b class="r">${BRL(t.pend)}</b><button class="btn sm" data-vm="add" data-tipo="s" style="margin:0 0 0 10px">+ nova despesa</button></div>
-      ${pend.map(desp).join('') || '<div class="vmempty">Nenhuma despesa pendente aqui. As despesas do dia a dia ficam na <button class="linkb" data-vm="vermes">Visão do mês</button>.</div>'}</div>
+    ${lanc.length ? `<div class="vmcols">
+     <div class="vmpanel"><div class="vmph"><span class="vmpi s">↗</span><b>Despesas a pagar</b><em>${pend.length}</em><span class="sp"></span><b class="r">${BRL(t.pend)}</b></div>
+      ${pend.map(desp).join('') || '<div class="vmempty">Nenhuma despesa pendente.</div>'}</div>
      <div class="vmpanel"><div class="vmph"><span class="vmpi e">✓</span><b>Despesas pagas</b><em>${pago.length}</em><span class="sp"></span><b>${BRL(t.desp)}</b></div>
-      ${pago.map(desp).join('') || '<div class="vmempty">Nenhuma despesa paga registrada aqui.</div>'}</div>
+      ${pago.map(desp).join('') || '<div class="vmempty">Nenhuma despesa paga.</div>'}</div>
+    </div><p class="note">Despesas lançadas na versão antiga. As novas ficam nas saídas da <button class="linkb" data-vm="vermes">Visão do mês</button>.</p>` : ''}
     </div></div>`;
   };
   const css = document.createElement('style');
@@ -311,7 +309,6 @@
 .vmgauge{width:78%;margin:14px auto 0;display:block}.vmgauge .gbg{fill:none;stroke:#1e2a37;stroke-width:14;stroke-linecap:round}.vmgauge .gfg{fill:none;stroke:var(--teal);stroke-width:14;stroke-linecap:round}
 .vmgp{margin-top:-46px}.vmgp b{display:block;font-size:28px}.vmgp small{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu)}
 .vmgf{margin:18px 0 6px}.vmgf small{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu)}.vmgf b{font-size:24px}
-.vmturmas{margin-bottom:16px}.vmtk{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}.vmtk small{display:block;color:var(--mu);font-size:12px}.vmtk b{font-size:18px}
 .vmwarn{background:#2a2410;border:1px solid #5c4b14;color:#f4d27a;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px}
 .vmcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .vmpanel{background:var(--pn);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
@@ -360,6 +357,7 @@
 .fxt td small{display:block;color:var(--mu);font-size:11px}.fxt .n{text-align:right;font-variant-numeric:tabular-nums}.fxt .mu{color:var(--mu)}
 .fxt tbody tr:hover td{background:var(--pn2)}
 .fxt tr.fxy td{background:#0f1620;color:var(--teal);font-weight:700;font-size:13px;padding:8px 14px}.fxt tr.fxy td small{display:inline;margin-left:12px;font-weight:400;color:var(--mu)}
+.fxacts{white-space:nowrap}.fxacts .ib{margin-left:4px}.ib{background:none;border:1px solid transparent;color:var(--mu);border-radius:7px;padding:5px 9px;font:inherit;font-size:12px;cursor:pointer}.ib.del:hover{color:var(--r);border-color:#5a2a30}
 .fxp{display:flex;align-items:center;gap:8px;min-width:130px}.fxp .vmbar{flex:1}.fxp span{font-size:12px;color:var(--mu);width:44px;text-align:right}
 @media(max-width:1100px){.vmcards,.vmrow2,.vmcols{grid-template-columns:1fr}}`;
   document.head.appendChild(css);
