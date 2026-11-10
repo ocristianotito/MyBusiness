@@ -1,0 +1,54 @@
+{
+  "name": "producao-cristiano-convites",
+  "productName": "Produção Cristiano Convites",
+  "version": "1.2.0",
+  "description": "Gestão da produção de convites de formatura",
+  "author": "Cristiano Convites",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "build": {
+    "appId": "br.com.cristianoconvites.producao",
+    "productName": "Produção Cristiano Convites",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Produção Cristiano Convites",
+      "artifactName": "Producao-Cristiano-Convites-Setup-${version}.exe"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ocristianotito",
+      "repo": "MyBusiness",
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ocristianotito/MyBusiness.git"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# fonte original do dashboard (contém dados de clientes): nunca publicar
+tools/dashboard-de-convites.html
+# backups e dados exportados nunca vão para o repositório
+backup-*.json
+dados*.json
