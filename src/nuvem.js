@@ -26,6 +26,16 @@ module.exports = function criarNuvem(o) {
   const muda = (e, m) => { estado = e; msg = m || ''; o.avisar(st()); };
   const sync = () => { const c = o.getCurrent(); if (!c._sync || typeof c._sync !== 'object') c._sync = {}; if (!c._sync.ts) c._sync.ts = {}; return c._sync; };
   const temValor = (v) => v != null && !(typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
+  // Uma parte "vazia" (ex.: o Financeiro de um computador novo, sem turmas) nunca apaga uma parte com dados:
+  // nem ao enviar, nem ao receber. Assim um aparelho recém-instalado não zera os outros.
+  const qtd = (x) => Array.isArray(x) ? x.length : (x && typeof x === 'object' ? Object.keys(x).length : 0);
+  const vazio = (p, v) => {
+    if (!temValor(v)) return true;
+    if (p === 'fin') return !qtd(v.turmas) && !qtd(v.parc) && !(v.cx && (qtd(v.cx.mov) || qtd(v.cx.rec)));
+    if (p === 'cfg') return false;
+    return qtd(v) === 0;
+  };
+  let ultimoRemoto = {};
 
   /* ----- credenciais guardadas (criptografadas pelo Windows/macOS) ----- */
   function guardar(e, s) {
@@ -64,7 +74,16 @@ module.exports = function criarNuvem(o) {
     if (!uid || !fila.size) return;
     if (enviando) return agendar(500);
     enviando = true;
-    const partes = [...fila]; fila.clear();
+    let partes = [...fila]; fila.clear();
+    const salvar = partes.filter((p) => vazio(p, o.getCurrent()[p]) && ultimoRemoto[p] && !vazio(p, ultimoRemoto[p].valor));
+    if (salvar.length) {   // vazio aqui, com dados na nuvem: fica com a nuvem
+      const c = o.getCurrent(), s = sync();
+      salvar.forEach((p) => { const r = ultimoRemoto[p]; c[p] = r.valor; s.ts[p] = r.ts; if (!s.n) s.n = {}; s.n[p] = r.n; });
+      o.log('vazio aqui, mantida a nuvem: ' + salvar.join(', '));
+      o.salvarLocal(); o.aplicarRemoto(salvar);
+      partes = partes.filter((p) => !salvar.includes(p));
+      if (!partes.length) { enviando = false; muda('sincronizado'); return; }
+    }
     muda('enviando');
     try {
       const c = o.getCurrent(), s = sync(), b = writeBatch(db);
@@ -103,9 +122,16 @@ module.exports = function criarNuvem(o) {
   }
   function conciliar(remoto) {
     const c = o.getCurrent(), s = sync(); let aplicou = [];
+    ultimoRemoto = remoto;
     for (const p of PARTES) {
       const r = remoto[p], rt = r ? r.ts : 0, lt = s.ts[p] || 0;
-      if (r && rt > lt && !fila.has(p)) {
+      const rv = r && vazio(p, r.valor), lv = vazio(p, c[p]);
+      if (r && !rv && lv) {   // vazio aqui e com dados na nuvem: vale a nuvem, mesmo que mais antiga
+        fila.delete(p); c[p] = r.valor; s.ts[p] = rt; if (!s.n) s.n = {}; s.n[p] = r.n; aplicou.push(p);
+      } else if (r && rv && !lv && rt > lt) {   // a nuvem ficou vazia mas aqui há dados: não apaga, envia de volta
+        o.log('nuvem vazia em ' + p + ': mantidos os dados deste computador');
+        s.ts[p] = Date.now(); fila.add(p);
+      } else if (r && rt > lt && !fila.has(p)) {
         c[p] = r.valor; s.ts[p] = rt; if (!s.n) s.n = {}; s.n[p] = r.n; aplicou.push(p);
       } else if (!fila.has(p) && (lt > rt || (!r && temValor(c[p])))) {
         if (!s.ts[p]) s.ts[p] = Date.now();
@@ -143,13 +169,13 @@ module.exports = function criarNuvem(o) {
       muda('erro', m); uid = null; return { ok: false, error: m };
     }
     if (syn.uid !== uid) {
-      const temRemoto = Object.keys(remoto).length > 0, temLocal = temValor(c.cards) || temValor(c.fin);
+      const temRemoto = Object.keys(remoto).some((p) => !vazio(p, remoto[p].valor)), temLocal = !vazio('cards', c.cards) || !vazio('fin', c.fin);
       if (temRemoto && temLocal) {
         const escolha = await o.perguntar();
         if (!escolha) { uid = null; await signOut(auth).catch(() => {}); muda('desligado'); return { ok: false, error: 'Cancelado.' }; }
-        if (escolha === 'nuvem') PARTES.forEach((p) => { syn.ts[p] = 0; });
+        if (escolha === 'nuvem') { fila.clear(); PARTES.forEach((p) => { syn.ts[p] = 0; }); }
         else PARTES.forEach((p) => { syn.ts[p] = Date.now(); });
-      } else if (temRemoto) PARTES.forEach((p) => { syn.ts[p] = 0; });
+      } else if (temRemoto) { fila.clear(); PARTES.forEach((p) => { syn.ts[p] = 0; }); }   // aparelho novo: o que estava na fila era só o padrão
       syn.uid = uid;
     }
     if (interativo) guardar(e, s);

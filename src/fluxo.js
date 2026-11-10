@@ -213,7 +213,7 @@
   /* ===== aba Financeiro (resultado das turmas e parceiros), no mesmo estilo da Visão do mês ===== */
   /* parceiro padrão: na Cristiano Convites, as turmas de parceiro vêm do cerimonial OLIMPO */
   function parceiroPadrao() {
-    if (S.__parcPadrao) return;
+    if (S.__parcPadrao || !(S.parc || []).length) return;   // sem parceiros ainda (ex.: computador novo): não grava nada
     (S.parc || []).forEach((p) => { if (!String(p.parceiro || '').trim()) p.parceiro = 'OLIMPO'; });
     S.__parcPadrao = 1; save();
   }
