@@ -15,7 +15,8 @@ const CT_DEF = {
 };
 const NOVO_CONTRATANTE = () => ({ nome: '', genero: 'f', estadoCivil: '', profissao: '', rg: '', cpf: '', telefone: '', email: '', endereco: '' });
 const emp = () => Object.assign({ nome: 'CRISTIANO CONVITES', cnpj: '', sede: '', telefone: '', email: '' }, C().empresa || {});
-const ctTotal = (k) => (n0(k.qtd) || 0) * (parseFloat(String(k.unit).replace(',', '.')) || 0);
+const unitV = (u) => { const v = conta(u); return isNaN(v) ? 0 : v; };
+const ctTotal = (k) => (n0(k.qtd) || 0) * unitV(k.unit);
 const ctNomes = (k) => (k.contratantes || []).map((p) => p.nome).filter(Boolean);
 const ctTitulo = (k) => cliName(k.clientId) || ctNomes(k).join(' e ') || [k.curso, k.instituicao, k.turma].filter(Boolean).join(' ') || 'Contrato sem nome';
 const ymOf = (k) => (k.data || (k.criado ? new Date(k.criado).toISOString() : new Date().toISOString())).slice(0, 7);
@@ -29,7 +30,7 @@ const nE = (n, g) => { n = n0(n); return n + ' (' + E.num(n, g) + ')'; };
 /* ----- o contrato em HTML (mesmo texto do modelo) ----- */
 function contratoHTML(k) {
   const e = emp(), ps = (k.contratantes && k.contratantes.length) ? k.contratantes : [NOVO_CONTRATANTE()];
-  const total = ctTotal(k), qtd = n0(k.qtd), unit = parseFloat(String(k.unit).replace(',', '.')) || 0;
+  const total = ctTotal(k), qtd = n0(k.qtd), unit = unitV(k.unit);
   const turmaTxt = [k.curso, k.instituicao].filter(Boolean).join(' da ');
   const pessoa = (p, i) => {
     const f = p.genero !== 'm';

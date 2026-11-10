@@ -34,6 +34,20 @@ doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", "
 rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")
 # menu lateral
 doc = doc.replace('<body>', '<body class="withside fin">\n<aside id="side" aria-label="Menu"></aside>\n<script src="shell.js"></script>\n<script>Shell.build("financeiro")</script>', 1)
+# números com conta: "124,69+354,38" soma e "500-20" subtrai (como no Excel); o resto continua igual
+rep(r"""const num=s=>{s=String(s==null?'':s).replace(/R\$|%|\s/g,'');if(!s)return NaN;
+ if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');
+ else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+ const v=parseFloat(s);return isNaN(v)?NaN:v};""",
+r"""const num1=s=>{if(!s)return NaN;
+ if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');
+ else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+ const v=parseFloat(s);return isNaN(v)?NaN:v};
+/* aceita conta com + e - : "124,69+354,38" = 479,07 ; "500-20+10" = 490 */
+const num=s=>{s=String(s==null?'':s).replace(/R\$|%|\s/g,'').replace(/[−–]/g,'-').replace(/^=/,'').replace(/[+-]+$/,'');if(!s)return NaN;
+ const p=s.match(/[+-]?[^+-]+/g);if(!p||p.join('')!==s)return NaN;
+ let t=0;for(const x of p){const v=num1(x.replace(/^[+-]/,''));if(isNaN(v))return NaN;t+=x[0]==='-'?-v:v}
+ return Math.round(t*100)/100};""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
@@ -95,6 +109,9 @@ bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
  /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
  window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
+ /* ao sair de um campo com conta (124,69+354,38), mostra o resultado (479,07) */
+ document.addEventListener('focusout',function(e){var el=e.target;if(!el||el.tagName!=='INPUT'||!/\\d\\s*[+\\-−–]\\s*\\d/.test(el.value)||typeof num!=='function')return;
+  var v=num(el.value);if(isNaN(v))return;var dec=Math.round(v*100)%100!==0;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:dec?2:0,maximumFractionDigits:2})},true);
  /* dados do Financeiro que chegaram de outro aparelho pela nuvem: recarrega se não houver edição aberta */
  var remoto=false;
  function aplicaRemoto(){if(pend!=null||document.querySelector('.ov')){remoto=true;mark('busy','Atualização de outro aparelho: aplica ao fechar a janela');return}remoto=false;wipe();window.api.ir('financeiro')}

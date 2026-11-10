@@ -14,7 +14,7 @@
   const ymAdd = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const ymNome = (ym) => { const [y, m] = ym.split('-').map(Number); return MESES[m - 1].replace(/^./, (c) => c.toUpperCase()) + ' de ' + y; };
   const ymCurto = (ym) => MESES[+ym.split('-')[1] - 1].slice(0, 3);
-  const parseV = (s) => { s = String(s == null ? '' : s).replace(/R\$|\s/g, ''); if (!s) return null; if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = parseFloat(s); return isNaN(v) ? null : Math.round(v * 100) / 100; };
+  const parseV = (s) => { if (typeof num === 'function') { const v = num(s); return isNaN(v) ? null : Math.round(v * 100) / 100; } s = String(s == null ? '' : s).replace(/R\$|\s/g, ''); if (!s) return null; if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = parseFloat(s); return isNaN(v) ? null : Math.round(v * 100) / 100; };
   const fmtV = (v) => v == null ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const uid = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   let mes = ymNow(), aberto = { fixas: true, turmas: true }, ov = null;

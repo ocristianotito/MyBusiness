@@ -26,7 +26,16 @@ let ovRange=pref('ovRange',7),ovSemData=false;
 /* ===== utilidades ===== */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const n0=v=>{const x=parseInt(v,10);return isNaN(x)||x<0?0:x};
+/* número digitado, aceitando conta com + e - (ex.: "124,69+354,38" = 479,07; "300-16" = 284) */
+function conta(s){s=String(s==null?'':s).replace(/R\$|%|\s/g,'').replace(/[−–]/g,'-').replace(/^=/,'').replace(/[+-]+$/,'');if(!s)return NaN;
+ const p=s.match(/[+-]?[^+-]+/g);if(!p||p.join('')!==s)return NaN;let t=0;
+ for(const x of p){let y=x.replace(/^[+-]/,'');if(y.includes(','))y=y.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(y))y=y.replace(/\./g,'');
+  const v=parseFloat(y);if(isNaN(v))return NaN;t+=x[0]==='-'?-v:v}
+ return Math.round(t*100)/100}
+const n0=v=>{const x=typeof v==='number'?v:conta(v);return isNaN(x)||x<0?0:Math.round(x)};
+document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT'||!/\d\s*[+\-−–]\s*\d/.test(el.value))return;
+ const v=conta(el.value);if(isNaN(v))return;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:Math.round(v*100)%100?2:0,maximumFractionDigits:2});
+ el.dispatchEvent(new Event('input',{bubbles:true}))},true);
 const fmtN=n=>(+n||0).toLocaleString('pt-BR');
 const C=()=>cfg||DEF_CFG;
 const lastCol=()=>{const c=C().cols;return c.length?c[c.length-1].id:null};
