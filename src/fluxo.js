@@ -213,56 +213,72 @@
   });
 
   /* ===== aba Financeiro (resultado das turmas e parceiros), no mesmo estilo da Visão do mês ===== */
+  /* parceiro padrão: na Cristiano Convites, as turmas de parceiro vêm do cerimonial OLIMPO */
+  function parceiroPadrao() {
+    if (S.__parcPadrao) return;
+    (S.parc || []).forEach((p) => { if (!String(p.parceiro || '').trim()) p.parceiro = 'OLIMPO'; });
+    S.__parcPadrao = 1; save();
+  }
+  /* ===== aba Financeiro: resultado separado entre turmas diretas e turmas de parceiro ===== */
   window.v3x = function v3x() {
-    const t = tot(), fech = t.T + t.PT, rec = t.R + t.PR, arec = t.A + t.PA, custo = t.C + t.PC, lucro = fech - custo;
-    const marg = fech ? lucro / fech : 0, pr = fech ? rec / fech : 0;
+    parceiroPadrao();
+    const t = tot();
     const linhas = []
-      .concat((S.turmas || []).filter((x) => x.total > 0).map((x) => ({ k: 't', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
-      .concat((S.parc || []).filter((x) => x.total > 0).map((x) => ({ k: 'p', id: x.id, nome: x.nome, sub: x.parceiro || 'Parceiro', ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
-    const comCusto = linhas.filter((l) => l.custo > 0).length;
-    const porFalta = linhas.slice().sort((a, b) => (b.total - b.rec) - (a.total - a.rec));
+      .concat((S.turmas || []).filter((x) => x.total > 0).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
+      .concat((S.parc || []).filter((x) => x.total > 0).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: 'Fechamento ' + (x.data || '—'), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
+    const origens = ['direta'].concat([...new Set(linhas.filter((l) => l.k === 'p').map((l) => l.og))].sort());
+    const nomeOg = (og) => og === 'direta' ? 'Turmas diretas' : 'Parceiro ' + og.slice(2);
+    const subOg = (og) => og === 'direta' ? 'fechadas pela Cristiano Convites' : 'turmas vindas do cerimonial';
+    const corOg = (og) => og === 'direta' ? 'var(--teal)' : 'var(--p)';
+    const resumoOg = (ls) => { const f = ls.reduce((s, l) => s + l.total, 0), r = ls.reduce((s, l) => s + l.rec, 0), c = ls.reduce((s, l) => s + l.custo, 0); return { n: ls.length, f, r, a: f - r, c, l: f - c, m: f ? (f - c) / f : 0, pr: f ? r / f : 0 }; };
+    const G = linhas.length ? resumoOg(linhas) : resumoOg([]);
+    const porOg = origens.map((og) => [og, resumoOg(linhas.filter((l) => l.og === og))]);
+
+    const ogCard = ([og, x]) => `<div class="vmc fxog" style="--oc:${corOg(og)}"><div class="vmcl"><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · ${subOg(og)}</small></div>
+      <div class="fxogk"><div><small>Fechado</small><b>${BRL(x.f)}</b></div><div><small>Recebido</small><b class="g">${BRL(x.r)}</b></div><div><small>A receber</small><b class="o">${BRL(x.a)}</b></div>
+       <div><small>Custo</small><b class="r">${BRL(x.c)}</b></div><div><small>Lucro previsto</small><b class="${x.l >= 0 ? 'g' : 'r'}">${BRL(x.l)}</b></div><div><small>Margem</small><b>${x.c ? PCT(x.m) : '—'}</b></div></div>
+      <div class="vmmeta" style="margin-top:12px"><span>${PCT(x.pr)} recebido</span><span>${G.f ? PCT(x.f / G.f) + ' do total fechado' : ''}</span></div><div class="vmbar"><i style="width:${Math.min(100, x.pr * 100)}%;background:${corOg(og)}"></i></div></div>`;
+
     const maxT = Math.max(1, ...linhas.map((l) => l.total));
-    const barras = porFalta.map((l) => {
-      const fr = l.total - l.rec, w = l.total / maxT * 100;
-      return `<button class="fxbar" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" title="${esc(l.nome)}: recebido ${BRL(l.rec)} de ${BRL(l.total)}">
-        <span class="fxn"><b>${esc(l.nome)}</b><small>${l.k === 't' ? 'Turma' : 'Parceiro'} · ${l.ano}</small></span>
-        <span class="fxtrack"><span class="fxfill" style="width:${w}%"><i class="r" style="width:${l.total ? l.rec / l.total * 100 : 0}%"></i></span></span>
-        <span class="fxv"><b class="o">${BRL(fr)}</b><small>de ${BRL(l.total)}</small></span></button>`;
-    }).join('');
-    const anos = [...new Set(linhas.map((l) => l.ano))].sort((a, b) => a - b);
-    const tabela = anos.map((a) => {
-      const ls = linhas.filter((l) => l.ano === a), tf = ls.reduce((s, l) => s + l.total, 0), tr = ls.reduce((s, l) => s + l.rec, 0);
-      return `<tr class="fxy"><td colspan="8">${a}<small>${ls.length} cliente(s) · fechado ${BRL(tf)} · recebido ${BRL(tr)} · a receber ${BRL(tf - tr)}</small></td></tr>` + ls.map((l) => {
-        const p = l.total ? l.rec / l.total : 0, lu = l.total - l.custo;
-        return `<tr><td><b>${esc(l.nome)}</b><small>${esc(l.sub || '')}</small></td><td><span class="vmcat ${l.k === 't' ? 'turmas' : 'parceiros'}">${l.k === 't' ? 'Turma' : 'Parceiro'}</span></td>
+    const barra = (l) => `<button class="fxbar" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" title="${esc(l.nome)}: recebido ${BRL(l.rec)} de ${BRL(l.total)}">
+        <span class="fxn"><b>${esc(l.nome)}</b><small>${l.ano}${l.sub ? ' · ' + esc(l.sub) : ''}</small></span>
+        <span class="fxtrack"><span class="fxfill" style="width:${l.total / maxT * 100}%"><i style="width:${l.total ? l.rec / l.total * 100 : 0}%"></i></span></span>
+        <span class="fxv"><b class="o">${BRL(l.total - l.rec)}</b><small>de ${BRL(l.total)}</small></span></button>`;
+    const barras = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => (b.total - b.rec) - (a.total - a.rec)); return ls.length ? `<div class="fxsec" style="--oc:${corOg(og)}"><span class="fxdot"></span>${esc(nomeOg(og))}<small>a receber ${BRL(x.a)}</small></div>` + ls.map(barra).join('') : ''; }).join('');
+
+    const linhaT = (l) => { const p = l.total ? l.rec / l.total : 0, lu = l.total - l.custo;
+      return `<tr><td><b>${esc(l.nome)}</b><small>${esc(l.sub || '')}</small></td><td class="mu">${l.ano}</td>
           <td class="n">${BRL(l.total)}</td><td class="n g">${BRL(l.rec)}</td><td class="n o">${BRL(l.total - l.rec)}</td>
           <td><div class="fxp"><div class="vmbar"><i style="width:${Math.min(100, p * 100)}%;${p >= 0.9999 ? 'background:var(--g)' : ''}"></i></div><span>${PCT(p)}</span></div></td>
           <td class="n">${l.custo ? `<b class="${lu >= 0 ? 'g' : 'r'}">${PCT(dv(lu, l.total))}</b>` : '<span class="mu">sem custo</span>'}</td>
-          <td class="n"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button></td></tr>`;
-      }).join('');
-    }).join('');
+          <td class="n"><button class="btn ghost sm" data-act="${l.k === 't' ? 'lista' : 'parc'}" data-id="${l.id}" style="margin:0">${l.k === 't' ? 'Abrir lista' : 'Editar'}</button></td></tr>`; };
+    const tabela = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => a.ano - b.ano || String(a.nome).localeCompare(String(b.nome), 'pt-BR')); if (!ls.length) return '';
+      return `<tr class="fxy" style="--oc:${corOg(og)}"><td colspan="8"><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · fechado ${BRL(x.f)} · recebido ${BRL(x.r)} · a receber ${BRL(x.a)}${x.c ? ' · margem ' + PCT(x.m) : ''}</small></td></tr>` + ls.map(linhaT).join(''); }).join('');
+
     const lanc = S.lanc || [], pend = lanc.filter((l) => !l.pago), pago = lanc.filter((l) => l.pago);
     const desp = (l) => `<div class="vmrow${l.pago ? ' pago' : ''}" style="grid-template-columns:22px minmax(0,1fr) 120px auto"><button class="vmck${l.pago ? ' on' : ''}" data-act="tog" data-id="${l.id}" title="${l.pago ? 'Voltar para a pagar' : 'Marcar como paga'}"></button><span class="vmd">${esc(l.desc)}</span><span class="vmv s">${BRL(l.valor)}</span><span class="vmact"><button data-act="del" data-id="${l.id}">Excluir</button></span></div>`;
+    const dir = (porOg[0] || [])[1] || resumoOg([]), par = porOg.slice(1).reduce((a, [, x]) => ({ f: a.f + x.f, l: a.l + x.l }), { f: 0, l: 0 });
     return `<div class="vm">
-    <div class="vmtop"><h2>Resultado das turmas e parceiros</h2><span class="note">tudo o que já foi fechado, independente do mês</span></div>
+    <div class="vmtop"><h2>Resultado das turmas</h2><span class="note">diretas e de parceiro, tudo o que já foi fechado</span></div>
     <div class="vmcards">
-     <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto</div><b class="${lucro >= 0 ? 'g' : 'r'}">${BRL(lucro)}</b>
-      <div class="vmmeta"><span>${custo ? 'margem <b>' + PCT(marg) + '</b> · fechado − custo' : 'informe o custo das turmas para ver o lucro'}</span><span>${PCT(pr)} recebido</span></div><div class="vmbar"><i style="width:${Math.min(100, pr * 100)}%"></i></div></div>
-     <div class="vmc"><div class="vmcl"><span class="vmci">⇄</span>Movimento</div>
-      <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g">${BRL(rec)}</b></div><div class="vmmv"><span class="vmpi s" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o">${BRL(arec)}</b></div></div>
+     <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto · total</div><b class="${G.l >= 0 ? 'g' : 'r'}">${BRL(G.l)}</b>
+      <div class="vmmeta"><span>diretas <b>${BRL(dir.l)}</b> · parceiro <b>${BRL(par.l)}</b></span><span>margem ${G.c ? PCT(G.m) : '—'}</span></div><div class="vmbar fxsplit"><i style="width:${G.f ? dir.f / G.f * 100 : 0}%;background:var(--teal)"></i><i style="width:${G.f ? par.f / G.f * 100 : 0}%;background:var(--p)"></i></div></div>
+     <div class="vmc"><div class="vmcl"><span class="vmci">⇄</span>Movimento · total</div>
+      <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g">${BRL(G.r)}</b></div><div class="vmmv"><span class="vmpi" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o">${BRL(G.a)}</b></div></div>
      <div class="vmc"><div class="vmcl"><span class="vmci">◎</span>Custos e despesas</div>
-      <div class="vmmv"><span class="vmpi s">↗</span>Custo informado<b class="r">${BRL(custo)}</b></div><div class="vmmv"><span class="vmpi s">↗</span>Despesas pagas<b>${BRL(t.desp)}</b></div></div>
+      <div class="vmmv"><span class="vmpi s">↗</span>Custo informado<b class="r">${BRL(G.c)}</b></div><div class="vmmv"><span class="vmpi s">↗</span>Despesas pagas<b>${BRL(t.desp)}</b></div></div>
     </div>
+    <div class="fxogs">${porOg.map(ogCard).join('')}</div>
     <div class="vmrow2">
-     <div class="vmc"><div class="vmcl">Recebido × a receber por cliente <small>maior saldo primeiro · clique para abrir</small><span class="sp"></span><span class="lg"><i class="en"></i>Recebido</span><span class="lg"><i style="background:var(--o)"></i>A receber</span></div>
-      <div class="fxbars">${barras || '<p class="note">Nenhuma turma ou parceiro com valor preenchido.</p>'}</div></div>
-     <div class="vmc vmgc"><div class="vmcl">Margem<span class="sp"></span></div>
-      ${gauge(Math.max(0, marg))}<div class="vmgp"><b>${custo ? PCT(marg) : '—'}</b><small>de margem</small></div>
-      <div class="vmgf"><small>Fechado</small><b>${BRL(fech)}</b></div>
-      <div class="vmfoot"><span>Custo informado</span><b>${comCusto} de ${linhas.length} <small>clientes</small></b></div></div>
+     <div class="vmc"><div class="vmcl">Recebido × a receber por turma <small>maior saldo primeiro · clique para abrir</small><span class="sp"></span><span class="lg"><i class="en"></i>Recebido</span><span class="lg"><i style="background:var(--o)"></i>A receber</span></div>
+      <div class="fxbars">${barras || '<p class="note">Nenhuma turma com valor preenchido.</p>'}</div></div>
+     <div class="vmc vmgc"><div class="vmcl">Margem geral<span class="sp"></span></div>
+      ${gauge(Math.max(0, G.m))}<div class="vmgp"><b>${G.c ? PCT(G.m) : '—'}</b><small>de margem</small></div>
+      <div class="fxmg">${porOg.map(([og, x]) => `<div style="--oc:${corOg(og)}"><span class="fxdot"></span>${esc(nomeOg(og))}<b>${x.c ? PCT(x.m) : '—'}</b></div>`).join('')}</div>
+      <div class="vmfoot"><span>Fechado no total</span><b>${BRL(G.f)}</b></div></div>
     </div>
-    <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas e parceiros</b><em>${linhas.length}</em><span class="sp"></span><button class="btn sm" data-act="parc" style="margin:0">+ convite com parceiro</button></div>
-     <div class="fxtw"><table class="fxt"><thead><tr><th>Cliente</th><th>Tipo</th><th class="n">Fechado</th><th class="n">Recebido</th><th class="n">A receber</th><th>Progresso</th><th class="n">Margem</th><th></th></tr></thead><tbody>${tabela || '<tr><td colspan="8" class="mu" style="padding:16px">Nada fechado ainda.</td></tr>'}</tbody></table></div></div>
+    <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas por origem</b><em>${linhas.length}</em><span class="sp"></span><button class="btn sm" data-act="parc" style="margin:0">+ turma de parceiro</button></div>
+     <div class="fxtw"><table class="fxt"><thead><tr><th>Turma</th><th>Ano</th><th class="n">Fechado</th><th class="n">Recebido</th><th class="n">A receber</th><th>Progresso</th><th class="n">Margem</th><th></th></tr></thead><tbody>${tabela || '<tr><td colspan="8" class="mu" style="padding:16px">Nada fechado ainda.</td></tr>'}</tbody></table></div></div>
     <div class="vmcols">
      <div class="vmpanel"><div class="vmph"><span class="vmpi s">↗</span><b>Despesas a pagar</b><em>${pend.length}</em><span class="sp"></span><b class="r">${BRL(t.pend)}</b><button class="btn sm" data-vm="add" data-tipo="s" style="margin:0 0 0 10px">+ nova despesa</button></div>
       ${pend.map(desp).join('') || '<div class="vmempty">Nenhuma despesa pendente aqui. As despesas do dia a dia ficam na <button class="linkb" data-vm="vermes">Visão do mês</button>.</div>'}</div>
@@ -319,6 +335,18 @@
 .vmempty{padding:12px 16px;color:var(--mu);font-size:12px;border-top:1px solid #1a2532}
 .linkb{background:none;border:0;color:var(--teal);font:inherit;font-size:12px;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;text-transform:none;letter-spacing:0}
 .vmdlg{max-width:560px}.vmdlg h2{margin-bottom:4px}
+.fxogs{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;margin-bottom:16px}
+.fxog{border-top:3px solid var(--oc)}
+.fxdot{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--oc);flex-shrink:0}
+.fxogk{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 16px;margin-top:14px}
+.fxogk small{display:block;color:var(--mu);font-size:11px;margin-bottom:2px}.fxogk b{font-size:17px;font-variant-numeric:tabular-nums}
+.fxsplit{display:flex}.fxsplit i{border-radius:0!important}
+.fxsec{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--tx);font-weight:700;padding:10px 6px 4px}
+.fxsec small{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--mu);font-weight:400;font-size:12px}
+.fxmg{display:flex;flex-direction:column;gap:8px;margin:16px 0 8px;text-align:left}
+.fxmg div{display:flex;align-items:center;gap:8px;font-size:13px}.fxmg b{margin-left:auto}
+.fxt tr.fxy td{border-left:3px solid var(--oc)}
+.fxt tr.fxy .fxdot{margin-right:8px}
 .fxbars{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-height:420px;overflow-y:auto}
 .fxbar{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) 150px;gap:14px;align-items:center;background:none;border:0;border-radius:8px;color:var(--tx);padding:7px 6px;font:inherit;text-align:left;cursor:pointer}
 .fxbar:hover{background:var(--pn2)}
