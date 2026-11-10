@@ -5,7 +5,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 
-app.setName('Produção Cristiano Convites');
+app.setName('Cristiano Convites');
+// A pasta de dados mantém o nome antigo de propósito: renomear o programa não pode separar ninguém dos seus dados.
 app.setPath('userData', path.join(app.getPath('appData'), 'Producao Cristiano Convites'));
 app.commandLine.appendSwitch('lang', 'pt-BR');
 

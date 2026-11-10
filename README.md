@@ -9,7 +9,7 @@ Programa para Windows que reúne a gestão da **produção** e o **financeiro** 
 
 ## Instalar
 
-Baixe o `Producao-Cristiano-Convites-Setup-x.y.z.exe` da [última versão](https://github.com/ocristianotito/MyBusiness/releases/latest) e execute.
+Baixe o `Cristiano-Convites-Setup-x.y.z.exe` da [última versão](https://github.com/ocristianotito/MyBusiness/releases/latest) e execute.
 Num computador novo, traga seus dados em **Backup → Importar backup**.
 
 > Este repositório é público e **não contém dados de clientes**. Nunca adicione backups (`*.json` exportados) ao repositório.

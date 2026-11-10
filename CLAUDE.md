@@ -15,7 +15,9 @@ Textos da interface e mensagens em português do Brasil.
 - `src/agenda.js`: calendário da Produção (Mês/Semana, compromissos, arrastar, próximos 14 dias)
 
 ## Dados
-- Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, fin}`), com backup diário em `backups/`.
+- Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, events, fin}`), com backup diário em `backups/`.
+  O programa se chama "Cristiano Convites" desde a 1.2.3, mas a pasta de dados mantém o nome antigo: não renomeie.
+  O `name` do package.json (`producao-cristiano-convites`) também fica, porque define a pasta de cache da atualização.
 - **O repositório é público. Nunca commitar dados de clientes** (nomes, CPF, RG, telefones, backups `.json`).
   `src/seed.json` deve continuar sem cartões e com `fin: null`.
 

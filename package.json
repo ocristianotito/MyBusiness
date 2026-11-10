@@ -1,7 +1,7 @@
 {
   "name": "producao-cristiano-convites",
-  "productName": "Produção Cristiano Convites",
-  "version": "1.2.2",
+  "productName": "Cristiano Convites",
+  "version": "1.2.3",
   "description": "Gestão da produção de convites de formatura",
   "author": "Cristiano Convites",
   "main": "src/main.js",
@@ -11,7 +11,7 @@
   },
   "build": {
     "appId": "br.com.cristianoconvites.producao",
-    "productName": "Produção Cristiano Convites",
+    "productName": "Cristiano Convites",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -28,8 +28,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Produção Cristiano Convites",
-      "artifactName": "Producao-Cristiano-Convites-Setup-${version}.exe"
+      "shortcutName": "Cristiano Convites",
+      "artifactName": "Cristiano-Convites-Setup-${version}.exe"
     },
     "publish": {
       "provider": "github",
