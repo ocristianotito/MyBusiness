@@ -156,6 +156,7 @@ header{padding-top:12px}
   if(!blocked&&this===window.localStorage&&k===KEY){empty=false;pend=v;mark('busy','Salvando…');clearTimeout(t);t=setTimeout(flush,300)}};
  function leave(page){return flush().then(function(){wipe();return window.api.ir(page)})}
  window.__beforeUpdate=function(){return flush().then(wipe)};
+ window.__busy=function(){return !!document.querySelector('.ov')};
  window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
  /* tranca sozinho depois de 15 minutos sem uso */
  var last=Date.now();['mousemove','mousedown','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,function(){last=Date.now()},{passive:true})});

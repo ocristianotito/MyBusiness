@@ -13,10 +13,9 @@ const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','de
 const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
 /* ===== estado ===== */
-let cfg=null,cards=new Map(),modal=null,dragId=null,view='quadro';
+let cfg=null,cards=new Map(),events=new Map(),modal=null,dragId=null,view='quadro';
 const F={q:'',r:'',p:'',e:'',late:false,hide:false};
 const sortL={k:'col',dir:1};
-let calY=new Date().getFullYear(),calM=new Date().getMonth();
 const pref=(k,d)=>{try{const v=localStorage.getItem('pref_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const setPref=(k,v)=>{try{localStorage.setItem('pref_'+k,JSON.stringify(v))}catch(e){}};
 let folded=new Set(pref('folded',[]));
@@ -53,9 +52,10 @@ function setSync(cls,txt){const e=$('sync');e.className='sync '+cls;e.querySelec
 
 /* ===== armazenamento (arquivo no computador, via processo principal) ===== */
 let saveTimer=null,saving=false,dirty=false;
-function snapshot(){return{v:1,cfg,cards:Object.fromEntries(cards)}}
+function snapshot(){return{v:1,cfg,cards:Object.fromEntries(cards),events:Object.fromEntries(events)}}
 async function flushNow(){clearTimeout(saveTimer);while(saving)await new Promise(r=>setTimeout(r,50));await flush()}
 window.__beforeUpdate=()=>flushNow();
+window.__busy=()=>!!(modal&&['card','ev','cfg','pw','import'].includes(modal.t));
 function persist(){dirty=true;setSync('warn','Salvando…');clearTimeout(saveTimer);saveTimer=setTimeout(flush,250)}
 async function flush(){
  if(saving){saveTimer=setTimeout(flush,200);return}
@@ -74,7 +74,7 @@ async function init(){
  try{localStorage.removeItem('dashboard_convites_v2')}catch(e){}
  try{
   const d=await window.api.load();
-  cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));
+  cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));events=new Map(Object.entries(d.events||{}));
   setSync('on','Salvo no computador');
  }catch(e){setSync('err','Erro ao abrir os dados');$('banner').innerHTML=`<div class="banner r">Não foi possível abrir o arquivo de dados: ${esc(e.message||e)}</div>`}
  F.hide=pref('hide',false);$('fh').checked=F.hide;
@@ -169,26 +169,14 @@ function renderList(){
   <td>${k.n?`<div class="mini"><div class="bar"><i style="width:${k.d/k.n*100}%;background:${k.d===k.n?'var(--green)':'var(--teal)'}"></i></div><span class="note">${k.d}/${k.n}</span></div>`:'<span class="note">—</span>'}</td>
   <td class="note">${fmtAt(c.atualizado||c.criado)}</td></tr>`}).join('')||`<tr><td colspan="${LCOLS.length}" class="note" style="text-align:center;padding:24px">Nenhum cartão com estes filtros.</td></tr>`}</tbody>`}
 
-/* ===== calendário ===== */
-function renderCal(){
- const first=new Date(calY,calM,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
- const byDay=new Map();let semPrazo=0;
- [...cards.entries()].filter(([,c])=>visible(c)).forEach(([id,c])=>{if(!parseD(c.prazo)){if(!isDone(c))semPrazo++;return}const k=c.prazo;if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push([id,c])});
- const td=isoD(today());let cells='';
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=isoD(d),ev=byDay.get(k)||[];
-  cells+=`<div class="day${d.getMonth()!==calM?' out':''}${k===td?' today':''}"><span class="dn">${d.getDate()}</span>${ev.slice(0,4).map(([id,c])=>{const di=dueInfo(c);return `<div class="ev${isDone(c)?' done':(di&&di.cls==='late'?' late':'')}" data-id="${esc(id)}" title="${esc(c.title)} · ${esc(colById(colOf(c)).name)}">${esc(c.title)}</div>`}).join('')}${ev.length>4?`<div class="more" data-day="${k}">+${ev.length-4} mais</div>`:''}</div>`}
- $('vCal').innerHTML=`<div class="calhead"><button class="btn ghost sm" data-cal="-1" title="Mês anterior">◂</button><h3>${MESL[calM]} ${calY}</h3><button class="btn ghost sm" data-cal="1" title="Próximo mês">▸</button><button class="btn ghost sm" data-cal="0">Hoje</button></div>
- <div class="calwd">${['seg','ter','qua','qui','sex','sáb','dom'].map(x=>`<span>${x}</span>`).join('')}</div>
- <div class="calgrid">${cells}</div>
- <div class="calside">${semPrazo?`${semPrazo} pedido(s) em produção sem prazo não aparecem no calendário. Defina o prazo na janela do cartão.`:'Todos os pedidos em produção têm prazo.'}</div>`}
-
+/* ===== calendário: ver agenda.js ===== */
 function render(){
  renderTop();
  if(view==='quadro')renderBoard();else if(view==='lista')renderList();else renderCal();
 }
 function setView(v){view=v;setPref('view',v);
  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
- $('vQuadro').hidden=v!=='quadro';$('vLista').hidden=v!=='lista';$('vCal').hidden=v!=='calendario';render()}
+ $('kpis').hidden=v==='calendario';$('vQuadro').hidden=v!=='quadro';$('vLista').hidden=v!=='lista';$('vCal').hidden=v!=='calendario';render()}
 
 /* ===== janela do cartão ===== */
 function openCard(id,col,prazo){
@@ -201,6 +189,7 @@ function renderModal(){
  if(!modal){m.innerHTML='';return}
  if(modal.t==='cfg')return renderCfg();
  if(modal.t==='pw')return renderPw();
+ if(modal.t==='ev')return renderEv();
  const c=modal.c,k=chk(c),cols=C().cols,fmtAt=t=>t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
  m.innerHTML=`<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mt">
  <h2 id="mt">${modal.id?esc(c.title||'Cartão'):'Novo pedido'}</h2><div class="sub">${modal.id?'Edite as informações e clique em Salvar (Ctrl+Enter).':'Preencha o que souber agora; dá para completar depois.'}</div>
@@ -335,8 +324,7 @@ document.addEventListener('click',e=>{
   const fo=t.closest('[data-fold]');if(fo){folded.add(fo.dataset.fold);setPref('folded',[...folded]);return render()}
   const uf=t.closest('[data-unfold]');if(uf){folded.delete(uf.dataset.unfold);setPref('folded',[...folded]);return render()}
   const th=t.closest('th[data-sort]');if(th){const k=th.dataset.sort;if(sortL.k===k)sortL.dir*=-1;else{sortL.k=k;sortL.dir=1}return render()}
-  if(t.dataset.cal!=null){const s=+t.dataset.cal;if(s===0){calY=new Date().getFullYear();calM=new Date().getMonth()}else{calM+=s;if(calM<0){calM=11;calY--}if(calM>11){calM=0;calY++}}return render()}
-  const more=t.closest('[data-day]');if(more){F.q='';$('fq').value='';setView('lista');sortL.k='prazo';sortL.dir=1;return render()}
+  if(t.closest('#vCal'))return;   /* o calendário trata os próprios cliques (agenda.js) */
   const el=t.closest('[data-id]');if(el)return openCard(el.dataset.id);
   return}
  if(t.classList.contains('ov')&&downOv){modal=null;return renderModal()}
@@ -344,6 +332,7 @@ document.addEventListener('click',e=>{
  if(act==='close'){modal=null;window.api.trancar();return renderModal()}
  if(modal.t==='pw'&&act==='pwok')return submitPw();
  if(modal.t==='import'&&act==='doimport'){modal=null;renderModal();window.api.aplicarImport().then(r=>{if(r.ok)window.api.ir('producao')});return}
+ if(modal.t==='ev')return agendaModalClick(t,act);
  if(modal.t==='card'){
   if(act==='save')return saveModal();
   if(act==='trello')return window.api.abrirLink(modal.c.trello);
@@ -364,10 +353,6 @@ document.addEventListener('click',e=>{
   if(act==='savecfg'){readCfg();c.cols.forEach(x=>{x.name=x.name.trim()||'Sem nome'});modal=null;renderModal();saveCfg(c);return toast('Quadro configurado')}
  }
 });
-document.addEventListener('dblclick',e=>{
- if(modal||view!=='calendario')return;const day=e.target.closest('.day');if(!day||e.target.closest('.ev'))return;
- const idx=[...day.parentElement.children].indexOf(day),first=new Date(calY,calM,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));start.setDate(start.getDate()+idx);
- openCard(null,null,isoD(start))});
 document.addEventListener('change',e=>{
  if(modal&&modal.t==='card'&&e.target.dataset.ck!=null){const i=+e.target.dataset.ck;modal.c.check[i].d=e.target.checked;e.target.parentElement.classList.toggle('d',e.target.checked);updCk()}
  if(modal&&modal.t==='cfg'&&e.target.dataset.cc!=null){readCfg();renderCfg()}
@@ -377,6 +362,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Enter'&&modal&&modal.t==='pw'&&(e.target.id==='pw1'||e.target.id==='pw2')){e.preventDefault();return submitPw()}
  if(e.key==='Escape'){if(modal){modal=null;window.api.trancar();renderModal()}else if(!$('menu').hidden){$('menu').hidden=true}return}
  if(ctrl&&e.key==='Enter'&&modal&&modal.t==='card'){e.preventDefault();return saveModal()}
+ if(ctrl&&e.key==='Enter'&&modal&&modal.t==='ev'){e.preventDefault();return saveEv()}
  if(ctrl&&(e.key==='n'||e.key==='N')&&!modal){e.preventDefault();return openCard(null)}
  if(ctrl&&(e.key==='f'||e.key==='F')&&!modal){e.preventDefault();$('fq').focus();$('fq').select();return}
  if(ctrl&&e.key>='1'&&e.key<='3'&&!modal){e.preventDefault();return setView(['quadro','lista','calendario'][+e.key-1])}
