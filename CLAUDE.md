@@ -1,12 +1,15 @@
 # Cristiano Convites (MyBusiness)
 
-Programa Electron para Windows: Produção (kanban de pedidos) + Financeiro (Dashboard de Convites).
+Programa Electron para Windows com menu lateral: Dashboard, Demandas (produção), Financeiro (com senha), Contratos e Clientes.
 Textos da interface e mensagens em português do Brasil.
 
 ## Estrutura
 - `src/main.js`: processo principal (janela, arquivo de dados, backups, atualização automática)
 - `src/preload.js`: ponte `window.api` entre as páginas e o processo principal
-- `src/index.html` + `app.js` + `styles.css`: Produção
+- `src/shell.js` + `shell.css`: menu lateral compartilhado pelas duas páginas (`window.__shellNav(modulo)`)
+- `src/index.html` + `app.js` + `styles.css`: página principal; `app.js` tem os dados, a navegação entre módulos e as Demandas
+- `src/dashboard.js`, `src/clientes.js`, `src/contratos.js` (+ `extenso.js`): os outros módulos da página principal
+- `src/fluxo.js`: aba "Visão do mês" do Financeiro (fluxo de caixa, dados em `fin.cx`)
 - `src/financeiro.html`: Financeiro, gerado por `tools/build-financeiro.py` a partir de
   `tools/dashboard-de-convites.html` (fora do git, porque contém dados de clientes).
   Se essa fonte não existir, edite `src/financeiro.html` direto.
@@ -15,7 +18,7 @@ Textos da interface e mensagens em português do Brasil.
 - `src/agenda.js`: calendário da Produção (Mês/Semana, compromissos, arrastar, próximos 14 dias)
 
 ## Dados
-- Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, events, fin}`), com backup diário em `backups/`.
+- Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, events, clients, contracts, fin}`), com backup diário em `backups/`.
   O programa se chama "Cristiano Convites" desde a 1.2.3, mas a pasta de dados mantém o nome antigo: não renomeie.
   O `name` do package.json (`producao-cristiano-convites`) também fica, porque define a pasta de cache da atualização.
 - **O repositório é público. Nunca commitar dados de clientes** (nomes, CPF, RG, telefones, backups `.json`).
@@ -36,4 +39,5 @@ Textos da interface e mensagens em português do Brasil.
 - Fechar a janela deixa o programa na bandeja (lembretes continuam); sair: ícone da bandeja → Sair.
 - Atualização: procura ao abrir, a cada 30 min e ao focar a janela; ao baixar, contagem de 30 s,
   salva, reinicia e instala em silêncio. Registro em `%APPDATA%\Producao Cristiano Convites\atualizacao.log`.
-- Dados em `dados.json`: `{v, cfg, cards, events, fin}`. `events` são os compromissos da agenda.
+- Dados em `dados.json`: `{v, cfg, cards, events, clients, contracts, fin}`. `cfg.empresa` = dados da CONTRATADA nos contratos.
+- O Electron não tem `prompt()`: o Financeiro usa `window.api.perguntar` (caixinha do processo principal).

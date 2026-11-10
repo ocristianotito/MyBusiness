@@ -23,13 +23,24 @@ def rep(a, b, count=1):
 
 rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'vendor/jspdf.umd.min.js')
 rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', 'vendor/jspdf.plugin.autotable.min.js')
+# aba nova "Visão do mês" (fluxo.js), mostrada primeiro e aberta ao entrar
+rep("const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros'];",
+    "const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros','Visão do mês'];")
+rep("document.getElementById('nav').innerHTML=TABS.map((n,i)=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${n}</button>`).join('');",
+    "document.getElementById('nav').innerHTML=[6,0,1,2,3,4,5].map(i=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${TABS[i]}</button>`).join('');")
+rep("[v0,v1,v2,v3,v4,v5][S.tab]()", "[v0,v1,v2,v3,v4,v5,v6][S.tab]()")
+rep("let S=load(),lista=null,modal=null,pendFocus=null;", "let S=load(),lista=null,modal=null,pendFocus=null;S.tab=6;")
+doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", " if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}\n if(a==='add'){const d=prompt('Descrição da despesa:');", 1)
+rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")
+# menu lateral
+doc = doc.replace('<body>', '<body class="withside">\n<aside id="side" aria-label="Menu"></aside>\n<script src="shell.js"></script>\n<script>Shell.build("financeiro")</script>', 1)
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
 assert m, 'cabeçalho não encontrado'
 header = ('<header><div class="appbar">'
-          '<b class="appbrand">Cristiano Convites</b>'
-          '<div class="modsw" role="tablist" aria-label="Área"><button data-goto="producao">Produção</button><button class="on" aria-selected="true">Financeiro</button></div>'
+          '<span class="finicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16 15h2"/><path d="M6 6V5a2 2 0 0 1 2-2h8"/></svg></span>'
+          '<div class="fintit"><h1>Financeiro</h1><small>Fechamento do mês · protegido por senha</small></div>'
           '<span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span>'
           '<div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button>'
           '<div class="appmenu" id="appMenu" hidden>'
@@ -44,7 +55,8 @@ doc = doc[:m.start()] + header + doc[m.end():]
 style = '''<style>
 header{padding-top:12px}
 .appbar{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
-.appbrand{color:var(--teal);font-size:16px}
+.finicon{width:36px;height:36px;border-radius:10px;background:#13262a;color:var(--teal);display:inline-flex;align-items:center;justify-content:center}
+.fintit h1{margin:0;font-size:18px}.fintit small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
 .modsw{display:flex;background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px}
 .modsw button{background:none;border:0;color:var(--mu);padding:6px 14px;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;font-weight:600}
 .modsw button:hover{color:var(--tx)}
@@ -76,6 +88,9 @@ bridge = '''<script>
   if(!blocked&&this===window.localStorage&&k===KEY){empty=false;pend=v;mark('busy','Salvando…');clearTimeout(t);t=setTimeout(flush,300)}};
  function leave(page){return flush().then(function(){wipe();return window.api.ir(page)})}
  window.__beforeUpdate=function(){return flush().then(wipe)};
+ window.__shellNav=function(m){if(m==='financeiro')return;try{orig.call(localStorage,'pref_module',JSON.stringify(m))}catch(e){}leave('producao')};
+ /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
+ window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
  window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
  /* tranca sozinho depois de 15 minutos sem uso */
@@ -125,7 +140,7 @@ bridge = '''<script>
 })();
 </script>'''
 k = doc.rfind('</body>'); doc = doc[:k] + '<script src="update.js"></script>\n' + doc[k:]
-k = doc.find('</head>'); doc = doc[:k] + style + '\n' + bridge + '\n' + doc[k:]
+k = doc.find('</head>'); doc = doc[:k] + '<link rel="stylesheet" href="shell.css">\n' + style + '\n' + bridge + '\n' + doc[k:]
 # Sem dados de clientes no código (o repositório é público): as planilhas embutidas viram listas vazias.
 # Os dados reais ficam só no arquivo do computador (dados.json) e nos backups.
 for name in ['D_ADM','D_SIS','D_AGR','D_DIR','D_ENF','D_FAI','T0']:

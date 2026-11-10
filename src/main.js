@@ -106,10 +106,10 @@ ipcMain.handle('sec:set', (_e, newPw, oldPw) => {
 ipcMain.handle('sec:lock', () => { unlocked = false; });
 
 /* ----- produção ----- */
-ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: d.cfg, cards: d.cards, events: d.events || {} }; });
+ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: d.cfg, cards: d.cards, events: d.events || {}, clients: d.clients || {}, contracts: d.contracts || {} }; });
 ipcMain.handle('data:save', (_e, obj) => {
   if (!validFull(obj)) return { ok: false, error: 'Dados inválidos' };
-  try { loadData(); current.cfg = obj.cfg; current.cards = obj.cards; if (obj.events && typeof obj.events === 'object') current.events = obj.events; persist(); return { ok: true }; }
+  try { loadData(); current.cfg = obj.cfg; current.cards = obj.cards; ['events', 'clients', 'contracts'].forEach((k) => { if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) current[k] = obj[k]; }); persist(); return { ok: true }; }
   catch (e) { return { ok: false, error: String(e.message || e) }; }
 });
 
@@ -166,7 +166,7 @@ ipcMain.handle('data:applyImport', () => {
   if (secGet() && !unlocked) return { ok: false };
   loadData();
   const { kind, data } = pendingImport; pendingImport = null;
-  if (kind === 'full') { current.cfg = data.cfg || null; current.cards = data.cards; current.events = data.events || {}; if (validFin(data.fin)) current.fin = data.fin; }
+  if (kind === 'full') { current.cfg = data.cfg || null; current.cards = data.cards; current.events = data.events || {}; current.clients = data.clients || {}; current.contracts = data.contracts || {}; if (validFin(data.fin)) current.fin = data.fin; }
   else current.fin = data;
   persist();
   return { ok: true, kind };
@@ -277,6 +277,50 @@ function checkReminders() {
   remindLast = now;
 }
 setInterval(() => { try { loadData(); checkReminders(); } catch (e) {} }, 20000);
+
+/* ----- caixinha de digitação (substitui o prompt() do navegador, que o Electron não tem) ----- */
+const escH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ipcMain.on('dlg:prompt', (e, msg, def) => {
+  let done = false;
+  const pw = new BrowserWindow({ parent: win, modal: true, width: 480, height: 230, resizable: false, minimizable: false, maximizable: false, show: false,
+    backgroundColor: '#111820', title: 'Cristiano Convites', autoHideMenuBar: true, icon: path.join(__dirname, 'icon.png'),
+    webPreferences: { sandbox: true, contextIsolation: true } });
+  const finish = (v) => { if (done) return; done = true; e.returnValue = v; if (!pw.isDestroyed()) pw.destroy(); };
+  pw.setMenuBarVisibility(false);
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cristiano Convites</title><style>
+  body{margin:0;background:#111820;color:#E6EDF3;font:14px "Segoe UI",system-ui,sans-serif;padding:20px 22px}
+  label{display:block;margin-bottom:10px;line-height:1.4}input{width:100%;box-sizing:border-box;background:#0a0f14;border:1px solid #2a3746;color:#E6EDF3;border-radius:8px;padding:10px 12px;font:inherit}
+  input:focus{outline:2px solid #2DB5AE;border-color:transparent}.a{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  button{border:0;border-radius:8px;padding:8px 16px;font:600 13px inherit;cursor:pointer}.ok{background:#2DB5AE;color:#06201f}.c{background:#16202b;color:#E6EDF3;border:1px solid #1E2833}</style></head>
+  <body><form id="f"><label for="v">${escH(msg)}</label><input id="v" value="${escH(def)}" autofocus><div class="a"><button type="button" class="c" id="c">Cancelar</button><button class="ok">OK</button></div></form>
+  <script>const v=document.getElementById('v');v.select();document.getElementById('f').onsubmit=(e)=>{e.preventDefault();document.title='OK:'+encodeURIComponent(v.value)};
+  document.getElementById('c').onclick=()=>{document.title='CANCEL'};document.addEventListener('keydown',(e)=>{if(e.key==='Escape')document.title='CANCEL'});</script></body></html>`;
+  pw.on('page-title-updated', (ev, t) => { ev.preventDefault(); if (t.indexOf('OK:') === 0) finish(decodeURIComponent(t.slice(3))); else if (t === 'CANCEL') finish(null); });
+  pw.on('closed', () => finish(null));
+  pw.once('ready-to-show', () => pw.show());
+  pw.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+});
+
+/* ----- PDF de contrato: HTML montado na tela, impresso em A4 numa janela invisível ----- */
+ipcMain.handle('pdf:save', async (_e, html, filename) => {
+  const safe = String(filename || 'contrato.pdf').replace(/[\\/:*?"<>|]+/g, '-');
+  const r = await dialog.showSaveDialog(win, {
+    title: 'Salvar contrato em PDF',
+    defaultPath: path.join(app.getPath('documents'), safe),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  });
+  if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+  const pw = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true, contextIsolation: true } });
+  try {
+    await pw.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html)));
+    const pdf = await pw.webContents.printToPDF({ pageSize: 'A4', printBackground: true, preferCSSPageSize: true });
+    fs.writeFileSync(r.filePath, pdf);
+    shell.showItemInFolder(r.filePath);
+    return { ok: true, path: r.filePath };
+  } catch (e) {
+    return { ok: false, error: 'Não foi possível gerar o PDF: ' + ((e && e.message) || e) };
+  } finally { if (!pw.isDestroyed()) pw.destroy(); }
+});
 
 /* ----- navegação e utilidades ----- */
 let currentPage = 'producao';

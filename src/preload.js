@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   finSave: (str) => ipcRenderer.invoke('fin:save', str),
   finSaveSync: (str) => ipcRenderer.sendSync('fin:saveSync', str),
   saveFile: (filename, data) => ipcRenderer.invoke('file:save', filename, data),
+  perguntar: (msg, def) => ipcRenderer.sendSync('dlg:prompt', msg, def),
   // backup completo
   exportar: () => ipcRenderer.invoke('data:export'),
   importar: () => ipcRenderer.invoke('data:import'),
@@ -28,6 +29,8 @@ contextBridge.exposeInMainWorld('api', {
   trancar: () => ipcRenderer.invoke('sec:lock'),
   // agenda: clique na notificação de lembrete
   onAbrirCompromisso: (cb) => ipcRenderer.on('agenda:open', (_e, r) => cb(r)),
+  // contratos
+  gerarPdf: (html, filename) => ipcRenderer.invoke('pdf:save', html, filename),
   // navegação
   ir: (page) => ipcRenderer.invoke('app:goto', page),
   abrirLink: (url) => ipcRenderer.invoke('app:openExternal', url)

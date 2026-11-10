@@ -122,10 +122,12 @@ input:focus,select:focus{outline:2px solid var(--teal);border-color:transparent}
 .lt tr:focus-within>td{background:#cdeee6!important;transition:background .12s}.lt tr:focus-within>td:first-child{box-shadow:inset 5px 0 0 #14b8a6}.lt tr:focus-within input:not(:focus){background:#eefaf6;border-color:#9fd8cc}.lt tr:focus-within input:focus{background:#fff;border-color:#0d9488;box-shadow:0 0 0 2px #5eead466;outline:0}
 @media print{body>*:not(#relov){display:none!important}#relov{position:static!important;background:#fff!important;overflow:visible!important}#relov .rbar{display:none!important}#relov>div:not(.rbar){max-width:none!important;margin:0!important;padding:0!important}@page{size:A4 landscape;margin:12mm}}
 </style>
+<link rel="stylesheet" href="shell.css">
 <style>
 header{padding-top:12px}
 .appbar{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
-.appbrand{color:var(--teal);font-size:16px}
+.finicon{width:36px;height:36px;border-radius:10px;background:#13262a;color:var(--teal);display:inline-flex;align-items:center;justify-content:center}
+.fintit h1{margin:0;font-size:18px}.fintit small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
 .modsw{display:flex;background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px}
 .modsw button{background:none;border:0;color:var(--mu);padding:6px 14px;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;font-weight:600}
 .modsw button:hover{color:var(--tx)}
@@ -156,6 +158,9 @@ header{padding-top:12px}
   if(!blocked&&this===window.localStorage&&k===KEY){empty=false;pend=v;mark('busy','Salvando…');clearTimeout(t);t=setTimeout(flush,300)}};
  function leave(page){return flush().then(function(){wipe();return window.api.ir(page)})}
  window.__beforeUpdate=function(){return flush().then(wipe)};
+ window.__shellNav=function(m){if(m==='financeiro')return;try{orig.call(localStorage,'pref_module',JSON.stringify(m))}catch(e){}leave('producao')};
+ /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
+ window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
  window.addEventListener('beforeunload',function(){if(!blocked&&pend!=null){window.api.finSaveSync(pend);pend=null}wipe()});
  /* tranca sozinho depois de 15 minutos sem uso */
@@ -205,10 +210,14 @@ header{padding-top:12px}
 })();
 </script>
 </head>
-<body>
-<header><div class="appbar"><b class="appbrand">Cristiano Convites</b><div class="modsw" role="tablist" aria-label="Área"><button data-goto="producao">Produção</button><button class="on" aria-selected="true">Financeiro</button></div><span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span><div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button><div class="appmenu" id="appMenu" hidden><button data-bk="export">Exportar backup (produção + financeiro)…</button><button data-bk="import">Importar backup…</button><button data-bk="pasta">Abrir pasta de backups automáticos</button><button data-bk="update">Verificar atualizações (versão <span data-ver></span>)</button><button data-bk="senha">Alterar senha do Financeiro</button></div></div></div><div hidden><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm" id="bsync" style="margin:0">⟳ Sincronizar</button><span id="syncst" class="note">Só neste aparelho</span><button class="btn sm ghost" id="bkx" style="margin:0">Exportar backup</button><button class="btn sm ghost" id="bki" style="margin:0">Importar backup</button><input type="file" id="bkf" accept=".json" hidden></div></div><nav id="nav"></nav></header>
+<body class="withside">
+<aside id="side" aria-label="Menu"></aside>
+<script src="shell.js"></script>
+<script>Shell.build("financeiro")</script>
+<header><div class="appbar"><span class="finicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16 15h2"/><path d="M6 6V5a2 2 0 0 1 2-2h8"/></svg></span><div class="fintit"><h1>Financeiro</h1><small>Fechamento do mês · protegido por senha</small></div><span class="appsp"></span><span class="appsave" id="appsave"><i></i><span>Salvo no computador</span></span><div class="appmenuwrap"><button class="btn sm ghost" id="appBk" style="margin:0">Backup ▾</button><div class="appmenu" id="appMenu" hidden><button data-bk="export">Exportar backup (produção + financeiro)…</button><button data-bk="import">Importar backup…</button><button data-bk="pasta">Abrir pasta de backups automáticos</button><button data-bk="update">Verificar atualizações (versão <span data-ver></span>)</button><button data-bk="senha">Alterar senha do Financeiro</button></div></div></div><div hidden><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm" id="bsync" style="margin:0">⟳ Sincronizar</button><span id="syncst" class="note">Só neste aparelho</span><button class="btn sm ghost" id="bkx" style="margin:0">Exportar backup</button><button class="btn sm ghost" id="bki" style="margin:0">Importar backup</button><input type="file" id="bkf" accept=".json" hidden></div></div><nav id="nav"></nav></header>
 <main id="app"></main>
 <div id="modal"></div>
+<script src="fluxo.js"></script>
 <script>
 /* ===== PARTE 2: dados das planilhas (A) ===== */
 const ANO_PADRAO=2027;
@@ -246,7 +255,7 @@ function mkTurma(d){
 const P0=[].map((x,i)=>({id:9000+i,nome:x[0],parceiro:'',data:x[1],ano:ANO_PADRAO,mes:x[2],total:x[3]||0,rec:0,custo:x[4]||0,form:0,luxo:0,simp:0,foto:0,unit:0,ent:0}));
 /* ===== PARTE 4: funções, cálculos e estado ===== */
 const KEY='dashboard_convites_v2';
-const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros'];
+const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros','Visão do mês'];
 const COLS=['Até 25% pago','25% a 50% pago','50% a 99% pago','Quitado'];
 const PCOLS=['Janeiro','Fevereiro','Março','Abril','Outros'];
 const SIT={w:'Pendente',ok:'Quitado',x:'Pago a mais'};
@@ -469,7 +478,7 @@ function load(){
   if(s&&s.v===2&&Array.isArray(s.turmas)&&Array.isArray(s.parc)&&s.orc)return s}catch(e){}
  return defaultState();
 }
-let S=load(),lista=null,modal=null,pendFocus=null;
+let S=load(),lista=null,modal=null,pendFocus=null;S.tab=6;
 /* migração única: garante os modelos pedidos (inclui Miolo 16 páginas) sem mexer nos valores já salvos */
 if(!S.orc.ed)S.orc.ed={};
 if(!S.orc.mig){
@@ -814,9 +823,9 @@ function render(){
  if(!(S.tab>=0&&S.tab<TABS.length))S.tab=0;
  const y=window.scrollY,sc={},lw0=document.querySelector('.lw'),lws=lw0?lw0.scrollLeft:0;
  document.querySelectorAll('.mscroll').forEach(e=>sc[e.dataset.m]=e.scrollLeft);
- document.getElementById('nav').innerHTML=TABS.map((n,i)=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${n}</button>`).join('');
+ document.getElementById('nav').innerHTML=[6,0,1,2,3,4,5].map(i=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${TABS[i]}</button>`).join('');
  let html;
- try{html=lista!=null?vL():[v0,v1,v2,v3,v4,v5][S.tab]()}
+ try{html=lista!=null?vL():[v0,v1,v2,v3,v4,v5,v6][S.tab]()}
  catch(err){html='<div class="panel"><h3 class="r">Erro ao montar a tela</h3><p>'+esc(err&&err.message)+'</p></div>'}
  document.getElementById('app').innerHTML=html;
  let mh='';
@@ -963,6 +972,7 @@ document.addEventListener('click',e=>{
   modal=null}
 
  /* despesas */
+ if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}
  if(a==='add'){const d=prompt('Descrição da despesa:');if(!d)return;const v=num(prompt('Valor (R$):'));if(v>0)S.lanc.push({id:Date.now(),desc:d,valor:v,pago:false})}
  if(a==='tog'){const l=S.lanc.find(l=>l.id===id);if(l)l.pago=!l.pago}
  render()});

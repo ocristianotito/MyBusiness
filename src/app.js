@@ -13,12 +13,13 @@ const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','de
 const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
 /* ===== estado ===== */
-let cfg=null,cards=new Map(),events=new Map(),modal=null,dragId=null,view='quadro';
-const F={q:'',r:'',p:'',e:'',late:false,hide:false};
+let cfg=null,cards=new Map(),events=new Map(),clients=new Map(),contracts=new Map(),modal=null,dragId=null,view='quadro',curModule='dashboard';
+const F={q:'',r:'',p:'',e:'',late:false,hide:false,st:'',cli:''};
 const sortL={k:'col',dir:1};
 const pref=(k,d)=>{try{const v=localStorage.getItem('pref_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const setPref=(k,v)=>{try{localStorage.setItem('pref_'+k,JSON.stringify(v))}catch(e){}};
-let folded=new Set(pref('folded',[]));
+try{localStorage.removeItem('pref_folded')}catch(e){}   /* colunas recolhidas saíram na 1.2.4 */
+let ovRange=pref('ovRange',7),ovSemData=false;
 
 /* ===== utilidades ===== */
 const $=id=>document.getElementById(id);
@@ -48,14 +49,15 @@ const lchip=(l,x)=>`<span class="chip lb" style="background:${esc(l.c||'#8C9BAB'
 function allLabels(){const m=new Map();cards.forEach(c=>lbls(c).forEach(l=>{if(!m.has(l.n))m.set(l.n,l.c)}));return m}
 const newId=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.hidden=true},2600)}
-function setSync(cls,txt){const e=$('sync');e.className='sync '+cls;e.querySelector('span').textContent=txt}
+function setSync(cls,txt){const e=$('sync');if(!e)return;e.className='sync '+cls;e.querySelector('span').textContent=txt}
+const cliName=id=>{const c=id&&clients.get(id);return c?c.nome:''};
 
 /* ===== armazenamento (arquivo no computador, via processo principal) ===== */
 let saveTimer=null,saving=false,dirty=false;
-function snapshot(){return{v:1,cfg,cards:Object.fromEntries(cards),events:Object.fromEntries(events)}}
+function snapshot(){return{v:1,cfg,cards:Object.fromEntries(cards),events:Object.fromEntries(events),clients:Object.fromEntries(clients),contracts:Object.fromEntries(contracts)}}
 async function flushNow(){clearTimeout(saveTimer);while(saving)await new Promise(r=>setTimeout(r,50));await flush()}
 window.__beforeUpdate=()=>flushNow();
-window.__busy=()=>!!(modal&&['card','ev','cfg','pw','import'].includes(modal.t));
+window.__busy=()=>!!(modal&&['card','ev','cfg','pw','import','cli','ct','emp'].includes(modal.t));
 function persist(){dirty=true;setSync('warn','Salvando…');clearTimeout(saveTimer);saveTimer=setTimeout(flush,250)}
 async function flush(){
  if(saving){saveTimer=setTimeout(flush,200);return}
@@ -69,43 +71,55 @@ function saveCard(id,data){cards.set(id,data);persist();render()}
 function delCard(id){cards.delete(id);persist();render()}
 function saveCfg(next){cfg=next;persist();render()}
 
+/* ===== módulos (menu lateral) ===== */
+const MOD_INFO={dashboard:1,demandas:1,contratos:1,clientes:1};
+function goModule(m){
+ if(m==='financeiro')return openFin();
+ if(!MOD_INFO[m])m='dashboard';
+ curModule=m;setPref('module',m);
+ document.querySelectorAll('.module').forEach(s=>{s.hidden=s.id!=='mod-'+m});
+ if(window.Shell)Shell.setActive(m);
+ render()}
+window.__shellNav=goModule;
+function sideFooter(){
+ const f=$('sfootBtns');if(!f)return;
+ f.innerHTML='<span class="sync" id="sync"><i></i><span>Carregando…</span></span><button class="sbtn" id="bMenu" aria-haspopup="true" aria-expanded="false" title="Backup e atualizações">'+ShellIcon('gear',15)+' Backup</button>'}
+
 async function init(){
+ Shell.build('dashboard');sideFooter();
+ document.querySelectorAll('[data-icon]').forEach(e=>{e.innerHTML=ShellIcon(e.dataset.icon,19)});
  window.api.trancar();
  try{localStorage.removeItem('dashboard_convites_v2')}catch(e){}
  try{
   const d=await window.api.load();
   cfg=d.cfg||null;cards=new Map(Object.entries(d.cards||{}));events=new Map(Object.entries(d.events||{}));
+  clients=new Map(Object.entries(d.clients||{}));contracts=new Map(Object.entries(d.contracts||{}));
   setSync('on','Salvo no computador');
  }catch(e){setSync('err','Erro ao abrir os dados');$('banner').innerHTML=`<div class="banner r">Não foi possível abrir o arquivo de dados: ${esc(e.message||e)}</div>`}
  F.hide=pref('hide',false);$('fh').checked=F.hide;
- view=pref('view','quadro');setView(view);
+ view=pref('view','overview');setView(view,true);
+ /* espera os outros módulos (dashboard.js, clientes.js…) terminarem de carregar */
+ if(document.readyState==='loading')await new Promise(r=>document.addEventListener('DOMContentLoaded',r,{once:true}));
+ goModule(pref('module','dashboard'));
 }
 
 /* ===== filtros ===== */
 function visible(card){
  if(F.hide&&isDone(card))return false;
+ if(F.st&&colOf(card)!==F.st)return false;
+ if(F.cli&&(card.clientId||'')!==F.cli)return false;
  if(F.r&&(card.resp||'')!==F.r)return false;
  if(F.p&&card.prio!==F.p)return false;
  if(F.e&&!lbls(card).some(l=>l.n===F.e))return false;
  if(F.late){const d=dueInfo(card);if(!d||d.cls!=='late')return false}
- if(F.q){const h=[card.title,card.sub,card.modelo,card.resp,card.notas,lbls(card).map(l=>l.n).join(' ')].join(' ').toLowerCase();if(!h.includes(F.q.toLowerCase()))return false}
+ if(F.q){const h=[card.title,card.sub,card.modelo,card.resp,card.notas,cliName(card.clientId),lbls(card).map(l=>l.n).join(' ')].join(' ').toLowerCase();if(!h.includes(F.q.toLowerCase()))return false}
  return true}
-const filtering=()=>!!(F.q||F.r||F.p||F.e||F.late||F.hide);
+const filtering=()=>!!(F.q||F.r||F.p||F.e||F.late||F.hide||F.st||F.cli);
 function sorted(list){return list.slice().sort((a,b)=>(a[1].ord||0)-(b[1].ord||0)||((a[1].criado||0)-(b[1].criado||0)))}
 
 /* ===== cabeçalho, KPIs, filtros ===== */
 function renderTop(){
  const cf=C(),all=[...cards.values()];
- $('brandName').textContent=cf.brand||'Cristiano Convites';
- const ativos=all.filter(c=>!isDone(c)),late=ativos.filter(c=>{const d=dueInfo(c);return d&&d.cls==='late'}),
-  soon=ativos.filter(c=>{const d=dueInfo(c);return d&&d.days>=0&&d.days<=7}),
-  qtd=ativos.reduce((s,c)=>s+n0(c.luxo)+n0(c.simp),0),semPrazo=ativos.filter(c=>!parseD(c.prazo)).length;
- $('kpis').innerHTML=
-  `<div class="kpi"><small>Pedidos em produção</small><b class="t">${ativos.length}</b><em>${semPrazo?semPrazo+' sem prazo definido':'todos com prazo'}</em></div>`+
-  `<div class="kpi"><small>Convites em produção</small><b>${fmtN(qtd)}</b><em>luxo + simplificado</em></div>`+
-  `<div class="kpi"><small>Atrasados</small><b class="${late.length?'r':''}">${late.length}</b><em>prazo já passou</em></div>`+
-  `<div class="kpi"><small>Vencem em 7 dias</small><b class="${soon.length?'o':''}">${soon.length}</b><em>incluindo hoje</em></div>`+
-  `<div class="kpi"><small>Entregues</small><b class="g">${all.length-ativos.length}</b><em>em "${esc((cf.cols[cf.cols.length-1]||{}).name||'')}"</em></div>`;
  const resps=[...new Set(all.map(c=>(c.resp||'').trim()).filter(Boolean))].sort();
  if(F.r&&!resps.includes(F.r))F.r='';
  $('fr').innerHTML='<option value="">Todos os responsáveis</option>'+resps.map(r=>`<option${r===F.r?' selected':''}>${esc(r)}</option>`).join('');
@@ -114,6 +128,7 @@ function renderTop(){
  $('fe').innerHTML='<option value="">Todas as etiquetas</option>'+ls.map(l=>`<option${l===F.e?' selected':''}>${esc(l)}</option>`).join('');
  const shown=all.filter(visible).length;
  $('fcount').textContent=filtering()?shown+' de '+all.length+' cartões':all.length+' cartões';
+ renderSub();
  if(!document.querySelector('#banner .r'))$('banner').innerHTML=all.length?'':'<div class="banner">Nenhum cartão ainda. Clique em "+ Novo pedido" para criar o primeiro, ou traga seus dados em Backup → Importar backup.</div>';
 }
 
@@ -131,12 +146,13 @@ function cardHTML(id,c){
  <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div></div>`}
 function renderBoard(){
  const b=$('board'),sl=b.scrollLeft,all=[...cards.entries()],filt=filtering();
+ b.classList.toggle('single',!!F.st);
  b.innerHTML=C().cols.map(col=>{
   const inCol=sorted(all.filter(([,c])=>colOf(c)===col.id)),vis=inCol.filter(([,c])=>visible(c));
+  if(F.st&&col.id!==F.st)return '';
   const dot=`<span class="dot" style="background:${PAL[col.c]||PAL.cinza}"></span>`;
-  if(folded.has(col.id))return `<div class="col slim" data-col="${esc(col.id)}" data-unfold="${esc(col.id)}" title="Mostrar ${esc(col.name)}"><h4>${dot}<span>${esc(col.name)} · ${vis.length}</span></h4></div>`;
   const q=inCol.reduce((s,[,c])=>s+n0(c.luxo)+n0(c.simp),0);
-  return `<div class="col" data-col="${esc(col.id)}"><h4>${dot}<span class="nm" title="${esc(col.name)}">${esc(col.name)}</span><em>${filt?vis.length+'/':''}${inCol.length}</em><button class="fold" data-fold="${esc(col.id)}" title="Recolher etapa">◂</button></h4>
+  return `<div class="col" data-col="${esc(col.id)}"><h4>${dot}<span class="nm" title="${esc(col.name)}">${esc(col.name)}</span><em>${filt?vis.length+'/':''}${inCol.length}</em></h4>
   <div class="sumq">${q?fmtN(q)+' convites':'&nbsp;'}</div>
   <div class="cbody">${vis.map(([id,c])=>cardHTML(id,c)).join('')||`<div class="empty">${filt&&inCol.length?'Nenhum cartão com estes filtros':'Arraste um cartão para cá'}</div>`}</div>
   <button class="cadd" data-add="${esc(col.id)}">+ Adicionar cartão</button></div>`}).join('');
@@ -146,6 +162,7 @@ function renderBoard(){
 const LCOLS=[
  {k:'title',n:'Turma / cliente',v:c=>(c.title||'').toLowerCase()},
  {k:'col',n:'Etapa',v:c=>colIdx(c)},
+ {k:'cli',n:'Cliente',v:c=>cliName(c.clientId).toLowerCase()||'~'},
  {k:'labels',n:'Etiquetas',v:c=>lbls(c).map(l=>l.n).join(' ').toLowerCase()},
  {k:'prazo',n:'Prazo',v:c=>c.prazo||'9999'},
  {k:'prio',n:'Prioridade',v:c=>PRIO_RANK[c.prio||'']},
@@ -161,6 +178,7 @@ function renderList(){
   const col=colById(colOf(c)),d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
   return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
   <td><span class="stage"><i style="background:${PAL[col.c]||PAL.cinza}"></i>${esc(col.name)}</span></td>
+  <td>${esc(cliName(c.clientId)||'—')}</td>
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
   <td>${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="note">—</span>'}</td>
   <td>${c.prio?`<span class="chip ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="note">—</span>'}</td>
@@ -171,17 +189,83 @@ function renderList(){
 
 /* ===== calendário: ver agenda.js ===== */
 function render(){
+ if(curModule==='dashboard'&&typeof renderDashboard==='function')return renderDashboard();
+ if(curModule==='clientes'&&typeof renderClientes==='function')return renderClientes();
+ if(curModule==='contratos'&&typeof renderContratos==='function')return renderContratos();
  renderTop();
- if(view==='quadro')renderBoard();else if(view==='lista')renderList();else renderCal();
+ if(view==='overview')renderOverview();else if(view==='quadro')renderBoard();else if(view==='lista')renderList();else renderCal();
 }
-function setView(v){view=v;setPref('view',v);
+function setView(v,quiet){if(!['overview','quadro','lista','calendario'].includes(v))v='overview';view=v;setPref('view',v);
  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
- $('kpis').hidden=v==='calendario';$('vQuadro').hidden=v!=='quadro';$('vLista').hidden=v!=='lista';$('vCal').hidden=v!=='calendario';render()}
+ $('vOverview').hidden=v!=='overview';$('vQuadro').hidden=v!=='quadro';$('vLista').hidden=v!=='lista';$('vCal').hidden=v!=='calendario';
+ document.querySelector('#mod-demandas .filters').hidden=v==='calendario';
+ if(!quiet)render()}
+
+/* ===== coluna lateral: etapas e clientes ===== */
+function renderSub(){
+ const box=$('subside');if(!box)return;
+ const all=[...cards.values()],cnt=f=>all.filter(f).length;
+ const cliCounts=new Map();all.forEach(c=>{if(c.clientId&&clients.has(c.clientId)&&!isDone(c))cliCounts.set(c.clientId,(cliCounts.get(c.clientId)||0)+1)});
+ const cl=[...clients.entries()].filter(([id,c])=>c.situacao!=='encerrado'||cliCounts.get(id)).sort((a,b)=>String(a[1].nome).localeCompare(String(b[1].nome),'pt-BR'));
+ box.innerHTML=`<div class="subhead">Gestão de demandas</div>
+ <button class="subitem${!F.st&&!F.cli?' on':''}" data-sub="all"><span class="sdot" style="background:var(--teal)"></span><span>Todas as demandas</span><em>${all.length}</em></button>
+ <div class="sublabel">Etapas</div>
+ ${C().cols.map(col=>`<button class="subitem${F.st===col.id?' on':''}" data-sub="st" data-v="${esc(col.id)}"><span class="sdot" style="background:${PAL[col.c]||PAL.cinza}"></span><span>${esc(col.name)}</span><em>${cnt(c=>colOf(c)===col.id)}</em></button>`).join('')}
+ <div class="sublabel">Clientes <button class="sublink" data-sub="clientes">ver todos</button></div>
+ ${cl.length?cl.map(([id,c])=>`<button class="subitem${F.cli===id?' on':''}" data-sub="cli" data-v="${esc(id)}"><span class="sav2">${esc(initials(c.nome))}</span><span>${esc(c.nome)}</span>${cliCounts.get(id)?`<em>${cliCounts.get(id)}</em>`:''}</button>`).join(''):'<p class="note" style="padding:4px 10px">Cadastre clientes no módulo Clientes e ligue cada pedido ao seu cliente.</p>'}`;
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-sub]');if(!b||modal)return;
+ const k=b.dataset.sub,v=b.dataset.v;
+ if(k==='all'){F.st='';F.cli=''}
+ else if(k==='st'){F.st=F.st===v?'':v}
+ else if(k==='cli'){F.cli=F.cli===v?'':v}
+ else if(k==='clientes')return goModule('clientes');
+ render()});
+
+/* ===== visão geral (tabelas por prazo) ===== */
+const WDL=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+function ovRow(id,c){
+ const col=colById(colOf(c)),d=dueInfo(c),cn=cliName(c.clientId);
+ const dt=d?(d.cls==='late'||Math.abs(d.days)>6?d.txt.split(' · ')[0]:(d.days===0?'Hoje':d.days===1?'Amanhã':WDL[parseD(c.prazo).getDay()])):'—';
+ return `<tr data-id="${esc(id)}"><td><div class="ovt">${lbls(c).slice(0,2).map(l=>lchip(l)).join('')}<b>${esc(c.title||'Sem título')}</b></div></td>
+ <td class="mu up">${esc(cn||c.sub||'—')}</td>
+ <td>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
+ <td class="${d&&d.cls==='late'?'r':''}">${d?'<span class="cal-i"></span>':''}${esc(dt)}</td>
+ <td>${c.prio?`<span class="flag ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="flag">Sem prioridade</span>'}</td>
+ <td><span class="stchip" style="--c:${PAL[col.c]||PAL.cinza}">${esc(col.name)}</span></td></tr>`}
+function ovTable(title,rows,cls,open=true,key){
+ const head='<tr><th>Demanda</th><th>Cliente</th><th>Resp.</th><th>Data</th><th>Prioridade</th><th>Etapa</th></tr>';
+ return `<div class="ovgrp ${cls||''}"><button class="ovh" ${key?`data-ovt="${key}"`:''}><span class="car">${open?'▾':'▸'}</span>${title}<em>${rows.length}</em></button>
+ ${open?`<div class="ovwrap"><table class="ovtbl"><thead>${head}</thead><tbody>${rows.map(([id,c])=>ovRow(id,c)).join('')}</tbody></table></div>`:''}</div>`}
+function renderOverview(){
+ const all=[...cards.entries()].filter(([,c])=>visible(c)&&!isDone(c));   /* entregues não entram na visão por prazo */
+ const t0=today(),lim=new Date(t0);lim.setDate(lim.getDate()+ovRange);
+ const late=[],byDay=new Map(),semData=[];let alem=0;
+ all.forEach(([id,c])=>{const d=parseD(c.prazo);if(!d){semData.push([id,c]);return}
+  if(d<t0){late.push([id,c]);return}
+  if(d>lim){alem++;return}
+  const k=c.prazo;if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push([id,c])});
+ const byP=(a,b)=>String(a[1].prazo).localeCompare(String(b[1].prazo))||(PRIO_RANK[a[1].prio||'']-PRIO_RANK[b[1].prio||'']);
+ late.sort(byP);
+ const days=[...byDay.keys()].sort();
+ const n=days.reduce((s,k)=>s+byDay.get(k).length,0);
+ $('vOverview').innerHTML=`<div class="ovtop"><div class="seg">${[7,14,30].map(x=>`<button data-ovr="${x}" class="${ovRange===x?'on':''}">${x} dias</button>`).join('')}</div>
+ <h3>Próximos ${ovRange} dias <small>${n} pedido(s) · ${late.length} atrasado(s)</small></h3></div>
+ ${late.length?ovTable('<span class="warn-i"></span>Atrasados',late,'late'):''}
+ ${days.map(k=>{const d=parseD(k);return ovTable(`${WDL[d.getDay()]} · ${d.getDate()} ${MES[d.getMonth()]}`,byDay.get(k).sort(byP),'')}).join('')}
+ ${!late.length&&!days.length?`<div class="banner">Nenhum pedido com prazo nos próximos ${ovRange} dias. ${semData.length?'Defina o prazo de entrega dos pedidos para eles aparecerem aqui.':''}</div>`:''}
+ ${semData.length?ovTable('Sem data de entrega',semData,'nodate',ovSemData,'semdata'):''}
+ ${alem?`<p class="note">Mais ${alem} pedido(s) com prazo além de ${ovRange} dias.</p>`:''}`}
+document.addEventListener('click',e=>{
+ if(modal)return;
+ const r=e.target.closest('[data-ovr]');if(r){ovRange=+r.dataset.ovr;setPref('ovRange',ovRange);return render()}
+ const t=e.target.closest('[data-ovt]');if(t){ovSemData=!ovSemData;return render()}});
 
 /* ===== janela do cartão ===== */
 function openCard(id,col,prazo){
  const base=id?cards.get(id):null;if(id&&!base)return;
- const c=base?JSON.parse(JSON.stringify(base)):{title:'',sub:'',modelo:'',luxo:'',simp:'',foto:'',prazo:prazo||'',resp:'',prio:'media',notas:'',labels:[],col:col||(C().cols[0]||{}).id,check:(C().check||[]).map(t=>({t,d:false}))};
+ const c=base?JSON.parse(JSON.stringify(base)):{clientId:F.cli||'',title:'',sub:'',modelo:'',luxo:'',simp:'',foto:'',prazo:prazo||'',resp:'',prio:'media',notas:'',labels:[],col:col||(C().cols[0]||{}).id,check:(C().check||[]).map(t=>({t,d:false}))};
  if(!Array.isArray(c.check))c.check=[];if(!Array.isArray(c.labels))c.labels=[];
  modal={t:'card',id,c,confirm:false};renderModal()}
 function renderModal(){
@@ -190,13 +274,16 @@ function renderModal(){
  if(modal.t==='cfg')return renderCfg();
  if(modal.t==='pw')return renderPw();
  if(modal.t==='ev')return renderEv();
+ if(modal.t==='cli')return renderCli();
+ if(modal.t==='ct'||modal.t==='emp')return renderCt();
  const c=modal.c,k=chk(c),cols=C().cols,fmtAt=t=>t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
  m.innerHTML=`<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mt">
  <h2 id="mt">${modal.id?esc(c.title||'Cartão'):'Novo pedido'}</h2><div class="sub">${modal.id?'Edite as informações e clique em Salvar (Ctrl+Enter).':'Preencha o que souber agora; dá para completar depois.'}</div>
  <div class="dlgcols"><div>
  <div class="fg">
   <label class="full">Turma / cliente<input id="m-title" value="${esc(c.title)}" placeholder="Ex.: Direito · 2027.1"></label>
-  <label class="full">Lista / instituição<input id="m-sub" value="${esc(c.sub)}" placeholder="Ex.: Direito UNEX"></label>
+  <label>Lista / instituição<input id="m-sub" value="${esc(c.sub)}" placeholder="Ex.: Direito UNEX"></label>
+  <label>Cliente<select id="m-cli"><option value="">Sem cliente</option>${[...clients.entries()].sort((a,b)=>String(a[1].nome).localeCompare(String(b[1].nome),'pt-BR')).map(([id,x])=>`<option value="${esc(id)}"${c.clientId===id?' selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>
   <label>Etapa<select id="m-col">${cols.map(x=>`<option value="${esc(x.id)}"${x.id===colOf(c)?' selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
   <label>Modelo / tamanho<input id="m-modelo" list="modelos" value="${esc(c.modelo)}" placeholder="Ex.: 25x18 cm"></label>
   <label>Prazo de entrega<input id="m-prazo" type="date" value="${esc(c.prazo)}"></label>
@@ -229,7 +316,7 @@ function renderModal(){
  const nt=$('m-notas');const fit=()=>{nt.style.height='auto';nt.style.height=(nt.scrollHeight+2)+'px'};fit();nt.addEventListener('input',fit);
  if(!modal.id)setTimeout(()=>{const e=$('m-title');if(e)e.focus()},30)}
 function readForm(){const c=modal.c,v=id=>{const e=$(id);return e?e.value:''};
- c.title=v('m-title').trim();c.sub=v('m-sub').trim();c.col=v('m-col');c.modelo=v('m-modelo').trim();c.prazo=v('m-prazo');c.prio=v('m-prio');c.resp=v('m-resp').trim();
+ c.title=v('m-title').trim();c.sub=v('m-sub').trim();c.clientId=v('m-cli');c.col=v('m-col');c.modelo=v('m-modelo').trim();c.prazo=v('m-prazo');c.prio=v('m-prio');c.resp=v('m-resp').trim();
  c.luxo=n0(v('m-luxo'));c.simp=n0(v('m-simp'));c.foto=n0(v('m-foto'));c.notas=v('m-notas');
  document.querySelectorAll('[data-ct]').forEach(e=>{const i=+e.dataset.ct;if(c.check[i])c.check[i].t=e.value});
  document.querySelectorAll('[data-ck]').forEach(e=>{const i=+e.dataset.ck;if(c.check[i])c.check[i].d=e.checked})}
@@ -312,19 +399,18 @@ let downOv=false;
 document.addEventListener('mousedown',e=>{downOv=e.target.classList.contains('ov')});
 document.addEventListener('click',e=>{
  const t=e.target;
- if(!t.closest('.menuwrap')&&!$('menu').hidden){$('menu').hidden=true;$('bMenu').setAttribute('aria-expanded','false')}
- if(t.id==='bMenu'){const mm=$('menu');mm.hidden=!mm.hidden;t.setAttribute('aria-expanded',String(!mm.hidden));return}
+ const bm=t.closest('#bMenu');
+ if(!bm&&!t.closest('#menu')&&!$('menu').hidden){$('menu').hidden=true;$('bMenu').setAttribute('aria-expanded','false')}
+ if(bm){const mm=$('menu');mm.hidden=!mm.hidden;bm.setAttribute('aria-expanded',String(!mm.hidden));return}
  if(t.dataset.m)return doMenu(t.dataset.m);
- if(t.dataset.goto){openFin();return}
  if(t.id==='bNew')return openCard(null);
  if(t.id==='bCfg')return openCfg();
  const vb=t.closest('#views button');if(vb)return setView(vb.dataset.view);
  if(!modal){
   const add=t.closest('[data-add]');if(add)return openCard(null,add.dataset.add);
-  const fo=t.closest('[data-fold]');if(fo){folded.add(fo.dataset.fold);setPref('folded',[...folded]);return render()}
-  const uf=t.closest('[data-unfold]');if(uf){folded.delete(uf.dataset.unfold);setPref('folded',[...folded]);return render()}
   const th=t.closest('th[data-sort]');if(th){const k=th.dataset.sort;if(sortL.k===k)sortL.dir*=-1;else{sortL.k=k;sortL.dir=1}return render()}
   if(t.closest('#vCal'))return;   /* o calendário trata os próprios cliques (agenda.js) */
+  if(t.closest('[data-sub],[data-ovr],[data-ovt]'))return;
   const el=t.closest('[data-id]');if(el)return openCard(el.dataset.id);
   return}
  if(t.classList.contains('ov')&&downOv){modal=null;return renderModal()}
@@ -333,6 +419,8 @@ document.addEventListener('click',e=>{
  if(modal.t==='pw'&&act==='pwok')return submitPw();
  if(modal.t==='import'&&act==='doimport'){modal=null;renderModal();window.api.aplicarImport().then(r=>{if(r.ok)window.api.ir('producao')});return}
  if(modal.t==='ev')return agendaModalClick(t,act);
+ if(modal.t==='cli')return clientesModalClick(t,act);
+ if(modal.t==='ct'||modal.t==='emp')return contratosModalClick(t,act);
  if(modal.t==='card'){
   if(act==='save')return saveModal();
   if(act==='trello')return window.api.abrirLink(modal.c.trello);
@@ -364,8 +452,8 @@ document.addEventListener('keydown',e=>{
  if(ctrl&&e.key==='Enter'&&modal&&modal.t==='card'){e.preventDefault();return saveModal()}
  if(ctrl&&e.key==='Enter'&&modal&&modal.t==='ev'){e.preventDefault();return saveEv()}
  if(ctrl&&(e.key==='n'||e.key==='N')&&!modal){e.preventDefault();return openCard(null)}
- if(ctrl&&(e.key==='f'||e.key==='F')&&!modal){e.preventDefault();$('fq').focus();$('fq').select();return}
- if(ctrl&&e.key>='1'&&e.key<='3'&&!modal){e.preventDefault();return setView(['quadro','lista','calendario'][+e.key-1])}
+ if(ctrl&&(e.key==='f'||e.key==='F')&&!modal&&curModule==='demandas'){e.preventDefault();$('fq').focus();$('fq').select();return}
+ if(ctrl&&e.key>='1'&&e.key<='4'&&!modal&&curModule==='demandas'){e.preventDefault();return setView(['overview','quadro','lista','calendario'][+e.key-1])}
  if(e.key==='Enter'&&modal&&e.target.id==='m-newck'){e.preventDefault();document.querySelector('[data-act=addck]').click();return}
  if(e.key==='Enter'&&modal&&e.target.id==='m-newlb'){e.preventDefault();document.querySelector('[data-act=addlb]').click();return}
  if(e.key==='Enter'&&modal&&e.target.id==='c-newcol'){e.preventDefault();document.querySelector('[data-act=addcol]').click();return}
@@ -385,10 +473,10 @@ function dropTarget(colEl,y){const cs=[...colEl.querySelectorAll('.cardk')].filt
 board.addEventListener('dragstart',e=>{const c=e.target.closest('.cardk');if(!c)return;dragId=c.dataset.id;c.classList.add('drag');e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move'});
 board.addEventListener('dragend',()=>{dragId=null;clearMarks();document.querySelectorAll('.cardk.drag').forEach(x=>x.classList.remove('drag'))});
 board.addEventListener('dragover',e=>{const col=e.target.closest('.col');if(!col||!dragId)return;e.preventDefault();clearMarks();col.classList.add('over');
- if(col.classList.contains('slim'))return;const b=dropTarget(col,e.clientY);if(b)b.classList.add('before')});
+ const b=dropTarget(col,e.clientY);if(b)b.classList.add('before')});
 board.addEventListener('dragleave',e=>{const col=e.target.closest('.col');if(col&&!col.contains(e.relatedTarget))col.classList.remove('over')});
 board.addEventListener('drop',e=>{const colEl=e.target.closest('.col');if(!colEl||!dragId)return;e.preventDefault();
- const id=dragId,card=cards.get(id);if(!card)return;const col=colEl.dataset.col,before=colEl.classList.contains('slim')?null:dropTarget(colEl,e.clientY);clearMarks();
+ const id=dragId,card=cards.get(id);if(!card)return;const col=colEl.dataset.col,before=dropTarget(colEl,e.clientY);clearMarks();
  const list=sorted([...cards.entries()].filter(([k,c])=>k!==id&&colOf(c)===col));
  let ord;
  if(!before)ord=(list.length?(list[list.length-1][1].ord||0):0)+1024;

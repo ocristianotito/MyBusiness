@@ -1,0 +1,30 @@
+/* Menu lateral e cabeçalho de página: compartilhado pela tela principal e pelo Financeiro.
+   Cores próprias (--sh-*) para funcionar nas duas páginas. */
+:root{--sh-bg:#0B0F14;--sh-side:#0D131A;--sh-card:#111820;--sh-card2:#16202b;--sh-bd:#1E2833;--sh-tx:#E6EDF3;--sh-mu:#8B9BAE;--sh-teal:#2DB5AE;--sh-ink:#06201f;--sh-w:232px}
+#side{position:fixed;inset:0 auto 0 0;width:var(--sh-w);background:var(--sh-side);border-right:1px solid var(--sh-bd);display:flex;flex-direction:column;z-index:15;padding:18px 12px 12px;font-family:"Segoe UI Variable Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--sh-tx)}
+.sbrand{display:flex;align-items:center;gap:10px;padding:0 6px 18px}
+.sbrand b{font-size:15px;line-height:1.1;letter-spacing:.2px}
+.slogo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2DB5AE,#1b7f7a);color:var(--sh-ink);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;letter-spacing:.5px;flex-shrink:0}
+.slabel{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--sh-mu);padding:6px 10px 8px;font-weight:600}
+.snav{display:flex;flex-direction:column;gap:3px}
+.snav button{display:flex;align-items:center;gap:11px;width:100%;background:none;border:0;color:#b9c6d3;padding:10px 12px;border-radius:10px;cursor:pointer;font:inherit;font-size:14px;text-align:left}
+.snav button:hover{background:#151e28;color:var(--sh-tx)}
+.snav button.on{background:var(--sh-teal);color:var(--sh-ink);font-weight:600;box-shadow:0 6px 18px rgba(45,181,174,.25)}
+.snav button span{flex:1}
+.snav .slock{display:inline-flex;opacity:.55}
+.snav button.on .slock{opacity:.8}
+.snav button:focus-visible{outline:2px solid var(--sh-teal);outline-offset:2px}
+.sfoot{margin-top:auto;border-top:1px solid var(--sh-bd);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.suser{display:flex;align-items:center;gap:10px;padding:0 4px}
+.suser b{display:block;font-size:13px;font-weight:600}
+.suser small{color:var(--sh-mu);font-size:11px}
+.sav{width:32px;height:32px;border-radius:50%;background:#173533;color:var(--sh-teal);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.sbtns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+body.withside{padding-left:var(--sh-w)}
+/* cabeçalho de página */
+.pagehead{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--sh-bd);background:var(--sh-bg);flex-wrap:wrap;min-height:64px}
+.pagehead .phicon{width:36px;height:36px;border-radius:10px;background:#13262a;color:var(--sh-teal);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pagehead h1{margin:0;font-size:18px;font-weight:700;line-height:1.2}
+.pagehead small{display:block;color:var(--sh-mu);font-size:12px;margin-top:2px}
+.pagehead .phsp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--sh-bd);background:var(--sh-card);border-radius:10px;padding:7px 12px;font-size:12px;color:var(--sh-tx);white-space:nowrap}
