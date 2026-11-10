@@ -1,10 +1,13 @@
-# Gera o instalador do Windows e publica a Release quando uma tag v* é enviada (ex.: v1.2.0).
-# O programa instalado consulta as Releases para se atualizar sozinho.
+# Gera o instalador do Windows e publica a Release quando a versão do package.json muda na main.
+# A Release (tag vX.Y.Z) leva o latest.yml que o programa instalado consulta para se atualizar sozinho.
+# Também dá para rodar à mão em Actions → Publicar versão → Run workflow.
 name: Publicar versão
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['package.json']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,17 +23,24 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Conferir versão da tag
+      - name: Ver se esta versão já foi publicada
+        id: ver
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           v=$(node -p "require('./package.json').version")
-          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
-            echo "A tag $GITHUB_REF_NAME não bate com a versão v$v do package.json"; exit 1
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "A versão v$v já está publicada; nada a fazer."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - run: npm ci
+      - if: steps.ver.outputs.skip != 'true'
+        run: npm ci
 
       - name: Gerar instalador e publicar Release
+        if: steps.ver.outputs.skip != 'true'
         run: npx electron-builder --win nsis --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
