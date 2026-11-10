@@ -290,7 +290,7 @@
   css.textContent = `.vm{max-width:1240px;margin:0 auto}
 .vmtop{display:flex;align-items:center;gap:8px;margin:0 0 16px}.vmtop h2{margin:0 8px 0 6px;font-size:20px}.vmtop .btn{margin:0}
 .vmcards{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;margin-bottom:16px}
-.vmc{background:var(--pn);border:1px solid var(--bd);border-radius:14px;padding:18px 20px;min-width:0}
+.vmc{background:var(--pn);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;min-width:0}
 .vmc>b{display:block;font-size:30px;font-weight:700;margin:8px 0 10px;font-variant-numeric:tabular-nums}
 .vmc.lucro{background:linear-gradient(135deg,#123331 0%,var(--pn) 70%);border-color:#1f4a46}
 .vmcl{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu);font-weight:600}
@@ -314,7 +314,7 @@
 .vmturmas{margin-bottom:16px}.vmtk{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}.vmtk small{display:block;color:var(--mu);font-size:12px}.vmtk b{font-size:18px}
 .vmwarn{background:#2a2410;border:1px solid #5c4b14;color:#f4d27a;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px}
 .vmcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-.vmpanel{background:var(--pn);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.vmpanel{background:var(--pn);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .vmph{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--bd)}.vmph em{font-style:normal;color:var(--mu);font-size:12px}
 .vmg{border-bottom:1px solid var(--bd)}.vmg:last-child{border-bottom:0}
 .vmgh{display:flex;align-items:center;gap:8px;width:100%;background:#0f1620;border:0;color:var(--tx);padding:10px 16px;font:inherit;font-size:12px;cursor:pointer;text-align:left}

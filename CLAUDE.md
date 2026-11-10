@@ -6,6 +6,8 @@ Textos da interface e mensagens em português do Brasil.
 ## Estrutura
 - `src/main.js`: processo principal (janela, arquivo de dados, backups, atualização automática)
 - `src/preload.js`: ponte `window.api` entre as páginas e o processo principal
+- `src/tema.css`: **tema único** (cores, fonte, cantos, botões, campos, tabelas, janelas), carregado por último nas duas páginas;
+  mudanças de visual vão aqui. No Financeiro, as regras antigas são ajustadas por `body.fin`.
 - `src/shell.js` + `shell.css`: menu lateral compartilhado pelas duas páginas (`window.__shellNav(modulo)`)
 - `src/index.html` + `app.js` + `styles.css`: página principal; `app.js` tem os dados, a navegação entre módulos e as Demandas
 - `src/dashboard.js`, `src/clientes.js`, `src/contratos.js` (+ `extenso.js`): os outros módulos da página principal

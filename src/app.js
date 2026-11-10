@@ -144,10 +144,10 @@ function renderTop(){
  const cf=C(),all=[...cards.values()];
  const resps=[...new Set(all.map(c=>(c.resp||'').trim()).filter(Boolean))].sort();
  if(F.r&&!resps.includes(F.r))F.r='';
- $('fr').innerHTML='<option value="">Todos os responsáveis</option>'+resps.map(r=>`<option${r===F.r?' selected':''}>${esc(r)}</option>`).join('');
+ $('fr').innerHTML='<option value="">Responsável</option>'+resps.map(r=>`<option${r===F.r?' selected':''}>${esc(r)}</option>`).join('');
  const ls=[...allLabels().keys()].sort();
  if(F.e&&!ls.includes(F.e))F.e='';
- $('fe').innerHTML='<option value="">Todas as etiquetas</option>'+ls.map(l=>`<option${l===F.e?' selected':''}>${esc(l)}</option>`).join('');
+ $('fe').innerHTML='<option value="">Etiqueta</option>'+ls.map(l=>`<option${l===F.e?' selected':''}>${esc(l)}</option>`).join('');
  const shown=all.filter(visible).length;
  $('fcount').textContent=filtering()?shown+' de '+all.length+' cartões':all.length+' cartões';
  renderSub();

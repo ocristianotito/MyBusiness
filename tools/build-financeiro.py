@@ -33,7 +33,7 @@ rep("let S=load(),lista=null,modal=null,pendFocus=null;", "let S=load(),lista=nu
 doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", " if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}\n if(a==='add'){const d=prompt('Descrição da despesa:');", 1)
 rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")
 # menu lateral
-doc = doc.replace('<body>', '<body class="withside">\n<aside id="side" aria-label="Menu"></aside>\n<script src="shell.js"></script>\n<script>Shell.build("financeiro")</script>', 1)
+doc = doc.replace('<body>', '<body class="withside fin">\n<aside id="side" aria-label="Menu"></aside>\n<script src="shell.js"></script>\n<script>Shell.build("financeiro")</script>', 1)
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
@@ -141,6 +141,7 @@ bridge = '''<script>
 </script>'''
 k = doc.rfind('</body>'); doc = doc[:k] + '<script src="update.js"></script>\n' + doc[k:]
 k = doc.find('</head>'); doc = doc[:k] + '<link rel="stylesheet" href="shell.css">\n' + style + '\n' + bridge + '\n' + doc[k:]
+k = doc.find('</head>'); doc = doc[:k] + '<link rel="stylesheet" href="tema.css">\n' + doc[k:]   # tema único: por último
 # Sem dados de clientes no código (o repositório é público): as planilhas embutidas viram listas vazias.
 # Os dados reais ficam só no arquivo do computador (dados.json) e nos backups.
 for name in ['D_ADM','D_SIS','D_AGR','D_DIR','D_ENF','D_FAI','T0']:

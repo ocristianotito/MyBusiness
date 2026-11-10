@@ -1,0 +1,156 @@
+/* ===== Tema único do programa =====
+   Carregado por último nas duas páginas (index.html e financeiro.html) para que tudo siga o mesmo padrão:
+   cores, fonte, tamanhos de texto, cantos, botões, campos, tabelas, cartões e janelas.
+   Escala: texto 13–14px · títulos de página 18px · títulos de seção 20px · números de destaque 20–30px
+   Cantos: cartões e painéis 12px · botões e campos 8px · etiquetas 6px · pílulas 99px */
+:root{
+ --c-bg:#0B0F14;--c-side:#0D131A;--c-card:#111820;--c-card2:#16202b;--c-sunk:#0a0f14;--c-head:#0f161e;
+ --c-bd:#1E2833;--c-bd2:#2a3746;--c-tx:#E6EDF3;--c-mu:#8B9BAE;
+ --c-teal:#2DB5AE;--c-ink:#06201f;--c-green:#34D399;--c-orange:#F0A53F;--c-red:#F87171;--c-purple:#A78BFA;--c-blue:#60A5FA;
+ --r-card:12px;--r-ctl:8px;--r-tag:6px;
+ --f:"Segoe UI Variable Text","Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+ /* nomes usados pela página principal */
+ --bg:var(--c-bg);--card:var(--c-card);--card2:var(--c-card2);--bd:var(--c-bd);--bd2:var(--c-bd2);--tx:var(--c-tx);--mu:var(--c-mu);
+ --teal:var(--c-teal);--ink:var(--c-ink);--green:var(--c-green);--orange:var(--c-orange);--red:var(--c-red);--purple:var(--c-purple);--blue:var(--c-blue);
+ /* nomes usados pelo Financeiro (Dashboard de Convites) */
+ --pn:var(--c-card);--pn2:var(--c-card2);--g:var(--c-green);--o:var(--c-orange);--r:var(--c-red);--p:var(--c-purple);
+ --sh-bg:var(--c-bg);--sh-side:var(--c-side);--sh-card:var(--c-card);--sh-card2:var(--c-card2);--sh-bd:var(--c-bd);--sh-tx:var(--c-tx);--sh-mu:var(--c-mu);--sh-teal:var(--c-teal);
+ color-scheme:dark;
+}
+html,body{background:var(--c-bg)}
+body{font-family:var(--f);font-size:14px;line-height:1.45;color:var(--c-tx);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#243140;border-radius:8px;border:2px solid var(--c-bg)}::-webkit-scrollbar-track{background:transparent}
+
+/* ----- botões (iguais em todas as telas) ----- */
+.btn{background:var(--c-teal);color:var(--c-ink);border:0;border-radius:var(--r-ctl);padding:8px 14px;font-weight:600;font-size:13px;line-height:1.2;cursor:pointer}
+.btn.sm{padding:6px 11px;font-size:12px}
+.btn.ghost{background:var(--c-card2);color:var(--c-tx);border:1px solid var(--c-bd)}
+.btn.ghost:hover{border-color:var(--c-bd2)}
+.btn.danger{background:#3a1d22;color:var(--c-red);border:0}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--c-teal);outline-offset:1px}
+
+/* ----- campos ----- */
+.dlg input,.dlg select,.dlg textarea,.filters input,.filters select,.hsel,.hsearch{border-radius:var(--r-ctl)}
+
+/* ----- janelas ----- */
+.ov{background:rgba(5,8,12,.78)!important}
+.dlg{background:var(--c-card);border:1px solid var(--c-bd);border-top:3px solid var(--c-teal);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.dlg h2{font-size:18px;font-weight:700}
+.dlg .sub{color:var(--c-mu);font-size:12px}
+
+/* ----- cartões e painéis: mesmo canto e mesma borda ----- */
+.ck,.dks,.dpanel,.vmc,.vmpanel,.ctrow,.ctable,.ovwrap,.tablewrap,.col,.kpi,.agside,.wk,.day,.emptybox,.banner,.pcard{border-radius:var(--r-card)}
+.vmc,.dpanel{padding:18px 20px}
+
+/* ----- títulos ----- */
+.pagehead h1,.fintit h1{font-size:18px;font-weight:700;letter-spacing:.1px}
+.vmtop h2,.ovtop h3{font-size:20px;font-weight:700}
+
+/* ----- etiquetas e pílulas ----- */
+.chip,.tag,.tag2,.vmcat,.stchip{border-radius:var(--r-tag)}
+.sit,.dchip{border-radius:99px}
+
+/* ----- abas de visualização: o mesmo botão arredondado em Demandas e no Financeiro ----- */
+.views button,.seg button{border-radius:var(--r-ctl);font-weight:600}
+.views button.on,.seg button.on{background:var(--c-card2);color:var(--c-teal)}
+
+/* ----- filtros das Demandas: uma linha só, com as opções em formato de pílula ----- */
+.filters{flex-wrap:wrap;gap:8px}
+.filters input[type=search]{flex:1 1 260px;max-width:360px}
+.filters select{padding:7px 10px}
+.filters .tog{border:1px solid var(--c-bd);background:var(--c-card);border-radius:99px;padding:6px 12px;color:#c3cfdb}
+.filters .tog:has(input:checked){border-color:var(--c-teal);color:var(--c-tx);background:#13262a}
+.filters .tog input{margin:0}
+
+/* =====================================================================
+   Financeiro (abas que vieram do Dashboard de Convites): mesmo visual do resto
+   ===================================================================== */
+body.fin header{background:var(--c-bg);padding:14px 24px 0;border-bottom:1px solid var(--c-bd)}
+body.fin .appbar{min-height:44px;margin-bottom:12px}
+body.fin nav#nav{display:flex;gap:4px;padding-bottom:10px;flex-wrap:wrap}
+body.fin nav#nav button{border:0;border-radius:var(--r-ctl);padding:7px 14px;color:var(--c-mu);font-size:14px;font-weight:600;background:none}
+body.fin nav#nav button:hover{color:var(--c-tx)}
+body.fin nav#nav button.on{background:var(--c-card2);color:var(--c-teal);border:0}
+body.fin main{max-width:1280px;padding:22px 24px 40px}
+body.fin h2{font-size:20px;font-weight:700;margin:0 0 16px}
+body.fin h3{font-size:14px;font-weight:700}
+body.fin .note{font-size:12px;line-height:1.5}
+/* indicadores */
+body.fin .grid{gap:12px}
+body.fin .kpi{background:var(--c-card);border:1px solid var(--c-bd);padding:14px 16px}
+body.fin .kpi small{font-size:12px;color:var(--c-mu)}
+body.fin .kpi b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+body.fin .panel{background:var(--c-card);border:1px solid var(--c-bd);border-radius:var(--r-card);padding:18px 20px}
+/* quadros (turmas e parceiros) */
+body.fin .board{gap:14px}
+body.fin .col{background:#0e141b;border:1px solid var(--c-bd);padding:12px}
+body.fin .col h4{font-size:13px;letter-spacing:.2px}
+body.fin .col h4 em{background:var(--c-card2);border-radius:99px;padding:1px 9px;font-size:12px}
+body.fin .cardk{background:var(--c-card);border:1px solid var(--c-bd);border-radius:10px}
+body.fin .cardk:hover{border-color:var(--c-teal)}
+body.fin .cardk h5{font-size:14px;font-weight:600}
+body.fin .amt{font-size:18px}
+body.fin .prog{background:var(--c-card2);height:6px;border-radius:99px}
+body.fin .prog i{border-radius:99px}
+body.fin .yr{border-bottom:1px solid var(--c-bd);margin:22px 0 12px}
+body.fin .yr h3{font-size:18px;color:var(--c-teal)}
+body.fin .ysub{color:var(--c-teal);font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+/* tabelas */
+body.fin table th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--c-mu);font-weight:600;background:var(--c-head)}
+body.fin table td{border-bottom-color:var(--c-bd);font-size:13px}
+body.fin tfoot td{background:var(--c-head)}
+body.fin .tw{border-radius:var(--r-card)}
+/* campos */
+body.fin input,body.fin select,body.fin textarea{background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);color:var(--c-tx)}
+body.fin label{color:var(--c-mu);font-size:12px}
+body.fin .info>div{background:var(--c-card2);border:0}
+/* orçamentos */
+body.fin .mscroll{border:1px solid var(--c-bd);border-radius:var(--r-card)}
+body.fin .mscroll input{background:var(--c-sunk)}
+/* lista de formandos: tabela escura como as outras (antes era clara) */
+body.fin .lw{background:var(--c-card);border:1px solid var(--c-bd)}
+body.fin .lt{color:var(--c-tx)}
+body.fin .lt th{background:var(--c-head);color:var(--c-mu);border-bottom:2px solid var(--c-bd2)}
+body.fin .lt th.q{background:#10262a;border-color:var(--c-teal)}
+body.fin .lt th.v{background:#1d1a33;border-color:var(--c-purple)}
+body.fin .lt th.m{background:#10261d;border-color:var(--c-green)}
+body.fin .lt th.s{background:#2a2010;border-color:var(--c-orange)}
+body.fin .lt td{border-bottom:1px solid var(--c-bd)}
+body.fin .lt input{background:var(--c-sunk);color:var(--c-tx);border:1px solid var(--c-bd)}
+body.fin .lt input.g{color:var(--c-green)}
+body.fin .lt input.ovr{background:#2a2410;border-color:#8a6d00;color:#f4d27a}
+body.fin .lt td.o{color:var(--c-orange)}
+body.fin .lt tfoot td{background:var(--c-head);color:var(--c-tx)}
+body.fin .lt tr:focus-within>td{background:#13262a!important}
+body.fin .lt tr:focus-within>td:first-child{box-shadow:inset 4px 0 0 var(--c-teal)}
+body.fin .lt tr:focus-within input:not(:focus){background:#0f1d20;border-color:#1f4a46}
+body.fin .lt tr:focus-within input:focus{background:var(--c-sunk);border-color:var(--c-teal);box-shadow:0 0 0 2px rgba(45,181,174,.25)}
+body.fin .lhead{background:var(--c-bg);border-bottom-color:var(--c-bd)}
+body.fin .ltitle input:hover,body.fin .ltitle input:focus{background:var(--c-card2)}
+body.fin .bd.w{background:#3a2c14;color:var(--c-orange);border-color:#6b4a14}
+body.fin .bd.ok{background:#12372b;color:var(--c-green);border-color:#1f6b4c}
+body.fin .bd.x{background:#152a44;color:var(--c-blue);border-color:#28507f}
+/* janelas do Financeiro */
+body.fin .dlg{max-height:92vh}
+body.fin .acts .btn{margin:0}
+body.fin .btn.full{margin:0 0 10px}
+/* filtros das Demandas compactos, para caberem numa linha */
+.filters input[type=search]{flex:1 1 200px;max-width:280px;min-width:180px}
+.filters select{width:auto;max-width:175px;font-size:13px}
+.filters .tog{font-size:12px;padding:6px 11px;white-space:nowrap}
+.filters #fcount{white-space:nowrap}
+.filters select{max-width:190px}
+.filters input[type=search]{flex:1 1 170px;min-width:150px}
+@media(max-width:1599px){
+ .subside{width:210px}
+ .filters #fcount{display:none}
+ .filters .tog{padding:6px 10px}
+ .pagehead .views{margin-left:10px;padding-left:10px}
+ .views button{padding:7px 11px}
+}
+/* seletores com largura fixa: a lista aberta continua mostrando o nome inteiro */
+.filters select{width:132px;max-width:none;text-overflow:ellipsis}
+@media(min-width:1600px){.filters select{width:150px}}
