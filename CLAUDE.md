@@ -25,6 +25,11 @@ Textos da interface e mensagens em português do Brasil.
   `src/seed.json` deve continuar sem cartões e com `fin: null`.
 
 ## Publicar uma versão nova (atualização automática)
+**Só publique quando o dono pedir.** Ele prefere juntar várias alterações numa versão só.
+Até lá, faça commits e push na `main` **sem mudar `version`** no `package.json` (sem essa mudança o workflow não roda).
+A 1.2.7 foi cancelada antes de publicar: `package.json` já está em 1.2.7, que é o número da próxima versão.
+Na hora de publicar, mude qualquer coisa no `package.json` (ex.: `version`, se for subir para 1.2.8) ou rode
+o workflow à mão (Actions → Publicar versão → Run workflow); versões já publicadas são ignoradas.
 1. Aumente `version` no `package.json` no mesmo commit da mudança. O dono prefere subir o último número
    (1.2.1 → 1.2.2), não o do meio.
 2. Faça push na `main`. O workflow `.github/workflows/release.yml` gera o instalador num Windows
