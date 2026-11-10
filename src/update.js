@@ -55,13 +55,21 @@
   api.onAtualizacao(show);
   api.estadoAtualizacao().then(show);
   api.versao().then(function (v) { document.querySelectorAll('[data-ver]').forEach(function (el) { el.textContent = v; }); });
+  /* erro técnico → explicação curta; o detalhe completo fica em atualizacao.log */
+  function motivo(m) {
+    m = String(m || '');
+    if (/\b(404|401|403)\b/.test(m)) return 'Não foi possível acessar as atualizações no GitHub. Confira se o repositório MyBusiness está público e tente de novo.';
+    if (/ENOTFOUND|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|net::|getaddrinfo|socket/i.test(m)) return 'Sem conexão com a internet agora. O programa tenta de novo sozinho daqui a pouco.';
+    if (/sha512|checksum|signature/i.test(m)) return 'O download da atualização veio incompleto. O programa baixa de novo na próxima verificação.';
+    return 'Não foi possível verificar as atualizações agora. O programa tenta de novo sozinho em 30 minutos.';
+  }
   window.__checkUpdates = function () {
     msg('Procurando atualizações…');
     api.verificarAtualizacao().then(function (s) {
       if (s.state === 'ready') countdown(s);
       else if (s.state === 'downloading') msg('Baixando a versão ' + s.version + (s.percent ? ' (' + s.percent + '%)' : '') + '. Quando terminar, o programa reinicia sozinho.', 7000);
       else if (s.state === 'dev') msg('Atualização automática só funciona no programa instalado.', 5000);
-      else if (s.state === 'error') msg('Não foi possível verificar: ' + (s.msg || 'sem conexão') + '. Tente de novo mais tarde.', 10000);
+      else if (s.state === 'error') msg(motivo(s.msg), 12000);
       else api.versao().then(function (v) { msg('Você já está na versão mais recente (' + v + ').', 5000); });
     });
   };
