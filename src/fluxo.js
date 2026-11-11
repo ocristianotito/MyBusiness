@@ -288,6 +288,53 @@
     </div><p class="note">Despesas lançadas na versão antiga. As novas ficam nas saídas da <button class="linkb" data-vm="vermes">Visão do mês</button>.</p>` : ''}
     </div></div>`;
   };
+  /* ===== relatório da turma (PDF para a comissão: sem custos, margem nem documentos dos formandos) ===== */
+  async function relatorioTurma(btn) {
+    const T = typeof turmaLista === 'function' ? turmaLista() : null; if (!T) return;
+    const SITN = { ok: 'Quitado', w: 'Pendente', x: 'Pago a mais', '': '—' };
+    const linhas = (T.alunos || []).filter((a) => String(a.nome || '').trim()).map((a) => ({ a, c: lcalc(T, a) }));
+    let tv = 0, tp = 0, tf = 0, nOk = 0, nW = 0, nX = 0;
+    linhas.forEach(({ c }) => { tv += c.vf; tp += c.pago; if (c.rest > 0.005) tf += c.rest; if (c.sit === 'ok') nOk++; else if (c.sit === 'w') nW++; else if (c.sit === 'x') nX++; });
+    const q = (n) => (+n || 0) ? String(+n) : '';
+    const nome = (String(T.curso || '') + ' ' + String(T.per || '')).trim() || 'Turma';
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const tr = linhas.map(({ a, c }, i) => `<tr class="${c.sit}"><td class="i">${i + 1}</td><td class="nm">${esc(a.nome)}</td><td class="c">${q(a.luxo)}</td><td class="c">${q(a.simp)}</td><td class="c">${q(a.foto)}</td>
+      <td class="n">${BRL(c.vf)}</td><td class="n">${BRL(c.pago)}</td><td class="n">${c.rest > 0.005 ? BRL(c.rest) : c.rest < -0.005 ? '+ ' + BRL(-c.rest) : '—'}</td><td><span class="st ${c.sit}">${SITN[c.sit] || '—'}</span></td></tr>`).join('');
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(nome)}</title><style>
+      @page{size:A4;margin:14mm 12mm}
+      *{box-sizing:border-box}body{font:11px/1.35 "Segoe UI",Helvetica,Arial,sans-serif;color:#1c2b33;margin:0}
+      .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #2DB5AE;padding-bottom:10px;margin-bottom:14px}
+      .marca{font-size:18px;font-weight:800;color:#147a74;letter-spacing:.3px}.marca small{display:block;font-size:10px;font-weight:600;color:#6b7f88;letter-spacing:1.4px;text-transform:uppercase}
+      .tt{text-align:right}.tt b{display:block;font-size:16px}.tt span{color:#6b7f88}
+      .res{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.res div{border:1px solid #dbe5e7;border-radius:8px;padding:8px 10px}
+      .res small{display:block;color:#6b7f88;font-size:9.5px;text-transform:uppercase;letter-spacing:.8px}.res b{font-size:14px}
+      .g{color:#0f8a5f}.o{color:#b45309}.bl{color:#1d4ed8}
+      table{width:100%;border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}
+      th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px;border-bottom:2px solid #c9d8db}
+      td{padding:5px 6px;border-bottom:1px solid #e3eaec}td.i{color:#8a9aa2;width:24px}td.c,th.c{text-align:center}td.n,th.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+      tr.ok td{background:#ecfdf5}tr.x td{background:#eff6ff}
+      .st{display:inline-block;padding:1px 8px;border-radius:99px;font-size:9.5px;font-weight:700;border:1px solid}
+      .st.ok{color:#047857;background:#d1fae5;border-color:#6ee7b7}.st.w{color:#b45309;background:#ffedd5;border-color:#fdba74}.st.x{color:#1d4ed8;background:#dbeafe;border-color:#93c5fd}
+      tfoot td{font-weight:700;background:#eef4f5;border-top:2px solid #c9d8db}
+      .rod{margin-top:14px;color:#8a9aa2;font-size:9.5px;display:flex;justify-content:space-between}
+    </style></head><body>
+      <div class="top"><div class="marca">Cristiano Convites<small>Relatório da turma</small></div><div class="tt"><b>${esc(nome)}</b><span>${T.lista ? esc(T.lista) + ' · ' : ''}emitido em ${hoje}</span></div></div>
+      <div class="res"><div><small>Formandos</small><b>${linhas.length}</b></div><div><small>Valor total</small><b>${BRL(tv)}</b></div><div><small>Recebido</small><b class="g">${BRL(tp)}</b></div><div><small>Falta receber</small><b class="o">${BRL(tf)}</b></div></div>
+      <div class="res" style="grid-template-columns:repeat(3,1fr)"><div><small>Quitados</small><b class="g">${nOk}</b></div><div><small>Pendentes</small><b class="o">${nW}</b></div><div><small>Pagaram a mais</small><b class="bl">${nX}</b></div></div>
+      <table><thead><tr><th>#</th><th>Formando</th><th class="c">Luxo</th><th class="c">Simples</th><th class="c">Foto</th><th class="n">Valor</th><th class="n">Pago</th><th class="n">Falta</th><th>Situação</th></tr></thead>
+      <tbody>${tr || '<tr><td colspan="9">Nenhum formando na lista.</td></tr>'}</tbody>
+      <tfoot><tr><td></td><td>Total</td><td></td><td></td><td></td><td class="n">${BRL(tv)}</td><td class="n">${BRL(tp)}</td><td class="n">${BRL(tf)}</td><td></td></tr></tfoot></table>
+      <div class="rod"><span>Cristiano Convites</span><span>${esc(nome)} · ${hoje}</span></div>
+    </body></html>`;
+    const arq = 'Relatório ' + nome.replace(/[\\/:*?"<>|]+/g, '-') + ' ' + hoje.replace(/\//g, '-') + '.pdf';
+    const txt = btn.textContent; btn.disabled = true; btn.textContent = 'Gerando…';
+    try {
+      const r = await window.api.gerarPdf(html, arq, 'Salvar relatório da turma em PDF');
+      if (r && !r.ok && !r.canceled) alert(r.error || 'Não foi possível gerar o relatório.');
+    } finally { btn.disabled = false; btn.textContent = txt; }
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-rel="turma"]'); if (b) relatorioTurma(b); });
+
   const css = document.createElement('style');
   css.textContent = `.vm{max-width:1240px;margin:0 auto}
 .vmtop{display:flex;align-items:center;gap:8px;margin:0 0 16px}.vmtop h2{margin:0 8px 0 6px;font-size:20px}.vmtop .btn{margin:0}

@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('api', {
   // agenda: clique na notificação de lembrete
   onAbrirCompromisso: (cb) => ipcRenderer.on('agenda:open', (_e, r) => cb(r)),
   // contratos
-  gerarPdf: (html, filename) => ipcRenderer.invoke('pdf:save', html, filename),
+  gerarPdf: (html, filename, titulo) => ipcRenderer.invoke('pdf:save', html, filename, titulo),
   // nuvem (sincronização entre aparelhos)
   nuvemStatus: () => ipcRenderer.invoke('nuvem:status'),
   nuvemEntrar: (email, senha) => ipcRenderer.invoke('nuvem:entrar', email, senha),

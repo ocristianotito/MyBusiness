@@ -58,6 +58,9 @@ rep(r""".lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px
     r""".lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px) - 14px - var(--lb,40px))}""")
 rep(r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px')}""",
     r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px');const lw=document.querySelector('.lw');if(lw){const b=document.documentElement.scrollHeight-(lw.getBoundingClientRect().bottom+scrollY);r.setProperty('--lb',Math.max(0,Math.ceil(b))+'px')}}""")
+# botão "Gerar relatório" na lista de formandos (o PDF é montado em fluxo.js)
+rep(r"""placeholder="2027.1" title="Período"></div>""",
+    r"""placeholder="2027.1" title="Período"><span style="flex:1"></span><button class="btn sm" data-rel="turma" title="PDF da turma para enviar à comissão">Gerar relatório</button></div>""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)

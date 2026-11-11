@@ -338,10 +338,10 @@ ipcMain.on('dlg:prompt', (e, msg, def) => {
 });
 
 /* ----- PDF de contrato: HTML montado na tela, impresso em A4 numa janela invisível ----- */
-ipcMain.handle('pdf:save', async (_e, html, filename) => {
+ipcMain.handle('pdf:save', async (_e, html, filename, titulo) => {
   const safe = String(filename || 'contrato.pdf').replace(/[\\/:*?"<>|]+/g, '-');
   const r = await dialog.showSaveDialog(win, {
-    title: 'Salvar contrato em PDF',
+    title: String(titulo || 'Salvar contrato em PDF'),
     defaultPath: path.join(app.getPath('documents'), safe),
     filters: [{ name: 'PDF', extensions: ['pdf'] }]
   });
