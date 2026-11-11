@@ -336,7 +336,7 @@
       if (r && !r.ok && !r.canceled) alert(r.error || 'Não foi possível gerar o relatório.');
     } finally { btn.disabled = false; btn.textContent = txt; }
   }
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-rel="turma"]'); if (b) relatorioTurma(b); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-relpdf]'); if (b) relatorioTurma(b); });
 
   const css = document.createElement('style');
   css.textContent = `.vm{max-width:1240px;margin:0 auto}

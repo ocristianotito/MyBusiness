@@ -60,7 +60,7 @@ rep(r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px')}""",
     r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px');const lw=document.querySelector('.lw');if(lw){const b=document.documentElement.scrollHeight-(lw.getBoundingClientRect().bottom+scrollY);r.setProperty('--lb',Math.max(0,Math.ceil(b))+'px')}}""")
 # botão "Gerar relatório" na lista de formandos (o PDF é montado em fluxo.js)
 rep(r"""placeholder="2027.1" title="Período"></div>""",
-    r"""placeholder="2027.1" title="Período"><span style="flex:1"></span><button class="btn sm" data-rel="turma" title="PDF da turma para enviar à comissão">Gerar relatório</button></div>""")
+    r"""placeholder="2027.1" title="Período"><span style="flex:1"></span><button class="btn sm" data-relpdf="turma" title="PDF da turma para enviar à comissão">Gerar relatório</button></div>""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
@@ -122,9 +122,24 @@ bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
  /* o Electron não tem a caixinha prompt(): o programa mostra a dele */
  window.prompt=function(msg,def){try{return window.api.perguntar(String(msg==null?'':msg),def==null?'':String(def))}catch(e){return null}};
  window.__busy=function(){return !!document.querySelector('.ov')};
+ /* conta digitada no Valor por formando, Entrada ou Valor pago: cada valor somado (ou tirado) vira uma linha no
+    comentário da célula com a data do dia, como "11/11 - 393,75" (o primeiro número é o que já estava no campo) */
+ function anotaSoma(el){try{
+  var la=(el.dataset&&el.dataset.la||'').split('|'),f=la[1];if(['vf','ent','pago'].indexOf(f)<0||typeof turmaLista!=='function')return;
+  var T=turmaLista(),a=T&&T.alunos.find(function(x){return x.id===+la[0]});if(!a)return;
+  var s=String(el.value).replace(/R\\$|%|\\s/g,'').replace(/[−–]/g,'-').replace(/^=/,'').replace(/[+-]+$/,'');
+  var p=s.match(/[+-]?[^+-]+/g);if(!p||p.length<2)return;
+  var d=new Date(),dt=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+  var fm=function(x){return x.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})};
+  var nov=p.slice(1).map(function(x){var v=num1(x.replace(/^[+-]/,''));if(isNaN(v)||!v)return '';return dt+' - '+(x[0]==='-'?'retirado '+fm(v):fm(v))}).filter(Boolean);
+  if(!nov.length)return;
+  a.cm=a.cm||{};a.cm[f]=((a.cm[f]?a.cm[f]+'\\n':'')+nov.join('\\n')).trim();save();
+  var td=el.closest('td');if(td){td.classList.add('hascm');var tip=td.querySelector('.cmtip');if(!tip){tip=document.createElement('div');tip.className='cmtip';td.appendChild(tip)}tip.textContent=a.cm[f];
+   var b=td.querySelector('.cmb');if(b)b.title='Editar comentário'}
+ }catch(er){}}
  /* ao sair de um campo com conta (124,69+354,38), mostra o resultado (479,07) */
  document.addEventListener('focusout',function(e){var el=e.target;if(!el||el.tagName!=='INPUT'||!/\\d\\s*[+\\-−–]\\s*\\d/.test(el.value)||typeof num!=='function')return;
-  var v=num(el.value);if(isNaN(v))return;var dec=Math.round(v*100)%100!==0;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:dec?2:0,maximumFractionDigits:2})},true);
+  var v=num(el.value);if(isNaN(v))return;anotaSoma(el);var dec=Math.round(v*100)%100!==0;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:dec?2:0,maximumFractionDigits:2})},true);
  /* dados do Financeiro que chegaram de outro aparelho pela nuvem: recarrega se não houver edição aberta */
  var remoto=false;
  function aplicaRemoto(){if(pend!=null||document.querySelector('.ov')){remoto=true;mark('busy','Atualização de outro aparelho: aplica ao fechar a janela');return}remoto=false;wipe();window.api.ir('financeiro')}
