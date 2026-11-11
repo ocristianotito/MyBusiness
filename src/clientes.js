@@ -106,7 +106,7 @@ function renderCli() {
   </div><div>
   <div class="sect">Observações</div>
   <textarea id="k-notas" style="min-height:150px" placeholder="Preferências da turma, fotógrafo, cerimonial…">${esc(c.notas)}</textarea>
-  ${modal.id ? `<div class="sect">Pedidos (${cc.length})</div>${cc.length ? cc.map(([id, x]) => `<button class="linkrow" data-cla="pedido" data-id="${esc(id)}"><span class="sdot" style="background:${PAL[colById(colOf(x)).c] || PAL.cinza}"></span>${esc(x.title)}<em>${esc(colById(colOf(x)).name)}</em></button>`).join('') : '<p class="note">Nenhum pedido ligado. Escolha este cliente na janela do pedido.</p>'}
+  ${modal.id ? `<div class="sect">Pedidos (${cc.length})</div>${cc.length ? cc.map(([id, x]) => `<button class="linkrow" data-cla="pedido" data-id="${esc(id)}"><span class="sdot" style="background:${corEtapa(colById(colOf(x)).c)}"></span>${esc(x.title)}<em>${esc(colById(colOf(x)).name)}</em></button>`).join('') : '<p class="note">Nenhum pedido ligado. Escolha este cliente na janela do pedido.</p>'}
   <div class="sect">Contratos (${kk.length})</div>${kk.map(([id, k]) => `<button class="linkrow" data-cla="ct" data-k="${esc(id)}"><span class="sdot" style="background:${CT_SIT[k.status || 'rascunho'].c}"></span>${esc(k.produto || 'Contrato')} · ${Extenso.brl((+k.qtd || 0) * (+k.unit || 0))}<em>${CT_SIT[k.status || 'rascunho'].n}</em></button>`).join('')}
   <button class="btn ghost sm" data-cla="novoct" data-id="${esc(modal.id)}" style="margin-top:6px">+ Novo contrato para este cliente</button>` : ''}
   </div></div>

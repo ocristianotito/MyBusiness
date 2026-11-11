@@ -200,3 +200,17 @@ body.fin .mscroll input:focus{background:var(--c-sunk);border-style:solid}
 
 /* a dica do comentário não bloqueia o clique no campo de baixo */
 body.fin .cmtip{pointer-events:none}
+
+/* Configurar quadro: etapas com as cores das etiquetas (bolinhas) e controles no mesmo padrão das outras janelas */
+.colrow{grid-template-columns:12px minmax(0,1fr) auto 34px 34px 34px;gap:8px;margin-bottom:8px}
+.colrow .dot{width:12px;height:12px;border-radius:50%}
+.colrow input{margin:0;height:36px}
+.csw{display:flex;gap:5px;align-items:center;padding:0 2px}
+.csw .sw{width:18px;height:18px;border-radius:50%;background:var(--c);border:0;padding:0;cursor:pointer;box-shadow:0 0 0 2px transparent;transition:transform .1s,box-shadow .1s}
+.csw .sw:hover{transform:scale(1.15)}
+.csw .sw.on{box-shadow:0 0 0 2px var(--c-card),0 0 0 4px var(--c)}
+.colrow .mv,.colrow .x{width:34px;height:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-ctl);background:var(--c-card2);border:1px solid var(--c-bd);color:var(--c-tx);font-size:14px;cursor:pointer}
+.colrow .mv:hover:not(:disabled){border-color:var(--c-teal);color:var(--c-teal)}
+.colrow .x{color:var(--c-red)}
+.colrow .x:hover:not(:disabled){background:#3a1d22;border-color:#6b2a33}
+.colrow .mv:disabled,.colrow .x:disabled{opacity:.3;cursor:not-allowed}

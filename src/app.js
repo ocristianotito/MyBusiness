@@ -11,6 +11,9 @@ const MODELOS=['23x17,5 cm','25x18 cm','20x22 cm','24x22 cm','27x25 cm','Simples
 const PRIO={alta:'Alta',media:'Média',baixa:'Baixa'};
 const PRIO_RANK={alta:0,media:1,baixa:2,'':3};
 const LCOL=['#E2B203','#FEA362','#F87168','#9F8FEF','#579DFF','#6CC3E0','#4BCE97','#94C748','#E774BB','#8C9BAB'];
+/* cor da etapa: desde a 1.2.12 usa a mesma paleta das etiquetas (cor em #hex); os nomes antigos (roxo, azul…) continuam valendo */
+const corEtapa=c=>PAL[c]||(/^#[0-9a-f]{6}$/i.test(String(c||''))?c:PAL.cinza);
+const PAL_LCOL={cinza:'#8C9BAB',azul:'#579DFF',roxo:'#9F8FEF',verde:'#4BCE97',vermelho:'#F87168',laranja:'#FEA362',teal:'#6CC3E0'};
 const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
@@ -123,6 +126,15 @@ async function init(){
    const tirar=['CONTRATOS ASSINADOS','EDIÇÃO DE FOTOS','CRIAÇÃO CONVITES','APROVAÇÃO','IMPRESSÃO'],usada=id=>[...cards.values()].some(c=>c.col===id);
    cfg=Object.assign({},cfg,{cols:cfg.cols.filter(c=>!(tirar.includes(String(c.name||'').trim().toUpperCase())&&!usada(c.id))),semEtapasVazias127:1});
    persist()}
+  /* pedido do dono (1.2.12): etapas com as cores das etiquetas. Etapa com nome de mês ganha a cor da etiqueta
+     daquele mês (JANEIRO 2027 → cor da etiqueta JANEIRO); as outras vão para a cor equivalente da paleta. Roda uma vez. */
+  if(cfg&&Array.isArray(cfg.cols)&&!cfg.coresEtapas1212){
+   const et=allLabels(),norm=x=>String(x||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+   const porNome=new Map([...et].map(([n,c])=>[norm(n),c]));
+   cfg=Object.assign({},cfg,{coresEtapas1212:1,cols:cfg.cols.map(col=>{
+    const w=norm(col.name).split(/\s+/)[0],c=porNome.get(norm(col.name))||porNome.get(w);
+    return Object.assign({},col,{c:c&&/^#[0-9a-f]{6}$/i.test(c)?c:(PAL_LCOL[col.c]||col.c)})})});
+   persist()}
   /* pedido do dono (1.2.7): checklist de produção novo, no padrão e nos pedidos que usam o antigo. Roda uma vez. */
   if(!(cfg&&cfg.checklist127)){
    const novo=DEF_CFG.check;
@@ -192,7 +204,7 @@ function renderBoard(){
  b.innerHTML=C().cols.map(col=>{
   const inCol=sorted(all.filter(([,c])=>colOf(c)===col.id)),vis=inCol.filter(([,c])=>visible(c));
   if(F.st&&col.id!==F.st)return '';
-  const dot=`<span class="dot" style="background:${PAL[col.c]||PAL.cinza}"></span>`;
+  const dot=`<span class="dot" style="background:${corEtapa(col.c)}"></span>`;
   const q=inCol.reduce((s,[,c])=>s+n0(c.luxo)+n0(c.simp),0);
   return `<div class="col" data-col="${esc(col.id)}"><h4>${dot}<span class="nm" title="${esc(col.name)}">${esc(col.name)}</span><em>${filt?vis.length+'/':''}${inCol.length}</em></h4>
   <div class="sumq">${q?fmtN(q)+' convites':'&nbsp;'}</div>
@@ -231,7 +243,7 @@ function renderList(){
  const grupos=C().cols.map(col=>[col,rows.filter(([,c])=>colOf(c)===col.id)]).filter(([,l])=>l.length);
  const corpo=grupos.map(([col,l])=>{
   const fechado=listFechados.has(col.id),qt=l.reduce((s,[,c])=>s+n0(c.luxo)+n0(c.simp),0),at=l.filter(([,c])=>{const d=dueInfo(c);return d&&d.cls==='late'}).length;
-  return `<tr class="lgrp${fechado?' fechado':''}" data-lg="${esc(col.id)}" tabindex="0" aria-expanded="${!fechado}"><td colspan="${LCOLS.length}"><span class="car">${fechado?'▸':'▾'}</span><i style="background:${PAL[col.c]||PAL.cinza}"></i><b>${esc(col.name)}</b><em>${l.length}</em>${qt?`<small>${fmtN(qt)} convites</small>`:''}${at?`<small class="r">${at} atrasado(s)</small>`:''}</td></tr>`+(fechado?'':l.map(linha).join(''))}).join('');
+  return `<tr class="lgrp${fechado?' fechado':''}" data-lg="${esc(col.id)}" tabindex="0" aria-expanded="${!fechado}"><td colspan="${LCOLS.length}"><span class="car">${fechado?'▸':'▾'}</span><i style="background:${corEtapa(col.c)}"></i><b>${esc(col.name)}</b><em>${l.length}</em>${qt?`<small>${fmtN(qt)} convites</small>`:''}${at?`<small class="r">${at} atrasado(s)</small>`:''}</td></tr>`+(fechado?'':l.map(linha).join(''))}).join('');
  $('listbar').innerHTML=grupos.length?`<span class="note">${grupos.length} etapa(s) · ${rows.length} pedido(s)</span><span class="hsp"></span><button class="btn ghost sm" data-lgall="abrir">Expandir tudo</button><button class="btn ghost sm" data-lgall="fechar">Recolher tudo</button>`:'';
  $('tbl').innerHTML=`<thead><tr>${LCOLS.map(x=>`<th data-sort="${x.k}" class="${x.k===sortL.k?'sorted':''}">${x.n}${x.k===sortL.k?(sortL.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>${corpo||`<tr><td colspan="${LCOLS.length}" class="note" style="text-align:center;padding:24px">Nenhum cartão com estes filtros.</td></tr>`}</tbody>`}
 function toggleGrupo(id){if(listFechados.has(id))listFechados.delete(id);else listFechados.add(id);setPref('listFechados',[...listFechados]);renderList()}
@@ -264,7 +276,7 @@ function renderSub(){
  box.innerHTML=`<div class="subhead">Gestão de demandas</div>
  <button class="subitem${!F.st&&!F.cli?' on':''}" data-sub="all"><span class="sdot" style="background:var(--teal)"></span><span>Todas as demandas</span><em>${all.length}</em></button>
  <div class="sublabel">Etapas</div>
- ${C().cols.map(col=>`<button class="subitem${F.st===col.id?' on':''}" data-sub="st" data-v="${esc(col.id)}"><span class="sdot" style="background:${PAL[col.c]||PAL.cinza}"></span><span>${esc(col.name)}</span><em>${cnt(c=>colOf(c)===col.id)}</em></button>`).join('')}
+ ${C().cols.map(col=>`<button class="subitem${F.st===col.id?' on':''}" data-sub="st" data-v="${esc(col.id)}"><span class="sdot" style="background:${corEtapa(col.c)}"></span><span>${esc(col.name)}</span><em>${cnt(c=>colOf(c)===col.id)}</em></button>`).join('')}
  <div class="sublabel">Clientes <button class="sublink" data-sub="clientes">ver todos</button></div>
  ${cl.length?cl.map(([id,c])=>`<button class="subitem${F.cli===id?' on':''}" data-sub="cli" data-v="${esc(id)}"><span class="sav2">${esc(initials(c.nome))}</span><span>${esc(c.nome)}</span>${cliCounts.get(id)?`<em>${cliCounts.get(id)}</em>`:''}</button>`).join(''):'<p class="note" style="padding:4px 10px">Cadastre clientes no módulo Clientes e ligue cada pedido ao seu cliente.</p>'}`;
 }
@@ -287,7 +299,7 @@ function ovRow(id,c){
  <td>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
  <td class="${d&&d.cls==='late'?'r':''}">${d?'<span class="cal-i"></span>':''}${esc(dt)}</td>
  <td>${c.prio?`<span class="flag ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="flag">Sem prioridade</span>'}</td>
- <td><div class="ovst"><span class="stchip" style="--c:${PAL[col.c]||PAL.cinza}">${esc(col.name)}</span>${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
+ <td><div class="ovst"><span class="stchip" style="--c:${corEtapa(col.c)}">${esc(col.name)}</span>${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
 function ovTable(title,rows,cls,open=true,key){
  const head='<tr><th>Demanda</th><th>Cliente</th><th>Resp.</th><th>Data</th><th>Prioridade</th><th>Etapa e etiquetas</th></tr>';
  return `<div class="ovgrp ${cls||''}"><button class="ovh" ${key?`data-ovt="${key}"`:''}><span class="car">${open?'▾':'▸'}</span>${title}<em>${rows.length}</em></button>
@@ -393,7 +405,7 @@ function renderCfg(){
  <h2 id="ct">Configurar quadro</h2><div class="sub">Nome, etapas e checklist padrão.</div>
  <label>Nome no topo<input id="c-brand" value="${esc(c.brand||'')}"></label>
  <div class="sect">Etapas (colunas)</div>
- ${c.cols.map((col,i)=>`<div class="colrow"><span class="dot" style="background:${PAL[col.c]||PAL.cinza}"></span><input data-cn="${i}" value="${esc(col.name)}" aria-label="Nome da etapa"><select data-cc="${i}" aria-label="Cor">${Object.keys(PAL).map(k=>`<option value="${k}"${col.c===k?' selected':''}>${PALN[k]}</option>`).join('')}</select><button class="mv" data-up="${i}"${i===0?' disabled':''} title="Mover para a esquerda">↑</button><button class="mv" data-dn="${i}"${i===c.cols.length-1?' disabled':''} title="Mover para a direita">↓</button><button class="x" data-cdel="${i}"${used(col.id)||c.cols.length<2?' disabled':''} title="${used(col.id)?'Esvazie a etapa antes de excluir':'Excluir etapa'}">✕</button></div>`).join('')}
+ ${c.cols.map((col,i)=>`<div class="colrow"><span class="dot" style="background:${corEtapa(col.c)}"></span><input data-cn="${i}" value="${esc(col.name)}" aria-label="Nome da etapa"><div class="csw" role="radiogroup" aria-label="Cor da etapa">${LCOL.map(h=>`<button type="button" class="sw${corEtapa(col.c).toUpperCase()===h?' on':''}" data-csw="${i}" data-h="${h}" style="--c:${h}" title="Usar esta cor" aria-label="Cor ${h}"></button>`).join('')}</div><button class="mv" data-up="${i}"${i===0?' disabled':''} title="Mover para a esquerda">↑</button><button class="mv" data-dn="${i}"${i===c.cols.length-1?' disabled':''} title="Mover para a direita">↓</button><button class="x" data-cdel="${i}"${used(col.id)||c.cols.length<2?' disabled':''} title="${used(col.id)?'Esvazie a etapa antes de excluir':'Excluir etapa'}">✕</button></div>`).join('')}
  <div class="addrow"><input id="c-newcol" placeholder="Nova etapa"><button class="btn ghost sm" data-act="addcol">Adicionar etapa</button></div>
  <p class="note">A última etapa conta como "Entregue" nos indicadores. Só dá para excluir uma etapa vazia.</p>
  <div class="sect">Checklist padrão dos novos cartões</div>
@@ -402,7 +414,6 @@ function renderCfg(){
 function readCfg(){const c=modal.c;
  const b=$('c-brand');if(b)c.brand=b.value.trim();
  document.querySelectorAll('[data-cn]').forEach(e=>{c.cols[+e.dataset.cn].name=e.value});
- document.querySelectorAll('[data-cc]').forEach(e=>{c.cols[+e.dataset.cc].c=e.value});
  const t=$('c-check');if(t)c.check=t.value.split('\n').map(s=>s.trim()).filter(Boolean)}
 
 /* ===== backup ===== */
@@ -488,6 +499,7 @@ document.addEventListener('click',e=>{
  }
  if(modal.t==='cfg'){
   const c=modal.c;
+  if(t.dataset.csw!=null){readCfg();c.cols[+t.dataset.csw].c=t.dataset.h;return renderCfg()}
   if(t.dataset.up!=null){readCfg();const i=+t.dataset.up;[c.cols[i-1],c.cols[i]]=[c.cols[i],c.cols[i-1]];return renderCfg()}
   if(t.dataset.dn!=null){readCfg();const i=+t.dataset.dn;[c.cols[i+1],c.cols[i]]=[c.cols[i],c.cols[i+1]];return renderCfg()}
   if(t.dataset.cdel!=null&&!t.disabled){readCfg();c.cols.splice(+t.dataset.cdel,1);return renderCfg()}
