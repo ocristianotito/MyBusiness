@@ -118,7 +118,7 @@ input:focus,select:focus{outline:2px solid var(--teal);border-color:transparent}
 .lhead{position:sticky;top:var(--hh,64px);z-index:4;background:var(--bg);padding:6px 0 8px;border-bottom:1px solid var(--bd);margin-bottom:14px}
 .ltitle{display:flex;gap:8px;flex-wrap:wrap}.ltitle input{background:transparent;border:1px solid transparent;border-bottom:1px dashed var(--bd);border-radius:6px;font-weight:700;font-size:22px;line-height:1.2;color:var(--tx);padding:2px 6px;width:auto}.ltitle input:hover,.ltitle input:focus{border-color:var(--teal);background:var(--card2);outline:0}.ltitle input[data-lt=curso]{min-width:240px;flex:1;max-width:520px}.ltitle input.per{width:110px}
 .lsub{width:170px;padding:3px 8px;font-size:13px}
-.lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px) - 16px)}.lt th{position:sticky;top:0;z-index:3}
+.lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px) - 14px - var(--lb,40px))}.lt th{position:sticky;top:0;z-index:3}
 .lt tr:focus-within>td{background:#cdeee6!important;transition:background .12s}.lt tr:focus-within>td:first-child{box-shadow:inset 5px 0 0 #14b8a6}.lt tr:focus-within input:not(:focus){background:#eefaf6;border-color:#9fd8cc}.lt tr:focus-within input:focus{background:#fff;border-color:#0d9488;box-shadow:0 0 0 2px #5eead466;outline:0}
 @media print{body>*:not(#relov){display:none!important}#relov{position:static!important;background:#fff!important;overflow:visible!important}#relov .rbar{display:none!important}#relov>div:not(.rbar){max-width:none!important;margin:0!important;padding:0!important}@page{size:A4 landscape;margin:12mm}}
 </style>
@@ -678,7 +678,7 @@ function lrow(T,a,rg,qt){
  const I=(f,v,cls,mode,ph)=>`<input class="${cls||''}" data-la="${a.id}|${f}" value="${esc(v)}"${mode?` inputmode="${mode}"`:''}${ph!=null?` placeholder="${esc(ph)}"`:''} autocomplete="off">`;
  const nc='style="text-align:right;white-space:nowrap"';
  const CT=(f,h)=>{const t=(a.cm&&a.cm[f])||'';return `<td class="cmc${t?' hascm':''}">${h}<button class="cmb" data-cm="${f}" data-aid="${a.id}" title="${t?'Editar comentário':'Adicionar comentário'}">💬</button>${t?`<div class="cmtip">${esc(t)}</div>`:''}</td>`};
- return `<tr class="${c.sit==='ok'?'quit':''}"><td>${I('nome',a.nome,'nm b')}</td>`
+ return `<tr class="${c.sit==='ok'?'quit':c.sit==='x'?'mais':''}"><td>${I('nome',a.nome,'nm b')}</td>`
  +(rg?`<td>${I('rg',a.rg)}</td><td>${I('cpf',a.cpf)}</td><td>${I('tel',a.tel)}</td>`:'')
  +(qt?`<td>${I('luxo',nz(a.luxo),'n','numeric')}</td><td>${I('simp',nz(a.simp),'n','numeric')}</td><td>${I('foto',nz(a.foto),'n','numeric')}</td><td>${I('qv',nz(a.qv),'n','numeric','0')}</td><td ${nc} data-lv="${a.id}">${BRL(VU()*qv)}</td><td>${I('qf',nz(a.qf),'n','numeric','0')}</td><td ${nc} data-lf="${a.id}">${BRL(FF()*qf)}</td>`:'')
  +`${CT('vf',I('vf',c.vf?fin(c.vf):'','n b'+(c.ov?' ovr':''),'decimal'))}${CT('ent',I('ent',fmtIn(nz(a.ent)),'n g','decimal',fin(c.vf*T.pe/100)))}${CT('pago',I('pago',fmtIn(nz(a.pago)),'n g','decimal'))}<td class="o" data-lr="${a.id}">${BRL(c.rest)}</td><td>${I('forma',a.forma)}</td><td data-ls="${a.id}">${badge(c.sit)}</td><td><button class="xdel s" data-act="dela" data-aid="${a.id}" title="Excluir formando">✕</button></td></tr>`}
@@ -700,7 +700,7 @@ function vL(){
  ${T.alunos.length?'':'<p class="note" style="margin-top:12px">Nenhum formando ainda. Use "+ Adicionar formando".</p>'}`}
 
 /* atualiza a lista na hora, sem perder o cursor */
-function setSticky(){const hd=document.querySelector('header'),lh=document.querySelector('.lhead'),r=document.documentElement.style;r.setProperty('--hh',(hd?hd.offsetHeight:64)+'px');r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px')}
+function setSticky(){const hd=document.querySelector('header'),lh=document.querySelector('.lhead'),r=document.documentElement.style;r.setProperty('--hh',(hd?hd.offsetHeight:64)+'px');r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px');const lw=document.querySelector('.lw');if(lw){const b=document.documentElement.scrollHeight-(lw.getBoundingClientRect().bottom+scrollY);r.setProperty('--lb',Math.max(0,Math.ceil(b))+'px')}}
 window.addEventListener('resize',setSticky);
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.lt){const T=turmaLista();if(T){T[t.dataset.lt]=t.value;save()}}});
 /* ===== relatório da turma ===== */
@@ -781,7 +781,7 @@ function lpatch(){
  T.alunos.forEach(a=>{
   const c=lcalc(T,a),qv=+a.qv||0,qf=+a.qf||0,g=k=>document.querySelector('[data-la="'+a.id+'|'+k+'"]');
   const re=document.querySelector('[data-lr="'+a.id+'"]');if(re)re.textContent=BRL(c.rest);
-  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr)tr.classList.toggle('quit',c.sit==='ok')}
+  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr){tr.classList.toggle('quit',c.sit==='ok');tr.classList.toggle('mais',c.sit==='x')}}
   const ve=document.querySelector('[data-lv="'+a.id+'"]');if(ve)ve.textContent=BRL(VU()*qv);
   const fe=document.querySelector('[data-lf="'+a.id+'"]');if(fe)fe.textContent=BRL(FF()*qf);
   const vi=g('vf');if(vi){vi.classList.toggle('ovr',c.ov);if(document.activeElement!==vi)vi.value=c.vf?fin(c.vf):''}

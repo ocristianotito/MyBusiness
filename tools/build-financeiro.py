@@ -48,10 +48,16 @@ const num=s=>{s=String(s==null?'':s).replace(/R\$|%|\s/g,'').replace(/[−–]/g
  const p=s.match(/[+-]?[^+-]+/g);if(!p||p.join('')!==s)return NaN;
  let t=0;for(const x of p){const v=num1(x.replace(/^[+-]/,''));if(isNaN(v))return NaN;t+=x[0]==='-'?-v:v}
  return Math.round(t*100)/100};""")
-# linha inteira em verde quando o formando está quitado (e atualiza ao digitar)
-rep(r""" return `<tr><td>${I('nome',a.nome,'nm b')}</td>`""", r""" return `<tr class="${c.sit==='ok'?'quit':''}"><td>${I('nome',a.nome,'nm b')}</td>`""")
+# linha inteira em verde quando o formando está quitado e em azul quando pagou a mais (e atualiza ao digitar)
+rep(r""" return `<tr><td>${I('nome',a.nome,'nm b')}</td>`""", r""" return `<tr class="${c.sit==='ok'?'quit':c.sit==='x'?'mais':''}"><td>${I('nome',a.nome,'nm b')}</td>`""")
 rep(r"""  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se)se.innerHTML=badge(c.sit);""",
-    r"""  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr)tr.classList.toggle('quit',c.sit==='ok')}""")
+    r"""  const se=document.querySelector('[data-ls="'+a.id+'"]');if(se){se.innerHTML=badge(c.sit);const tr=se.closest('tr');if(tr){tr.classList.toggle('quit',c.sit==='ok');tr.classList.toggle('mais',c.sit==='x')}}""")
+# cabeçalho da lista de formandos sempre visível: a área da tabela cabe na tela abaixo do título da turma
+# (desconta também o espaço que sobra embaixo da tabela, senão a página rola e o título cobre o cabeçalho)
+rep(r""".lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px) - 16px)}""",
+    r""".lw{overflow:auto;max-height:calc(100vh - var(--hh,64px) - var(--lh,90px) - 14px - var(--lb,40px))}""")
+rep(r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px')}""",
+    r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px');const lw=document.querySelector('.lw');if(lw){const b=document.documentElement.scrollHeight-(lw.getBoundingClientRect().bottom+scrollY);r.setProperty('--lb',Math.max(0,Math.ceil(b))+'px')}}""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)

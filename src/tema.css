@@ -163,3 +163,12 @@ body.fin .lt tr.quit:focus-within>td{background:#11372d!important}
 body.fin .lt tr.quit:focus-within>td:first-child{box-shadow:inset 4px 0 0 #10B981}
 body.fin .lt tr.quit:focus-within input:not(:focus){background:#123d31;border-color:#22684f}
 body.fin .lt tr.quit input.ovr{background:#2a2410;border-color:#8a6d00;color:#f4d27a}
+/* pagou a mais: mesma ideia, em azul */
+body.fin .lt tr.mais>td{background:#0f2440}
+body.fin .lt tr.mais>td:first-child{box-shadow:inset 4px 0 0 #3B82F6}
+body.fin .lt tr.mais input{background:#122c4d;border-color:#24508a;color:#dbeafe}
+body.fin .lt tr.mais input.g,body.fin .lt tr.mais td.o{color:#93c5fd}
+body.fin .lt tr.mais:focus-within>td{background:#13305a!important}
+body.fin .lt tr.mais:focus-within>td:first-child{box-shadow:inset 4px 0 0 #3B82F6}
+body.fin .lt tr.mais:focus-within input:not(:focus){background:#163661;border-color:#2c5f9f}
+body.fin .lt tr.mais input.ovr{background:#2a2410;border-color:#8a6d00;color:#f4d27a}
