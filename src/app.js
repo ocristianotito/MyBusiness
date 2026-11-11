@@ -138,6 +138,20 @@ async function init(){
     const w=norm(col.name).split(/\s+/)[0],c=porNome.get(norm(col.name))||porNome.get(w);
     return Object.assign({},col,{c:c&&/^#[0-9a-f]{6}$/i.test(c)?c:(PAL_LCOL[col.c]||col.c)})})});
    persist()}
+  /* pedido do dono (1.2.12): a data da colação que estava escrita no nome do pedido ("ADM UNOPAR 2027.1 - 20/03")
+     passa para o campo Data da colação. O ano vem do nome (2027.1 → 2027) ou, se não houver, do nome da etapa
+     ("FEVEREIRO 2027"). Sem ano em nenhum dos dois, não preenche. O nome do pedido não muda. Roda uma vez. */
+  if(cfg&&!cfg.colacaoDoNome1212){
+   cfg=Object.assign({},cfg,{colacaoDoNome1212:1});
+   cards.forEach((c,id)=>{
+    if(c.colacao)return;
+    const t=String(c.title||''),ds=[...t.matchAll(/(?:^|[^\d\/])(\d{1,2})\/(\d{1,2})(?![\d\/])/g)],m=ds[ds.length-1];if(!m)return;
+    const dia=+m[1],mes=+m[2];if(dia<1||dia>31||mes<1||mes>12)return;
+    const col=(C().cols.find(x=>x.id===c.col)||{}).name||'';
+    const a=(t.match(/\b(20\d{2})(?:\.\d)?\b/)||String(col).match(/\b(20\d{2})\b/)||[])[1];if(!a)return;
+    cards.set(id,Object.assign({},c,{colacao:a+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0')}));
+   });
+   persist()}
   /* pedido do dono (1.2.7): checklist de produção novo, no padrão e nos pedidos que usam o antigo. Roda uma vez. */
   if(!(cfg&&cfg.checklist127)){
    const novo=DEF_CFG.check;
