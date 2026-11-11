@@ -355,6 +355,70 @@
     const T = typeof turmaLista === 'function' ? turmaLista() : null, r = pn.querySelector('.lpres'); if (T && r) r.textContent = window.__lpRes(T);
   });
 
+  /* ===== lançamentos automáticos na Visão do mês =====
+     Entradas: pagamento lançado na lista de formandos (Valor pago / Entrada) → "Recebimentos de turmas";
+     valor recebido de turma de parceiro → "Convites com parceiros". Ficam no dia em que foram lançados, já marcados como pagos.
+     Saída: custo informado de cada turma → "Gráfica e fornecedores", a pagar (marque o círculo quando pagar).
+     Vale só para o que for lançado daqui para a frente. Cada lançamento automático guarda a sua origem em "auto". */
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const quando = (x) => x.mes + '-' + String(x.dia || 0).padStart(2, '0');
+  function autoEntrada(chave, grupo, desc, delta) {
+    const c = cx(), m = ymNow(), d = new Date().getDate();
+    let x = c.mov.find((v) => v.auto === chave && v.mes === m && v.dia === d);
+    if (!x && delta < 0) x = c.mov.filter((v) => v.auto === chave).sort((a, b) => quando(b).localeCompare(quando(a)))[0];
+    if (x) { x.valor = r2((+x.valor || 0) + delta); x.desc = desc; if (x.valor <= 0.005) c.mov.splice(c.mov.indexOf(x), 1); return; }
+    if (delta > 0.005) c.mov.push({ id: uid(), tipo: 'e', grupo, desc, valor: r2(delta), dia: d, mes: m, pago: true, turmaId: '', auto: chave });
+  }
+  function autoCusto(chave, desc, total) {
+    const c = cx(), x = c.mov.find((v) => v.auto === chave);
+    if (x) { if (total > 0.005) { x.valor = r2(total); x.desc = desc; } else c.mov.splice(c.mov.indexOf(x), 1); return; }
+    if (total > 0.005) c.mov.push({ id: uid(), tipo: 's', grupo: 'graficas', desc, valor: r2(total), dia: new Date().getDate(), mes: ymNow(), pago: false, turmaId: '', auto: chave });
+  }
+  const nomeT = (t) => ((t.curso || '') + ' ' + (t.per || '')).trim() || 'Turma';
+  // parceiros e custos: compara com a última gravação (são editados em janelas com botão Salvar)
+  let foto = null;
+  const tirar = () => ({
+    prec: Object.fromEntries((S.parc || []).map((p) => [p.id, +p.rec || 0])),
+    pcus: Object.fromEntries((S.parc || []).map((p) => [p.id, +p.custo || 0])),
+    tcus: Object.fromEntries((S.turmas || []).map((t) => [t.id, +t.custo || 0]))
+  });
+  function comparar() {
+    if (!foto) { foto = tirar(); return; }
+    (S.parc || []).forEach((p) => {
+      const nome = (p.nome || 'Turma de parceiro') + ' · ' + String(p.parceiro || 'parceiro').trim();
+      const d = r2((+p.rec || 0) - (foto.prec[p.id] || 0)); if (Math.abs(d) > 0.005) autoEntrada('pc:' + p.id, 'parceiros', nome, d);
+      if (Math.abs((+p.custo || 0) - (foto.pcus[p.id] || 0)) > 0.005) autoCusto('cp:' + p.id, 'Custo · ' + nome, +p.custo || 0);
+    });
+    (S.turmas || []).forEach((t) => { if (Math.abs((+t.custo || 0) - (foto.tcus[t.id] || 0)) > 0.005) autoCusto('ct:' + t.id, 'Custo · ' + nomeT(t), +t.custo || 0); });
+    foto = tirar();
+  }
+  // formandos: compara o valor pago de quando o campo foi aberto com o de quando foi confirmado
+  let pg0 = null;
+  const alunoDe = (t) => { const T = typeof turmaLista === 'function' ? turmaLista() : null, id = +String(t.dataset.la).split('|')[0]; return T ? [T, T.alunos.find((a) => a.id === id)] : []; };
+  document.addEventListener('focusin', (e) => { const t = e.target; if (!t.dataset || !t.dataset.la) return; const [, a] = alunoDe(t); pg0 = a ? { id: a.id, v: +a.pago || 0 } : null; });
+  document.addEventListener('change', (e) => {
+    const t = e.target; if (!t.dataset || !t.dataset.la || !pg0) return;
+    const [T, a] = alunoDe(t); if (!a || a.id !== pg0.id) return;
+    const d = r2((+a.pago || 0) - pg0.v); pg0.v = +a.pago || 0;
+    if (Math.abs(d) > 0.005) { autoEntrada('al:' + T.id + ':' + a.id, 'turmas', (String(a.nome || '').trim() || 'Formando') + ' · ' + nomeT(T), d); save(); }
+  });
+  function ligarAuto() {
+    if (typeof window.save !== 'function' || window.save.__auto) return;
+    const save0 = window.save;
+    window.save = function () { try { comparar(); } catch (er) {} return save0.apply(this, arguments); };
+    window.save.__auto = true;
+    try { foto = tirar(); } catch (er) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarAuto); else ligarAuto();
+
+  /* Enter confirma a edição do campo (fora das janelas, onde o Enter já tem outras funções) */
+  document.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || !t || t.tagName !== 'INPUT' || t.closest('.ov,.dlg,.modal')) return;
+    if (/^(checkbox|radio|button|submit|file)$/i.test(t.type)) return;
+    e.preventDefault(); t.blur();
+  });
+
   const css = document.createElement('style');
   css.textContent = `.vm{max-width:1240px;margin:0 auto}
 .vmtop{display:flex;align-items:center;gap:8px;margin:0 0 16px}.vmtop h2{margin:0 8px 0 6px;font-size:20px}.vmtop .btn{margin:0}

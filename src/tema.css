@@ -197,3 +197,6 @@ body.fin .mscroll input{width:76px;min-width:0;height:30px;padding:4px 8px;font-
 body.fin .mscroll td:first-child input{width:58px;font-weight:700}
 body.fin .mscroll input:placeholder-shown,body.fin .mscroll input[value=""]{background:transparent;border-color:var(--c-bd);border-style:dashed}
 body.fin .mscroll input:focus{background:var(--c-sunk);border-style:solid}
+
+/* a dica do comentário não bloqueia o clique no campo de baixo */
+body.fin .cmtip{pointer-events:none}
