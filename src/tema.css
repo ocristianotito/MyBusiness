@@ -265,3 +265,11 @@ body.fin .kpi b{font-size:20px;margin:0}
 #mod-clientes .pagehead .cfilt{flex-shrink:0}
 #mod-clientes .pagehead .hsearch{width:170px;flex-shrink:1}
 #mod-clientes .pagehead .btn{flex-shrink:0;white-space:nowrap}
+
+/* data da colação (lista e cartões do quadro) */
+.colac{white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.colac{background:#1d1a33;color:#c4b5fd}
+.tbl th,.tbl td{padding-left:9px;padding-right:9px}
+.tbl td:first-child,.tbl th:first-child{min-width:190px}
+.tbl th{letter-spacing:.3px}
+.tbl th,.tbl td{padding-left:8px;padding-right:8px}

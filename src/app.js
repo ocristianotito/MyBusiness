@@ -58,6 +58,9 @@ function dueInfo(card){const d=parseD(card.prazo);if(!d)return null;
  return{cls:'ok',txt:lbl,days}}
 const initials=s=>String(s||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
 const chk=card=>{const l=Array.isArray(card.check)?card.check:[];return{n:l.length,d:l.filter(x=>x&&x.d).length}};
+/* data da colação do pedido (campo próprio; se estiver vazio, usa a do cliente ligado ao pedido) */
+const colacaoDe=c=>c.colacao||((c.clientId&&clients.get(c.clientId)||{}).colacao)||'';
+const fmtColacao=iso=>{const p=String(iso||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):''};
 const lbls=c=>Array.isArray(c.labels)?c.labels.filter(x=>x&&x.n):[];
 const lchip=(l,x)=>`<span class="chip lb" style="background:${esc(l.c||'#8C9BAB')}26;color:${esc(l.c||'#8C9BAB')}">${esc(l.n)}${x!=null?`<button data-lx="${x}" title="Remover etiqueta">✕</button>`:''}</span>`;
 function allLabels(){const m=new Map();cards.forEach(c=>lbls(c).forEach(l=>{if(!m.has(l.n))m.set(l.n,l.c)}));return m}
@@ -197,7 +200,7 @@ function cardHTML(id,c){
  ${prev?`<div class="pv">${esc(prev)}</div>`:''}
  ${qty?`<div class="qty">${qty}</div>`:''}
  ${k.n?`<div class="bar"><i style="width:${pct*100}%;background:${pct>=1?'var(--green)':'var(--teal)'}"></i></div>`:''}
- <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div></div>`}
+ <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${colacaoDe(c)?`<span class="chip colac" title="Data da colação">Colação ${fmtColacao(colacaoDe(c)).slice(0,5)}</span>`:''}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div></div>`}
 function renderBoard(){
  const b=$('board'),sl=b.scrollLeft,all=[...cards.entries()],filt=filtering();
  b.classList.toggle('single',!!F.st);
@@ -215,6 +218,7 @@ function renderBoard(){
 /* ===== lista ===== */
 const LCOLS=[
  {k:'title',n:'Turma / cliente',v:c=>(c.title||'').toLowerCase()},
+ {k:'colacao',n:'Colação',v:c=>colacaoDe(c)||'9999'},
  {k:'cli',n:'Cliente',v:c=>cliName(c.clientId).toLowerCase()||'~'},
  {k:'labels',n:'Etiquetas',v:c=>lbls(c).map(l=>l.n).join(' ').toLowerCase()},
  {k:'prazo',n:'Prazo',v:c=>c.prazo||'9999'},
@@ -231,6 +235,7 @@ function renderList(){
  const linha=([id,c])=>{
   const d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
   return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
+  <td>${colacaoDe(c)?`<span class="colac">${fmtColacao(colacaoDe(c))}</span>`:'<span class="note">—</span>'}</td>
   <td>${cliName(c.clientId)?esc(cliName(c.clientId)):'<span class="note">—</span>'}</td>
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
   <td>${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="note">—</span>'}</td>
@@ -353,8 +358,9 @@ function renderModal(){
   <label>Etapa<select id="m-col">${cols.map(x=>`<option value="${esc(x.id)}"${x.id===colOf(c)?' selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
   <label>Modelo / tamanho<input id="m-modelo" list="modelos" value="${esc(c.modelo)}" placeholder="Ex.: 25x18 cm"></label>
   <label>Prazo de entrega<input id="m-prazo" type="date" value="${esc(c.prazo)}"></label>
+  <label>Data da colação<input id="m-colacao" type="date" value="${esc(c.colacao||'')}"></label>
   <label>Prioridade<select id="m-prio"><option value=""${c.prio?'':' selected'}>Sem prioridade</option>${Object.entries(PRIO).map(([k2,v])=>`<option value="${k2}"${c.prio===k2?' selected':''}>${v}</option>`).join('')}</select></label>
-  <label class="full">Responsável<input id="m-resp" list="resps" value="${esc(c.resp)}" placeholder="Quem cuida deste pedido"></label>
+  <label>Responsável<input id="m-resp" list="resps" value="${esc(c.resp)}" placeholder="Quem cuida deste pedido"></label>
  </div>
  <div class="fg3" style="margin-top:12px">
   <label>Convites luxo<input id="m-luxo" inputmode="numeric" value="${esc(c.luxo||'')}"></label>
@@ -382,7 +388,7 @@ function renderModal(){
  const nt=$('m-notas');const fit=()=>{nt.style.height='auto';nt.style.height=(nt.scrollHeight+2)+'px'};fit();nt.addEventListener('input',fit);
  if(!modal.id)setTimeout(()=>{const e=$('m-title');if(e)e.focus()},30)}
 function readForm(){const c=modal.c,v=id=>{const e=$(id);return e?e.value:''};
- c.title=v('m-title').trim();c.sub=v('m-sub').trim();c.clientId=v('m-cli');c.col=v('m-col');c.modelo=v('m-modelo').trim();c.prazo=v('m-prazo');c.prio=v('m-prio');c.resp=v('m-resp').trim();
+ c.title=v('m-title').trim();c.sub=v('m-sub').trim();c.clientId=v('m-cli');c.col=v('m-col');c.modelo=v('m-modelo').trim();c.prazo=v('m-prazo');c.colacao=v('m-colacao');c.prio=v('m-prio');c.resp=v('m-resp').trim();
  c.luxo=n0(v('m-luxo'));c.simp=n0(v('m-simp'));c.foto=n0(v('m-foto'));c.notas=v('m-notas');
  document.querySelectorAll('[data-ct]').forEach(e=>{const i=+e.dataset.ct;if(c.check[i])c.check[i].t=e.value});
  document.querySelectorAll('[data-ck]').forEach(e=>{const i=+e.dataset.ck;if(c.check[i])c.check[i].d=e.checked})}
