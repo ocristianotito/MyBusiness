@@ -292,7 +292,8 @@
   async function relatorioTurma(btn) {
     const T = typeof turmaLista === 'function' ? turmaLista() : null; if (!T) return;
     const SITN = { ok: 'Quitado', w: 'Pendente', x: 'Pago a mais', '': '—' };
-    const linhas = (T.alunos || []).filter((a) => String(a.nome || '').trim()).map((a) => ({ a, c: lcalc(T, a) }));
+    const linhas = (T.alunos || []).filter((a) => String(a.nome || '').trim())
+      .sort((x, y) => String(x.nome).trim().localeCompare(String(y.nome).trim(), 'pt-BR', { sensitivity: 'base' })).map((a) => ({ a, c: lcalc(T, a) }));
     let tv = 0, tp = 0, tf = 0, nOk = 0, nW = 0, nX = 0;
     linhas.forEach(({ c }) => { tv += c.vf; tp += c.pago; if (c.rest > 0.005) tf += c.rest; if (c.sit === 'ok') nOk++; else if (c.sit === 'w') nW++; else if (c.sit === 'x') nX++; });
     const q = (n) => (+n || 0) ? String(+n) : '';
@@ -319,11 +320,14 @@
       .st{display:inline-block;padding:1px 8px;border-radius:99px;font-size:9.5px;font-weight:700;border:1px solid}
       .st.ok{color:#047857;background:#d1fae5;border-color:#6ee7b7}.st.w{color:#b45309;background:#ffedd5;border-color:#fdba74}.st.x{color:#1d4ed8;background:#dbeafe;border-color:#93c5fd}
       tfoot td{font-weight:700;background:#eef4f5;border-top:2px solid #c9d8db}
+      .aviso{display:flex;gap:10px;align-items:flex-start;background:#fff8e6;border:1px solid #f3d27a;border-radius:8px;padding:9px 12px;margin:0 0 14px;color:#6b4e00;font-size:11px}
+      .aviso b{color:#4a3600}.aviso i{font-style:normal;font-size:14px;line-height:1}
       .rod{margin-top:14px;color:#8a9aa2;font-size:9.5px;display:flex;justify-content:space-between}
     </style></head><body>
       <div class="top"><div class="marca">Cristiano Convites<small>Relatório da turma</small></div><div class="tt"><b>${esc(nome)}</b><span>${T.lista ? esc(T.lista) + ' · ' : ''}emitido em ${hoje}</span></div></div>
       <div class="res"><div><small>Formandos</small><b>${linhas.length}</b></div><div><small>Valor total</small><b>${BRL(tv)}</b></div><div><small>Recebido</small><b class="g">${BRL(tp)}</b></div><div><small>Falta receber</small><b class="o">${BRL(tf)}</b></div></div>
       <div class="res" style="grid-template-columns:repeat(3,1fr)"><div><small>Quitados</small><b class="g">${nOk}</b></div><div><small>Pendentes</small><b class="o">${nW}</b></div><div><small>Pagaram a mais</small><b class="bl">${nX}</b></div></div>
+      <div class="aviso"><i>ⓘ</i><span><b>Fez algum pagamento que ainda não aparece aqui?</b> É só nos enviar o comprovante que fazemos a atualização.</span></div>
       <table><thead><tr><th>#</th><th>Formando</th>${cols.map(([, t]) => `<th class="c">${t}</th>`).join('')}<th class="n">Valor</th><th class="n">Pago</th><th class="n">Falta</th><th>Situação</th></tr></thead>
       <tbody>${tr || `<tr><td colspan="${nc}">Nenhum formando na lista.</td></tr>`}</tbody>
       <tfoot><tr><td></td><td>Total</td>${cols.map(() => '<td></td>').join('')}<td class="n">${BRL(tv)}</td><td class="n">${BRL(tp)}</td><td class="n">${BRL(tf)}</td><td></td></tr></tfoot></table>

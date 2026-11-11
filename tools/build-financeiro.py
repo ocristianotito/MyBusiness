@@ -71,6 +71,10 @@ rep(r"""aparece como sugestão no campo "Entrada".</p></div>""", r"""aparece com
 # Orçamentos: cabeçalho no mesmo padrão de "Turmas e parceiros" (título, nota e botão pequeno à direita)
 rep(r"""return `<h2>Orçamentos</h2>${topo}""", r"""return `<div class="vmtop"><h2>Orçamentos</h2><span class="note">tabela de preços por tamanho e período</span><span class="sp" style="flex:1"></span><button class="btn sm" data-act="addm">+ novo modelo</button></div>${topo}""", 2)
 rep(r"""<button class="btn" data-act="addm">+ novo modelo</button>""", r"""""")
+# lista de formandos sempre em ordem alfabética (formando ainda sem nome fica no fim, para ser preenchido)
+rep(r"""${T.alunos.map(a=>lrow(T,a,rg,qt)).join('')}""", r"""${alfa(T.alunos).map(a=>lrow(T,a,rg,qt)).join('')}""")
+rep(r"""function lrow(T,a,rg,qt){""", r"""function alfa(l){return l.slice().sort((x,y)=>{const a=String(x.nome||'').trim(),b=String(y.nome||'').trim();if(!a||!b)return a?-1:b?1:0;return a.localeCompare(b,'pt-BR',{sensitivity:'base'})})}
+function lrow(T,a,rg,qt){""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
