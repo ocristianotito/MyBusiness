@@ -296,9 +296,12 @@
     let tv = 0, tp = 0, tf = 0, nOk = 0, nW = 0, nX = 0;
     linhas.forEach(({ c }) => { tv += c.vf; tp += c.pago; if (c.rest > 0.005) tf += c.rest; if (c.sit === 'ok') nOk++; else if (c.sit === 'w') nW++; else if (c.sit === 'x') nX++; });
     const q = (n) => (+n || 0) ? String(+n) : '';
+    // colunas de convites (luxo, simples, foto) só entram no relatório se algum formando tiver quantidade
+    const cols = [['luxo', 'Luxo'], ['simp', 'Simples'], ['foto', 'Foto']].filter(([k]) => linhas.some(({ a }) => +a[k] > 0));
+    const nc = 6 + cols.length;
     const nome = (String(T.curso || '') + ' ' + String(T.per || '')).trim() || 'Turma';
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const tr = linhas.map(({ a, c }, i) => `<tr class="${c.sit}"><td class="i">${i + 1}</td><td class="nm">${esc(a.nome)}</td><td class="c">${q(a.luxo)}</td><td class="c">${q(a.simp)}</td><td class="c">${q(a.foto)}</td>
+    const tr = linhas.map(({ a, c }, i) => `<tr class="${c.sit}"><td class="i">${i + 1}</td><td class="nm">${esc(a.nome)}</td>${cols.map(([k]) => `<td class="c">${q(a[k])}</td>`).join('')}
       <td class="n">${BRL(c.vf)}</td><td class="n">${BRL(c.pago)}</td><td class="n">${c.rest > 0.005 ? BRL(c.rest) : c.rest < -0.005 ? '+ ' + BRL(-c.rest) : '—'}</td><td><span class="st ${c.sit}">${SITN[c.sit] || '—'}</span></td></tr>`).join('');
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(nome)}</title><style>
       @page{size:A4;margin:14mm 12mm}
@@ -321,9 +324,9 @@
       <div class="top"><div class="marca">Cristiano Convites<small>Relatório da turma</small></div><div class="tt"><b>${esc(nome)}</b><span>${T.lista ? esc(T.lista) + ' · ' : ''}emitido em ${hoje}</span></div></div>
       <div class="res"><div><small>Formandos</small><b>${linhas.length}</b></div><div><small>Valor total</small><b>${BRL(tv)}</b></div><div><small>Recebido</small><b class="g">${BRL(tp)}</b></div><div><small>Falta receber</small><b class="o">${BRL(tf)}</b></div></div>
       <div class="res" style="grid-template-columns:repeat(3,1fr)"><div><small>Quitados</small><b class="g">${nOk}</b></div><div><small>Pendentes</small><b class="o">${nW}</b></div><div><small>Pagaram a mais</small><b class="bl">${nX}</b></div></div>
-      <table><thead><tr><th>#</th><th>Formando</th><th class="c">Luxo</th><th class="c">Simples</th><th class="c">Foto</th><th class="n">Valor</th><th class="n">Pago</th><th class="n">Falta</th><th>Situação</th></tr></thead>
-      <tbody>${tr || '<tr><td colspan="9">Nenhum formando na lista.</td></tr>'}</tbody>
-      <tfoot><tr><td></td><td>Total</td><td></td><td></td><td></td><td class="n">${BRL(tv)}</td><td class="n">${BRL(tp)}</td><td class="n">${BRL(tf)}</td><td></td></tr></tfoot></table>
+      <table><thead><tr><th>#</th><th>Formando</th>${cols.map(([, t]) => `<th class="c">${t}</th>`).join('')}<th class="n">Valor</th><th class="n">Pago</th><th class="n">Falta</th><th>Situação</th></tr></thead>
+      <tbody>${tr || `<tr><td colspan="${nc}">Nenhum formando na lista.</td></tr>`}</tbody>
+      <tfoot><tr><td></td><td>Total</td>${cols.map(() => '<td></td>').join('')}<td class="n">${BRL(tv)}</td><td class="n">${BRL(tp)}</td><td class="n">${BRL(tf)}</td><td></td></tr></tfoot></table>
       <div class="rod"><span>Cristiano Convites</span><span>${esc(nome)} · ${hoje}</span></div>
     </body></html>`;
     const arq = 'Relatório ' + nome.replace(/[\\/:*?"<>|]+/g, '-') + ' ' + hoje.replace(/\//g, '-') + '.pdf';
