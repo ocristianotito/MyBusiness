@@ -298,6 +298,7 @@ body.withside{display:block}
 .ovt b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ovtbl .mu{color:var(--mu)}.ovtbl .up{text-transform:uppercase;font-size:12px;letter-spacing:.3px}
 .ovtbl td.r{color:var(--red)}
+.ovst{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .av.empty{background:transparent;border:1px dashed var(--bd2)}
 .cal-i{display:inline-block;width:10px;height:10px;border:1.5px solid currentColor;border-radius:2px;margin-right:6px;opacity:.7;position:relative;top:1px}
 .flag{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu)}

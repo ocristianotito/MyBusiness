@@ -282,14 +282,14 @@ const WDL=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira
 function ovRow(id,c){
  const col=colById(colOf(c)),d=dueInfo(c),cn=cliName(c.clientId);
  const dt=d?(d.cls==='late'||Math.abs(d.days)>6?d.txt.split(' · ')[0]:(d.days===0?'Hoje':d.days===1?'Amanhã':WDL[parseD(c.prazo).getDay()])):'—';
- return `<tr data-id="${esc(id)}"><td><div class="ovt">${lbls(c).slice(0,2).map(l=>lchip(l)).join('')}<b>${esc(c.title||'Sem título')}</b></div></td>
+ return `<tr data-id="${esc(id)}"><td><div class="ovt"><b>${esc(c.title||'Sem título')}</b></div></td>
  <td class="mu up">${esc(cn||c.sub||'—')}</td>
  <td>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
  <td class="${d&&d.cls==='late'?'r':''}">${d?'<span class="cal-i"></span>':''}${esc(dt)}</td>
  <td>${c.prio?`<span class="flag ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="flag">Sem prioridade</span>'}</td>
- <td><span class="stchip" style="--c:${PAL[col.c]||PAL.cinza}">${esc(col.name)}</span></td></tr>`}
+ <td><div class="ovst"><span class="stchip" style="--c:${PAL[col.c]||PAL.cinza}">${esc(col.name)}</span>${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
 function ovTable(title,rows,cls,open=true,key){
- const head='<tr><th>Demanda</th><th>Cliente</th><th>Resp.</th><th>Data</th><th>Prioridade</th><th>Etapa</th></tr>';
+ const head='<tr><th>Demanda</th><th>Cliente</th><th>Resp.</th><th>Data</th><th>Prioridade</th><th>Etapa e etiquetas</th></tr>';
  return `<div class="ovgrp ${cls||''}"><button class="ovh" ${key?`data-ovt="${key}"`:''}><span class="car">${open?'▾':'▸'}</span>${title}<em>${rows.length}</em></button>
  ${open?`<div class="ovwrap"><table class="ovtbl"><thead>${head}</thead><tbody>${rows.map(([id,c])=>ovRow(id,c)).join('')}</tbody></table></div>`:''}</div>`}
 function renderOverview(){
