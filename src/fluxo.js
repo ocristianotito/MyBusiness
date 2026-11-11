@@ -294,7 +294,7 @@
   async function relatorioTurma(btn, comObs) {
     const T = typeof turmaLista === 'function' ? turmaLista() : null; if (!T) return;
     const CMN = { vf: 'Valor', ent: 'Entrada', pago: 'Pago' };
-    const obs = (a) => comObs && a.cm ? ['vf', 'ent', 'pago'].filter((f) => String(a.cm[f] || '').trim()).map((f) => `<span><b>${CMN[f]}:</b> ${String(a.cm[f]).trim().split(/\n+/).map(esc).join(' · ')}</span>`).join('') : '';
+    const obs = (a) => comObs && a.cm ? ['vf', 'ent', 'pago'].filter((f) => String(a.cm[f] || '').trim()).map((f) => `<span><b>${CMN[f]}:</b> ${String(a.cm[f]).trim().split(/\n+/).map((t) => esc(t).replace(/(^|[^\d/])(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)(?![\d/])/g, '$1<b class="dt">$2</b>')).join(' · ')}</span>`).join('') : '';   // datas em negrito
     const SITN = { ok: 'Quitado', w: 'Pendente', x: 'Pago a mais', '': '—' };
     const linhas = (T.alunos || []).filter((a) => String(a.nome || '').trim())
       .sort((x, y) => String(x.nome).trim().localeCompare(String(y.nome).trim(), 'pt-BR', { sensitivity: 'base' })).map((a) => ({ a, c: lcalc(T, a) }));
@@ -326,7 +326,7 @@
       tfoot td{font-weight:700;background:#eef4f5;border-top:2px solid #c9d8db}
       tr.ob td{padding:0 6px 6px;border-bottom:1px solid #e3eaec}tr:has(+tr.ob) td{border-bottom:0}
       .obs{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:9.5px;color:#5b6f78;background:#f6f9fa;border-left:3px solid #c9d8db;border-radius:4px;padding:4px 8px}
-      .obs b{color:#40565f;font-weight:600}
+      .obs b{color:#40565f;font-weight:600}.obs b.dt{color:#1c2b33;font-weight:700}
       .aviso{display:flex;gap:10px;align-items:flex-start;background:#fff8e6;border:1px solid #f3d27a;border-radius:8px;padding:9px 12px;margin:0 0 14px;color:#6b4e00;font-size:11px}
       .aviso b{color:#4a3600}.aviso i{font-style:normal;font-size:14px;line-height:1}
       .rod{margin-top:14px;color:#8a9aa2;font-size:9.5px;display:flex;justify-content:space-between}
