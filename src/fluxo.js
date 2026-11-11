@@ -219,12 +219,14 @@
   }
   /* ===== aba Financeiro: resultado separado entre turmas diretas e turmas de parceiro ===== */
   let fxFech = {}; try { fxFech = JSON.parse(localStorage.getItem('cc.fxFech') || '{}') || {}; } catch (er) {}
+  let v3xLinhas = [];
   window.v3x = function v3x() {
     parceiroPadrao();
     const t = tot();
     const linhas = []
       .concat((S.turmas || []).filter((x) => x.total > 0).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
       .concat((S.parc || []).filter((x) => x.total > 0).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: 'Fechamento ' + (x.data || '—'), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
+    v3xLinhas = linhas;
     const origens = ['direta'].concat([...new Set(linhas.filter((l) => l.k === 'p').map((l) => l.og))].sort());
     const nomeOg = (og) => og === 'direta' ? 'Turmas diretas' : 'Parceiro ' + og.slice(2);
     const subOg = (og) => og === 'direta' ? 'fechadas pela Cristiano Convites' : 'turmas vindas do cerimonial';
@@ -234,8 +236,8 @@
     const porOg = origens.map((og) => [og, resumoOg(linhas.filter((l) => l.og === og))]);
 
     const ogCard = ([og, x]) => `<div class="vmc fxog" style="--oc:${corOg(og)}"><div class="vmcl"><span class="fxdot"></span>${esc(nomeOg(og))}<small>${x.n} turma(s) · ${subOg(og)}</small></div>
-      <div class="fxogk"><div><small>Fechado</small><b>${BRL(x.f)}</b></div><div><small>Recebido</small><b class="g">${BRL(x.r)}</b></div><div><small>A receber</small><b class="o">${BRL(x.a)}</b></div>
-       <div><small>Custo</small><b class="r">${BRL(x.c)}</b></div><div><small>Lucro previsto</small><b class="${x.l >= 0 ? 'g' : 'r'}">${BRL(x.l)}</b></div><div><small>Margem</small><b>${x.c ? PCT(x.m) : '—'}</b></div></div>
+      <div class="fxogk"><div><small>Fechado</small><b class="vx" data-vx="f|${og}">${BRL(x.f)}</b></div><div><small>Recebido</small><b class="g vx" data-vx="r|${og}">${BRL(x.r)}</b></div><div><small>A receber</small><b class="o vx" data-vx="a|${og}">${BRL(x.a)}</b></div>
+       <div><small>Custo</small><b class="r vx" data-vx="c|${og}">${BRL(x.c)}</b></div><div><small>Lucro previsto</small><b class="${x.l >= 0 ? 'g' : 'r'} vx" data-vx="l|${og}">${BRL(x.l)}</b></div><div><small>Margem</small><b class="vx" data-vx="m|${og}">${x.c ? PCT(x.m) : '—'}</b></div></div>
       <div class="vmmeta" style="margin-top:12px"><span>${PCT(x.pr)} recebido</span><span>${G.f ? PCT(x.f / G.f) + ' do total fechado' : ''}</span></div><div class="vmbar"><i style="width:${Math.min(100, x.pr * 100)}%;background:${corOg(og)}"></i></div></div>`;
 
     const maxT = Math.max(1, ...linhas.map((l) => l.total));
@@ -262,12 +264,12 @@
     return `<div class="vm">
     <div class="vmtop"><h2>Turmas e parceiros</h2><span class="note">diretas e de parceiro, tudo o que já foi fechado</span><span class="sp" style="flex:1"></span><button class="btn ghost sm" data-act="parc">+ turma de parceiro</button><button class="btn sm" data-act="addt">+ nova turma</button></div>
     <div class="vmcards">
-     <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto · total</div><b class="${G.l >= 0 ? 'g' : 'r'}">${BRL(G.l)}</b>
-      <div class="vmmeta"><span>diretas <b>${BRL(dir.l)}</b> · parceiro <b>${BRL(par.l)}</b></span><span>margem ${G.c ? PCT(G.m) : '—'}</span></div><div class="vmbar fxsplit"><i style="width:${G.f ? dir.f / G.f * 100 : 0}%;background:var(--teal)"></i><i style="width:${G.f ? par.f / G.f * 100 : 0}%;background:var(--p)"></i></div></div>
+     <div class="vmc lucro"><div class="vmcl"><span class="vmci">↗</span>Lucro previsto · total</div><b class="${G.l >= 0 ? 'g' : 'r'} vx" data-vx="l|*">${BRL(G.l)}</b>
+      <div class="vmmeta"><span>diretas <b class="vx" data-vx="l|direta">${BRL(dir.l)}</b> · parceiro <b class="vx" data-vx="l|par">${BRL(par.l)}</b></span><span>margem ${G.c ? PCT(G.m) : '—'}</span></div><div class="vmbar fxsplit"><i style="width:${G.f ? dir.f / G.f * 100 : 0}%;background:var(--teal)"></i><i style="width:${G.f ? par.f / G.f * 100 : 0}%;background:var(--p)"></i></div></div>
      <div class="vmc"><div class="vmcl"><span class="vmci">⇄</span>Movimento · total</div>
-      <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g">${BRL(G.r)}</b></div><div class="vmmv"><span class="vmpi" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o">${BRL(G.a)}</b></div></div>
+      <div class="vmmv"><span class="vmpi e">↘</span>Recebido<b class="g vx" data-vx="r|*">${BRL(G.r)}</b></div><div class="vmmv"><span class="vmpi" style="background:#3a2c14;color:var(--o)">◷</span>A receber<b class="o vx" data-vx="a|*">${BRL(G.a)}</b></div></div>
      <div class="vmc"><div class="vmcl"><span class="vmci">◎</span>Custo informado · total</div>
-      <div class="vmmv"><span class="vmpi" style="background:#13262a;color:var(--teal)">●</span>Diretas<b class="r">${BRL(dir.c)}</b></div><div class="vmmv"><span class="vmpi" style="background:#1d1a33;color:var(--p)">●</span>Parceiro<b class="r">${BRL(G.c - dir.c)}</b></div></div>
+      <div class="vmmv"><span class="vmpi" style="background:#13262a;color:var(--teal)">●</span>Diretas<b class="r vx" data-vx="c|direta">${BRL(dir.c)}</b></div><div class="vmmv"><span class="vmpi" style="background:#1d1a33;color:var(--p)">●</span>Parceiro<b class="r vx" data-vx="c|par">${BRL(G.c - dir.c)}</b></div></div>
     </div>
     <div class="fxogs">${porOg.map(ogCard).join('')}</div>
     <div class="vmrow2">
@@ -341,6 +343,32 @@
     } finally { btn.disabled = false; btn.textContent = txt; }
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-relpdf]'); if (b) relatorioTurma(b); });
+
+  /* ===== Turmas e parceiros: clicar num valor mostra de quais turmas ele vem ===== */
+  const VXN = { f: 'Fechado', r: 'Recebido', a: 'A receber', c: 'Custo', l: 'Lucro previsto', m: 'Margem' };
+  function detalhar(chave) {
+    const [k, og] = chave.split('|');
+    const ls = v3xLinhas.filter((l) => og === '*' || (og === 'par' ? l.k === 'p' : l.og === og));
+    const val = (l) => k === 'f' ? l.total : k === 'r' ? l.rec : k === 'a' ? l.total - l.rec : k === 'c' ? l.custo : l.total - l.custo;
+    const onde = og === '*' ? 'todas as turmas' : og === 'direta' ? 'Turmas diretas' : og === 'par' ? 'turmas de parceiro' : 'Parceiro ' + og.slice(2);
+    const rows = ls.map((l) => ({ l, v: val(l) })).filter((x) => k === 'm' || k === 'l' || Math.abs(x.v) > 0.005).sort((a, b) => b.v - a.v);
+    const tot = rows.reduce((t, x) => t + x.v, 0), fech = ls.reduce((t, l) => t + l.total, 0), cus = ls.reduce((t, l) => t + l.custo, 0);
+    const extra = (x) => k === 'm' ? `<td class="n">${x.l.custo ? PCT(dv(x.l.total - x.l.custo, x.l.total)) : '<span class="mu">sem custo</span>'}</td>` : k === 'r' || k === 'a' ? `<td class="n mu">${PCT(dv(x.l.rec, x.l.total))} recebido</td>` : k === 'l' ? `<td class="n mu">${BRL(x.l.total)} − ${BRL(x.l.custo)}</td>` : '';
+    const cab = k === 'm' ? '<th class="n">Lucro</th><th class="n">Margem</th>' : `<th class="n">${VXN[k]}</th>${k === 'r' || k === 'a' ? '<th></th>' : k === 'l' ? '<th class="n">Fechado − custo</th>' : ''}`;
+    const conta = k === 'm' ? `Margem = lucro ÷ fechado = ${BRL(fech - cus)} ÷ ${BRL(fech)}` : k === 'l' ? `Lucro previsto = fechado − custo = ${BRL(fech)} − ${BRL(cus)}` : k === 'a' ? 'A receber = fechado − recebido de cada turma' : k === 'r' ? 'Soma do que já foi pago em cada turma (lista de formandos ou valor recebido do parceiro)' : k === 'c' ? 'Custo informado em cada turma' : 'Valor total fechado de cada turma';
+    dialog(`<h2>${VXN[k]} · ${esc(onde)}</h2><div class="sub">${conta}</div>
+      <div class="vxw"><table class="vxt"><thead><tr><th>Turma</th><th>Origem</th>${cab}</tr></thead><tbody>
+      ${rows.map((x) => `<tr data-vxgo="${x.l.k}|${x.l.id}" title="Abrir"><td><b>${esc(x.l.nome)}</b><small>${x.l.ano}${x.l.sub ? ' · ' + esc(x.l.sub) : ''}</small></td><td class="mu">${x.l.og === 'direta' ? 'Direta' : esc(x.l.og.slice(2))}</td>${k === 'm' ? `<td class="n">${BRL(x.v)}</td>` : `<td class="n"><b>${BRL(x.v)}</b></td>`}${extra(x)}</tr>`).join('') || '<tr><td colspan="4" class="mu">Nenhuma turma com valor aqui.</td></tr>'}
+      </tbody><tfoot><tr><td colspan="2">Total · ${rows.length} turma(s)</td>${k === 'm' ? `<td class="n">${BRL(tot)}</td><td class="n">${cus ? PCT(dv(fech - cus, fech)) : '—'}</td>` : `<td class="n">${BRL(tot)}</td>${k === 'r' || k === 'a' || k === 'l' ? '<td></td>' : ''}`}</tr></tfoot></table></div>
+      <p class="note" style="margin-top:10px">Clique numa turma para abrir.</p><div class="acts"><button class="btn" data-x>Fechar</button></div>`, (e) => {
+      const r = e.target.closest('[data-vxgo]'); if (!r) return;
+      const [t, id] = r.dataset.vxgo.split('|'); if (ov) { ov.remove(); ov = null; }
+      if (t === 't') { lista = +id || id; modal = null; render(); window.scrollTo(0, 0); }
+      else { modal = { t: 'parc', id: +id || id, mes: null, ano: null }; render(); }
+    });
+    const fb = ov && ov.querySelector('[data-x]'); if (fb) fb.focus();   // Esc fecha
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('.vm [data-vx]'); if (b) { e.stopPropagation(); detalhar(b.dataset.vx); } }, true);
 
   /* ===== lista de formandos: painel de valores unitários retrátil (lembra em cada computador) ===== */
   window.__lpFechado = () => { try { return localStorage.getItem('cc.lpFechado') !== '0'; } catch (e) { return true; } };

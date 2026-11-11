@@ -273,3 +273,16 @@ body.fin .kpi b{font-size:20px;margin:0}
 .tbl td:first-child,.tbl th:first-child{min-width:190px}
 .tbl th{letter-spacing:.3px}
 .tbl th,.tbl td{padding-left:8px;padding-right:8px}
+
+/* Turmas e parceiros: valores clicáveis e janela "de onde vem" */
+body.fin .vm .vx{cursor:pointer;border-radius:4px;transition:background .12s;text-decoration:underline dotted transparent;text-underline-offset:4px}
+body.fin .vm .vx:hover{text-decoration-color:currentColor;background:rgba(255,255,255,.04)}
+body.fin .vxw{max-height:55vh;overflow:auto;border:1px solid var(--c-bd);border-radius:var(--r-ctl);margin-top:12px}
+body.fin .vxt{width:100%;border-collapse:collapse;font-size:13px}
+body.fin .vxt th{position:sticky;top:0;background:var(--c-head);color:var(--c-mu);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;text-align:left;padding:9px 10px;border-bottom:1px solid var(--c-bd)}
+body.fin .vxt td{padding:8px 10px;border-bottom:1px solid var(--c-bd)}
+body.fin .vxt td b{font-weight:600}body.fin .vxt td small{display:block;color:var(--c-mu);font-size:11px}
+body.fin .vxt .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}body.fin .vxt .mu{color:var(--c-mu)}
+body.fin .vxt tbody tr{cursor:pointer}body.fin .vxt tbody tr:hover td{background:var(--c-card2)}
+body.fin .vxt tfoot td{font-weight:700;background:var(--c-head);border-bottom:0}
+body.fin .vmdlg:has(.vxw){max-width:720px}
