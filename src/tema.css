@@ -172,3 +172,19 @@ body.fin .lt tr.mais:focus-within>td{background:#13305a!important}
 body.fin .lt tr.mais:focus-within>td:first-child{box-shadow:inset 4px 0 0 #3B82F6}
 body.fin .lt tr.mais:focus-within input:not(:focus){background:#163661;border-color:#2c5f9f}
 body.fin .lt tr.mais input.ovr{background:#2a2410;border-color:#8a6d00;color:#f4d27a}
+
+/* card Situação da lista de formandos */
+body.fin .sitk{display:flex;gap:12px;align-items:flex-end;flex-wrap:nowrap}
+body.fin .sitk>span{display:flex;flex-direction:column;font-size:11px;font-weight:500;color:var(--c-mu);line-height:1.2;white-space:nowrap}
+body.fin .sitk b{font-size:20px;font-weight:700;margin:0}
+body.fin .sitk .ok b{color:var(--c-green)}body.fin .sitk .w b{color:var(--c-orange)}body.fin .sitk .x b{color:var(--c-blue)}
+
+/* painel de valores unitários da lista de formandos (retrátil) */
+body.fin .lptog{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:var(--c-tx);font:inherit;font-size:13px;padding:2px 0 12px;cursor:pointer;text-align:left}
+body.fin .lptog .lpar{width:12px;color:var(--c-mu);font-size:11px;transition:transform .15s}
+body.fin .lptog small{color:var(--c-mu);font-size:12px;display:none}
+body.fin .lptog:hover b{color:var(--c-teal)}
+body.fin .lpanel.lpf .lpbody{display:none}
+body.fin .lpanel.lpf .lptog{padding-bottom:0}
+body.fin .lpanel.lpf .lptog .lpar{transform:rotate(-90deg)}
+body.fin .lpanel.lpf .lptog small{display:inline}

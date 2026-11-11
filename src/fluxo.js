@@ -338,6 +338,23 @@
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-relpdf]'); if (b) relatorioTurma(b); });
 
+  /* ===== lista de formandos: painel de valores unitários retrátil (lembra em cada computador) ===== */
+  window.__lpFechado = () => { try { return localStorage.getItem('cc.lpFechado') !== '0'; } catch (e) { return true; } };
+  window.__lpRes = (T) => {
+    const v = (x) => (+x || 0) ? BRL(+x) : null, p = [];
+    if (v(T.lu)) p.push('Luxo ' + v(T.lu)); if (v(T.su)) p.push('Simplificado ' + v(T.su)); if (v(T.fu)) p.push('Foto ' + v(T.fu));
+    if (+T.pe) p.push('Entrada ' + String(+T.pe).replace('.', ',') + '%');
+    if (+S.vu) p.push('Vegetal ' + BRL(+S.vu)); if (+S.ff) p.push('Foto família ' + BRL(+S.ff));
+    return p.length ? p.join(' · ') : 'nenhum valor preenchido';
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lptog]'); if (!b) return;
+    const pn = b.closest('.lpanel'); if (!pn) return;
+    const f = pn.classList.toggle('lpf');
+    try { localStorage.setItem('cc.lpFechado', f ? '1' : '0'); } catch (er) {}
+    const T = typeof turmaLista === 'function' ? turmaLista() : null, r = pn.querySelector('.lpres'); if (T && r) r.textContent = window.__lpRes(T);
+  });
+
   const css = document.createElement('style');
   css.textContent = `.vm{max-width:1240px;margin:0 auto}
 .vmtop{display:flex;align-items:center;gap:8px;margin:0 0 16px}.vmtop h2{margin:0 8px 0 6px;font-size:20px}.vmtop .btn{margin:0}

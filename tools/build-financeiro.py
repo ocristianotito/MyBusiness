@@ -61,6 +61,14 @@ rep(r"""r.setProperty('--lh',(lh?lh.offsetHeight:0)+'px')}""",
 # botão "Gerar relatório" na lista de formandos (o PDF é montado em fluxo.js)
 rep(r"""placeholder="2027.1" title="Período"></div>""",
     r"""placeholder="2027.1" title="Período"><span style="flex:1"></span><button class="btn sm" data-relpdf="turma" title="PDF da turma para enviar à comissão">Gerar relatório</button></div>""")
+# card "Situação" da lista de formandos: três números com cor (quitados, pendentes, a mais), na mesma altura dos outros cards
+rep(r"""sitTxt=r=>""", r"""sitHtml=r=>`<span class="sitk"><span class="ok"><b>${r.ok}</b>${r.ok===1?'quitado':'quitados'}</span><span class="w"><b>${r.w}</b>${r.w===1?'pendente':'pendentes'}</span><span class="x" title="pagaram a mais"><b>${r.x}</b>a mais</span></span>`,sitTxt=r=>""")
+rep(r"""lk('lk-sit','Situação',sitTxt(r))""", r"""lk('lk-sit','Situação',sitHtml(r))""")
+rep(r"""set('lk-sit',sitTxt(r));""", r"""{const e=document.getElementById('lk-sit');if(e)e.innerHTML=sitHtml(r)}""")
+# valores unitários da turma (luxo, simplificado, foto, entrada, vegetal, foto família): painel que retrai e expande
+rep(r"""<div class="panel"><div class="prog" style="margin:0 0 14px">""", r"""<div class="panel lpanel${window.__lpFechado&&window.__lpFechado()?' lpf':''}"><div class="prog" style="margin:0 0 14px">""")
+rep(r"""<div class="params"><label>Luxo unit""", r"""<button type="button" class="lptog" data-lptog><span class="lpar">▾</span><b>Valores unitários e entrada</b><small class="lpres">${window.__lpRes?window.__lpRes(T):''}</small></button><div class="lpbody"><div class="params"><label>Luxo unit""")
+rep(r"""aparece como sugestão no campo "Entrada".</p></div>""", r"""aparece como sugestão no campo "Entrada".</p></div></div>""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)
