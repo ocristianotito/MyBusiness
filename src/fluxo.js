@@ -291,8 +291,10 @@
     </div></div>`;
   };
   /* ===== relatório da turma (PDF para a comissão: sem custos, margem nem documentos dos formandos) ===== */
-  async function relatorioTurma(btn) {
+  async function relatorioTurma(btn, comObs) {
     const T = typeof turmaLista === 'function' ? turmaLista() : null; if (!T) return;
+    const CMN = { vf: 'Valor', ent: 'Entrada', pago: 'Pago' };
+    const obs = (a) => comObs && a.cm ? ['vf', 'ent', 'pago'].filter((f) => String(a.cm[f] || '').trim()).map((f) => `<span><b>${CMN[f]}:</b> ${String(a.cm[f]).trim().split(/\n+/).map(esc).join(' · ')}</span>`).join('') : '';
     const SITN = { ok: 'Quitado', w: 'Pendente', x: 'Pago a mais', '': '—' };
     const linhas = (T.alunos || []).filter((a) => String(a.nome || '').trim())
       .sort((x, y) => String(x.nome).trim().localeCompare(String(y.nome).trim(), 'pt-BR', { sensitivity: 'base' })).map((a) => ({ a, c: lcalc(T, a) }));
@@ -305,7 +307,7 @@
     const nome = (String(T.curso || '') + ' ' + String(T.per || '')).trim() || 'Turma';
     const hoje = new Date().toLocaleDateString('pt-BR');
     const tr = linhas.map(({ a, c }, i) => `<tr class="${c.sit}"><td class="i">${i + 1}</td><td class="nm">${esc(a.nome)}</td>${cols.map(([k]) => `<td class="c">${q(a[k])}</td>`).join('')}
-      <td class="n">${BRL(c.vf)}</td><td class="n">${BRL(c.pago)}</td><td class="n">${c.rest > 0.005 ? BRL(c.rest) : c.rest < -0.005 ? '+ ' + BRL(-c.rest) : '—'}</td><td><span class="st ${c.sit}">${SITN[c.sit] || '—'}</span></td></tr>`).join('');
+      <td class="n">${BRL(c.vf)}</td><td class="n">${BRL(c.pago)}</td><td class="n">${c.rest > 0.005 ? BRL(c.rest) : c.rest < -0.005 ? '+ ' + BRL(-c.rest) : '—'}</td><td><span class="st ${c.sit}">${SITN[c.sit] || '—'}</span></td></tr>${obs(a) ? `<tr class="ob ${c.sit}"><td></td><td colspan="${nc - 1}"><div class="obs">${obs(a)}</div></td></tr>` : ''}`).join('');
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(nome)}</title><style>
       @page{size:A4;margin:14mm 12mm}
       *{box-sizing:border-box}body{font:11px/1.35 "Segoe UI",Helvetica,Arial,sans-serif;color:#1c2b33;margin:0}
@@ -322,6 +324,9 @@
       .st{display:inline-block;padding:1px 8px;border-radius:99px;font-size:9.5px;font-weight:700;border:1px solid}
       .st.ok{color:#047857;background:#d1fae5;border-color:#6ee7b7}.st.w{color:#b45309;background:#ffedd5;border-color:#fdba74}.st.x{color:#1d4ed8;background:#dbeafe;border-color:#93c5fd}
       tfoot td{font-weight:700;background:#eef4f5;border-top:2px solid #c9d8db}
+      tr.ob td{padding:0 6px 6px;border-bottom:1px solid #e3eaec}tr:has(+tr.ob) td{border-bottom:0}
+      .obs{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:9.5px;color:#5b6f78;background:#f6f9fa;border-left:3px solid #c9d8db;border-radius:4px;padding:4px 8px}
+      .obs b{color:#40565f;font-weight:600}
       .aviso{display:flex;gap:10px;align-items:flex-start;background:#fff8e6;border:1px solid #f3d27a;border-radius:8px;padding:9px 12px;margin:0 0 14px;color:#6b4e00;font-size:11px}
       .aviso b{color:#4a3600}.aviso i{font-style:normal;font-size:14px;line-height:1}
       .rod{margin-top:14px;color:#8a9aa2;font-size:9.5px;display:flex;justify-content:space-between}
@@ -342,7 +347,20 @@
       if (r && !r.ok && !r.canceled) alert(r.error || 'Não foi possível gerar o relatório.');
     } finally { btn.disabled = false; btn.textContent = txt; }
   }
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-relpdf]'); if (b) relatorioTurma(b); });
+  // antes de gerar: escolher se as observações (comentários 💬 dos valores) entram no PDF; a escolha fica lembrada
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-relpdf]'); if (!b) return;
+    const T = typeof turmaLista === 'function' ? turmaLista() : null, n = T ? (T.alunos || []).filter((a) => a.cm && ['vf', 'ent', 'pago'].some((f) => String(a.cm[f] || '').trim())).length : 0;
+    let lembra = false; try { lembra = localStorage.getItem('cc.relObs') === '1'; } catch (er) {}
+    dialog(`<h2>Gerar relatório da turma</h2><div class="sub">PDF para enviar à comissão: formandos, valores, pagamentos e situação.</div>
+      <label class="relop"><input type="checkbox" id="rel-obs"${lembra ? ' checked' : ''}> Mostrar as observações dos valores <small>(${n ? n + ' formando(s) com observação, ex.: "11/11 - 393,75"' : 'nenhuma observação nesta turma'})</small></label>
+      <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, (ev) => {
+      if (!ev.target.closest('[data-ok]')) return;
+      const com = document.getElementById('rel-obs').checked; try { localStorage.setItem('cc.relObs', com ? '1' : '0'); } catch (er) {}
+      if (ov) { ov.remove(); ov = null; } relatorioTurma(b, com);
+    });
+    const ok = ov && ov.querySelector('[data-ok]'); if (ok) ok.focus();
+  });
 
   /* ===== Turmas e parceiros: clicar num valor mostra de quais turmas ele vem ===== */
   const VXN = { f: 'Fechado', r: 'Recebido', a: 'A receber', c: 'Custo', l: 'Lucro previsto', m: 'Margem' };

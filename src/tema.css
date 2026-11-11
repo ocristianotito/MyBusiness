@@ -286,3 +286,5 @@ body.fin .vxt .n{text-align:right;white-space:nowrap;font-variant-numeric:tabula
 body.fin .vxt tbody tr{cursor:pointer}body.fin .vxt tbody tr:hover td{background:var(--c-card2)}
 body.fin .vxt tfoot td{font-weight:700;background:var(--c-head);border-bottom:0}
 body.fin .vmdlg:has(.vxw){max-width:720px}
+body.fin .relop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--c-tx);margin:6px 0 4px;cursor:pointer}
+body.fin .relop small{color:var(--c-mu);font-size:12px}
