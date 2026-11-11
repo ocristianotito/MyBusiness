@@ -152,6 +152,18 @@ async function init(){
     cards.set(id,Object.assign({},c,{colacao:a+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0')}));
    });
    persist()}
+  /* pedido do dono (1.2.12): com a data no campo Data da colação, ela sai do nome do pedido
+     ("ADM UNOPAR 2027.1 - 20/03" → "ADM UNOPAR 2027.1"). Só tira a data que for igual à do campo. Roda uma vez. */
+  if(cfg&&!cfg.semDataNoNome1212){
+   cfg=Object.assign({},cfg,{semDataNoNome1212:1});
+   cards.forEach((c,id)=>{
+    const p=String(c.colacao||'').split('-');if(p.length!==3||!c.title)return;
+    const d=+p[2],m=+p[1],re=new RegExp('\\s*[-–]?\\s*(?<![\\d\\/])0?'+d+'\\/0?'+m+'(?![\\d\\/])');
+    if(!re.test(c.title))return;
+    const t=c.title.replace(re,' ').replace(/\s{2,}/g,' ').replace(/\s*[-–]\s*$/,'').trim();
+    if(t&&t!==c.title)cards.set(id,Object.assign({},c,{title:t}));
+   });
+   persist()}
   /* pedido do dono (1.2.7): checklist de produção novo, no padrão e nos pedidos que usam o antigo. Roda uma vez. */
   if(!(cfg&&cfg.checklist127)){
    const novo=DEF_CFG.check;
