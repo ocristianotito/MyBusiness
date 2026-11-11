@@ -188,3 +188,12 @@ body.fin .lpanel.lpf .lpbody{display:none}
 body.fin .lpanel.lpf .lptog{padding-bottom:0}
 body.fin .lpanel.lpf .lptog .lpar{transform:rotate(-90deg)}
 body.fin .lpanel.lpf .lptog small{display:inline}
+
+/* Orçamentos: tabela compacta (campos mais estreitos e linhas mais baixas) */
+body.fin .mscroll table{width:auto;min-width:100%}
+body.fin .mscroll th{padding:9px 8px;font-size:10px;white-space:nowrap}
+body.fin .mscroll td{padding:4px 8px;font-size:13px;white-space:nowrap}
+body.fin .mscroll input{width:76px;min-width:0;height:30px;padding:4px 8px;font-size:13px;border-radius:6px}
+body.fin .mscroll td:first-child input{width:58px;font-weight:700}
+body.fin .mscroll input:placeholder-shown,body.fin .mscroll input[value=""]{background:transparent;border-color:var(--c-bd);border-style:dashed}
+body.fin .mscroll input:focus{background:var(--c-sunk);border-style:solid}
