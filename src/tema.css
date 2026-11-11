@@ -214,3 +214,54 @@ body.fin .cmtip{pointer-events:none}
 .colrow .x{color:var(--c-red)}
 .colrow .x:hover:not(:disabled){background:#3a1d22;border-color:#6b2a33}
 .colrow .mv:disabled,.colrow .x:disabled{opacity:.3;cursor:not-allowed}
+
+/* lista de formandos: fileira de botões no tamanho padrão dos botões de topo */
+body.fin .lbtns{gap:8px}
+body.fin .lbtns .btn{padding:6px 11px;font-size:12px;border-radius:var(--r-ctl)}
+
+/* Clientes: filtros de situação no mesmo estilo das abas (Contratos: Do mês / Assinados) e tudo numa linha só */
+.pagehead .cfilt.seg{flex-wrap:nowrap;margin-left:16px;gap:2px;padding:3px}
+.cfilt.seg button{background:none;border:0;border-radius:var(--r-ctl);color:var(--c-mu);padding:5px 10px;font-size:13px;font-weight:600;white-space:nowrap}
+.cfilt.seg button:hover{color:var(--c-tx)}
+.cfilt.seg button.on{background:var(--c-card2);color:var(--c-teal);border:0}
+.cfilt.seg button em{font-style:normal;font-weight:500;color:var(--c-mu);font-size:11px}
+.cfilt.seg button.on em{color:var(--c-teal)}
+.pagehead .hsearch{width:200px;min-width:0}
+
+/* janelas do Financeiro com campos e letras do mesmo tamanho das janelas de Demandas e Clientes */
+body.fin .dlg h2{font-size:18px;margin:0 0 4px}
+body.fin .dlg label{font-size:12px;color:var(--c-mu)}
+body.fin .dlg input:not([type=checkbox]):not([type=radio]),body.fin .dlg select,body.fin .dlg textarea{padding:9px 10px;font-size:14px;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);margin-top:5px}
+body.fin .dlg input:focus,body.fin .dlg select:focus,body.fin .dlg textarea:focus{border-color:var(--c-teal);outline:none;box-shadow:0 0 0 2px rgba(45,181,174,.2)}
+body.fin input[type=checkbox],body.fin input[type=radio]{accent-color:var(--c-teal);width:16px;height:16px;margin:0 6px 0 0;vertical-align:-3px;cursor:pointer}
+body.fin .dlg .fg{gap:14px}
+
+/* Demandas › Lista: colunas mais justas (cabe na tela sem rolar para o lado) e traço de vazio sempre igual */
+.tbl th{padding:11px 10px;white-space:nowrap;font-size:10.5px}
+.tbl td{padding:10px 10px;font-size:13px}
+.tbl td:first-child,.tbl th:first-child{min-width:220px}
+.tbl td .note{color:var(--c-mu)}
+.tbl td.num .note{display:inline-block;min-width:1ch}
+
+/* cartões de números iguais em todo o programa (modelo de Contratos e Clientes: ícone, número e nome embaixo) */
+.ckpis.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ckpis.dks{background:none;border:0;padding:0;border-radius:0;gap:12px;margin-bottom:18px}
+.ck.dk b{display:flex;align-items:center;gap:10px}
+.ck.dk .dchip{font-size:11px;font-weight:600}
+body.fin .kpi{display:flex;flex-direction:column-reverse;justify-content:center;gap:3px;padding:14px 16px;min-height:74px}
+body.fin .kpi small{font-size:12px;color:var(--c-mu);margin:0}
+body.fin .kpi b{font-size:20px;margin:0}
+.ck.dk span.dchip.g{color:var(--c-green)}.ck.dk span.dchip.r{color:var(--c-red)}.ck.dk span.dchip.o{color:var(--c-orange)}.ck.dk span.dchip.mu{color:var(--c-mu)}
+
+/* Demandas › Visão geral: "Sem prioridade" e datas numa linha só */
+.flag,.ovtbl td:nth-child(4){white-space:nowrap}
+
+/* janelas de senha e da nuvem: o espaço da mensagem de erro só aparece quando há mensagem */
+.pwerr:empty,.nvmsg:empty{display:none}
+/* Clientes: cabeçalho numa linha só, botão "+ Novo cliente" no canto direito como nos outros módulos */
+#mod-clientes .pagehead{flex-wrap:nowrap}
+#mod-clientes .pagehead>div:not(.cfilt){min-width:0;flex-shrink:1}
+#mod-clientes .pagehead>div:not(.cfilt) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mod-clientes .pagehead .cfilt{flex-shrink:0}
+#mod-clientes .pagehead .hsearch{width:170px;flex-shrink:1}
+#mod-clientes .pagehead .btn{flex-shrink:0;white-space:nowrap}

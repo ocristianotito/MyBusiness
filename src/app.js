@@ -231,12 +231,12 @@ function renderList(){
  const linha=([id,c])=>{
   const d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
   return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
-  <td>${esc(cliName(c.clientId)||'—')}</td>
+  <td>${cliName(c.clientId)?esc(cliName(c.clientId)):'<span class="note">—</span>'}</td>
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
   <td>${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="note">—</span>'}</td>
   <td>${c.prio?`<span class="chip ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="note">—</span>'}</td>
-  <td>${esc(c.resp||'—')}</td>
-  <td class="num">${q?fmtN(q):'—'}</td>
+  <td>${c.resp?esc(c.resp):'<span class="note">—</span>'}</td>
+  <td class="num">${q?fmtN(q):'<span class="note">—</span>'}</td>
   <td>${k.n?`<div class="mini"><div class="bar"><i style="width:${k.d/k.n*100}%;background:${k.d===k.n?'var(--green)':'var(--teal)'}"></i></div><span class="note">${k.d}/${k.n}</span></div>`:'<span class="note">—</span>'}</td>
   <td class="note">${fmtAt(c.atualizado||c.criado)}</td></tr>`};
  /* um grupo por etapa, na ordem do quadro; clique no cabeçalho para retrair ou expandir */

@@ -78,7 +78,7 @@
     '.nuvemchip:hover{border-color:#2a3746;color:#E6EDF3}.nuvemchip span{flex:1}.nuvemchip i{width:8px;height:8px;border-radius:50%}' +
     '.nvinfo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 4px}.nvinfo div{background:var(--c-card2,#16202b);border-radius:8px;padding:10px 12px}' +
     '.nvinfo small{display:block;color:var(--c-mu,#8B9BAE);font-size:11px;margin-bottom:3px}.nvinfo b{display:flex;align-items:center;gap:7px;font-size:13px;overflow-wrap:anywhere}.nvinfo b i{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
-    '.nvmsg{color:#F0A53F;font-size:13px;min-height:18px;margin:10px 0 0}.nuvemov label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--c-mu,#8B9BAE)}' +
+    '.nvmsg{color:#F0A53F;font-size:13px;margin:10px 0 0}.nvmsg:empty{display:none}.nuvemov label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--c-mu,#8B9BAE)}' +
     '.nuvemov input{background:#0a0f14;border:1px solid #1E2833;color:#E6EDF3;border-radius:8px;padding:9px 10px;font:inherit;font-size:14px;width:100%;margin:0}';
   document.head.appendChild(css);
   api.onNuvem(function (s) { st = s || st; pintar(); });

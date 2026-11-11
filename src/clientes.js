@@ -33,7 +33,7 @@ function renderClientes() {
   const semVinculo = [...cards.values()].filter((c) => !c.clientId).length;
   const kpi = (ic, v, l, extra, col) => `<div class="ck"><span class="cki" style="--c:${col}">${ShellIcon(ic, 18)}</span><div><b>${v}${extra ? `<small>${extra}</small>` : ''}</b><span>${l}</span></div></div>`;
   box.innerHTML = `<header class="pagehead"><span class="phicon">${ShellIcon('clientes', 19)}</span><div><h1>Clientes</h1><small>${all.length} cadastrado(s) · ${aberto} com trabalho em aberto</small></div>
-   <div class="cfilt">${['todos', 'ativo', 'pausado', 'prospect', 'encerrado'].map((s) => `<button data-clf="${s}" class="${cliFiltro === s ? 'on' : ''}">${s === 'todos' ? 'Todos' : `<i style="background:${CLI_SIT[s].c}"></i>${CLI_SIT[s].n}`} <em>${s === 'todos' ? all.length : cnt(s)}</em></button>`).join('')}</div>
+   <div class="cfilt seg">${['todos', 'ativo', 'pausado', 'prospect', 'encerrado'].map((s) => `<button data-clf="${s}" class="${cliFiltro === s ? 'on' : ''}">${s === 'todos' ? 'Todos' : `<i style="background:${CLI_SIT[s].c}"></i>${CLI_SIT[s].n}`} <em>${s === 'todos' ? all.length : cnt(s)}</em></button>`).join('')}</div>
    <span class="phsp"></span><input type="search" id="cliq" class="hsearch" placeholder="Buscar cliente" value="${esc(cliBusca)}">
    <button class="btn sm" data-cla="novo">+ Novo cliente</button></header>
   <div class="mbody"><div class="mwrap">

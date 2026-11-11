@@ -74,12 +74,14 @@ function renderDashboard() {
   const resp = new Map(); ativos.forEach(([, c]) => { const r = (c.resp || '').trim() || 'Sem responsável'; const x = resp.get(r) || { n: 0, s: 0 }; x.n++; const d = dueInfo(c); if (d && d.days >= 0 && d.days <= 7) x.s++; resp.set(r, x); });
   const respL = [...resp.entries()].sort((a, b) => b[1].n - a[1].n), respMax = Math.max(1, ...respL.map(([, x]) => x.n));
 
-  const kpi = (ic, l, v, chip, cls) => `<div class="dk"><div class="dkl"><span class="dki">${ShellIcon(ic, 16)}</span>${l}</div><div class="dkv"><b>${v}</b>${chip ? `<span class="dchip ${cls}">${chip}</span>` : ''}</div></div>`;
+  // mesmo cartão de número de Contratos e Clientes: ícone colorido, número e nome embaixo
+  const KC = { demandas: '#34D399', dashboard: '#2DB5AE', clientes: '#60A5FA' };
+  const kpi = (ic, l, v, chip, cls) => `<div class="ck dk"><span class="cki" style="--c:${KC[ic] || '#2DB5AE'}">${ShellIcon(ic, 18)}</span><div><b>${v}${chip ? `<span class="dchip ${cls}">${chip}</span>` : ''}</b><span>${l}</span></div></div>`;
   box.innerHTML = `<header class="pagehead"><span class="phicon">${ShellIcon('dashboard', 19)}</span><div><h1>Panorama da produção</h1><small>Resumo geral da operação</small></div>
    <span class="phsp"></span><span class="pill">${WD_LONG[agora.getDay()]}, ${agora.getDate()} de ${MESL[agora.getMonth()]} de ${agora.getFullYear()}</span></header>
   <div class="mbody"><div class="mwrap dash">
    <div class="hello"><h2>Olá, Cristiano</h2><p>Acompanhe as entregas e a produção dos convites.</p></div>
-   <div class="dks">${kpi('demandas', 'Entregues no mês', entMes, entSem + ' na semana', 'g')}${kpi('dashboard', 'Em produção', ativos.length, atras ? atras + ' atrasado' + (atras > 1 ? 's' : '') : (semPrazo ? semPrazo + ' sem prazo' : ''), atras ? 'r' : 'mu')}${kpi('clientes', 'Entrega no prazo', taxa, vence7 ? vence7 + ' vence' + (vence7 > 1 ? 'm' : '') + ' em 7 dias' : '', 'o')}</div>
+   <div class="ckpis c3 dks">${kpi('demandas', 'Entregues no mês', entMes, entSem + ' na semana', 'g')}${kpi('dashboard', 'Em produção', ativos.length, atras ? atras + ' atrasado' + (atras > 1 ? 's' : '') : (semPrazo ? semPrazo + ' sem prazo' : ''), atras ? 'r' : 'mu')}${kpi('clientes', 'Entrega no prazo', taxa, vence7 ? vence7 + ' vence' + (vence7 > 1 ? 'm' : '') + ' em 7 dias' : '', 'o')}</div>
    <div class="dpanel"><div class="dph"><div><b>Entregas do ano</b><small>Pedidos entregues e prazos de entrega, mês a mês</small></div><span class="phsp"></span>
      <span class="lg"><i class="en"></i>Entregues</span><span class="lg"><i class="pz"></i>Com prazo no mês</span>
      <select id="dano" class="hsel" aria-label="Ano">${[dashAno - 1, dashAno, dashAno + 1].map((a) => `<option${a === dashAno ? ' selected' : ''}>${a}</option>`).join('')}</select></div>
