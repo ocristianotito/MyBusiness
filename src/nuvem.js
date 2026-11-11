@@ -205,5 +205,10 @@ module.exports = function criarNuvem(o) {
   }
   async function encerrar() { if (fila.size && uid) { clearTimeout(timer); await Promise.race([enviar(), new Promise((r) => setTimeout(r, 4000))]); } if (parar) parar(); if (db) await terminate(db).catch(() => {}); }
 
-  return { PARTES, status: st, marcar, entrar: (e, s) => conectar(e, s, true), iniciar, sair, encerrar, sincronizarAgora: () => { if (uid) { agendar(0); return true; } return false; } };
+  // confere a senha da conta da Nuvem (usada para recuperar a senha de acesso do programa)
+  async function confirmarSenha(senha) {
+    if (!email || !auth) return false;
+    try { await signInWithEmailAndPassword(auth, email, String(senha || '')); return true; } catch (e) { return false; }
+  }
+  return { PARTES, status: st, marcar, confirmarSenha, entrar: (e, s) => conectar(e, s, true), iniciar, sair, encerrar, sincronizarAgora: () => { if (uid) { agendar(0); return true; } return false; } };
 };

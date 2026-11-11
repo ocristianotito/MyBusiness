@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Cristiano Convites</title>
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="tema.css">
+<style>
+ html,body{height:100%;margin:0}
+ body.acesso{display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 600px at 50% -10%,#123331 0%,var(--c-bg) 60%);color:var(--c-tx);font-family:var(--f)}
+ .acard{width:380px;max-width:calc(100vw - 32px);background:var(--c-card);border:1px solid var(--c-bd);border-top:3px solid var(--c-teal);border-radius:16px;padding:30px 28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+ .alogo{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+ .alogo span{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2DB5AE,#1b7c77);color:#06201f;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px}
+ .alogo b{display:block;font-size:17px;line-height:1.15}.alogo small{color:var(--c-mu);font-size:12px}
+ .acard h1{font-size:18px;margin:0 0 4px}.acard .sub{color:var(--c-mu);font-size:13px;margin:0 0 18px;line-height:1.45}
+ .acard label{display:block;font-size:12px;color:var(--c-mu);margin-top:12px}
+ .acard input{display:block;width:100%;box-sizing:border-box;margin-top:5px;background:var(--c-sunk);border:1px solid var(--c-bd);color:var(--c-tx);border-radius:var(--r-ctl);padding:11px 12px;font:inherit;font-size:15px}
+ .acard input:focus{outline:none;border-color:var(--c-teal);box-shadow:0 0 0 2px rgba(45,181,174,.2)}
+ .acard .btn{width:100%;margin-top:18px;padding:11px 14px;font-size:14px}
+ .aerr{color:var(--c-red);font-size:13px;margin:12px 0 0}.aerr:empty{display:none}
+ .aok{color:var(--c-green)}
+ .alinks{display:flex;justify-content:space-between;gap:10px;margin-top:14px;font-size:12px}
+ .alinks button{background:none;border:0;color:var(--c-teal);font:inherit;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+ .alinks button:hover{color:var(--c-tx)}
+ .aseg{display:flex;gap:4px;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);padding:3px;margin-top:4px}
+ .aseg button{flex:1;background:none;border:0;color:var(--c-mu);border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+ .aseg button.on{background:var(--c-card2);color:var(--c-teal)}.aseg button:disabled{opacity:.35;cursor:not-allowed}
+ .anote{color:var(--c-mu);font-size:12px;margin:14px 0 0;line-height:1.45}
+</style>
+</head>
+<body class="acesso">
+<div class="acard" id="acard" aria-live="polite"></div>
+<script src="update.js"></script>
+<script src="acesso.js"></script>
+</body>
+</html>

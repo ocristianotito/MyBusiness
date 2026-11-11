@@ -483,6 +483,7 @@ async function doMenu(m,ok){
  if((m==='export'||m==='import')&&!ok){const st=await window.api.senhaStatus();if(st.hasPassword&&!st.unlocked){modal={t:'pw',mode:'enter',next:m};return renderModal()}}
  if(m==='export'){await flushNow();const r=await window.api.exportar();window.api.trancar();if(r.ok)toast('Backup salvo em '+r.path);else if(r.error)toast(r.error);return}
  if(m==='pasta'){window.api.abrirBackups();return}
+ if(m==='acesso'){await flushNow();window.api.acessoTrocar();return}
  if(m==='update'){if(window.__checkUpdates)window.__checkUpdates();return}
  if(m==='import'){await flushNow();const r=await window.api.importar();if(!r.ok){window.api.trancar();if(r.error)toast(r.error);return}
   const what=r.kind==='fin'?`Este é um backup do <b>Dashboard de Convites</b> (${r.turmas} turmas). Importar <b>substitui todos os dados do Financeiro</b>. A Produção não muda.`

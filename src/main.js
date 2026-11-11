@@ -17,7 +17,8 @@ const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const SEED_FILE = path.join(__dirname, 'seed.json');
 const KEEP_BACKUPS = 30;
 const SEC_FILE = path.join(DATA_DIR, 'seguranca.json');
-const PAGES = { producao: 'index.html', financeiro: 'financeiro.html' };
+const PAGES = { producao: 'index.html', financeiro: 'financeiro.html', acesso: 'acesso.html' };
+const ACESSO_FILE = path.join(DATA_DIR, 'acesso.json');
 
 let win = null;
 let current = null;      // dados em memória: { v, cfg, cards, events, fin }
@@ -32,6 +33,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const semAcesso = (cfg) => { if (!cfg || typeof cfg !== 'object' || !cfg.acesso) return cfg; const c = Object.assign({}, cfg); delete c.acesso; return c; };
 function writeAtomic(file, obj) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(obj), 'utf8');
@@ -106,12 +108,79 @@ ipcMain.handle('sec:set', (_e, newPw, oldPw) => {
 });
 ipcMain.handle('sec:lock', () => { unlocked = false; });
 
+/* ----- senha de acesso ao programa -----
+   Pedida ao abrir e ao reabrir a janela pela bandeja. É a mesma em todos os aparelhos: fica em cfg.acesso
+   (só o resumo scrypt, nunca a senha) e viaja pela Nuvem junto com a configuração. Uma cópia local (acesso.json)
+   garante que um aparelho com versão antiga não a apague; vale a mais recente (campo "em").
+   Esqueceu: cria outra com a senha da conta da Nuvem ou com a senha do Financeiro deste computador. */
+let liberado = false, aFails = 0, aWait = 0, podeRedefinir = false, trocando = false;
+const acessoOk = (a) => a && typeof a === 'object' && a.salt && a.hash ? a : null;
+function acessoGet() {
+  const d = loadData(), c = acessoOk(d.cfg && d.cfg.acesso);
+  let l = null; try { l = acessoOk(readJson(ACESSO_FILE)); } catch (e) {}
+  // vale a mais forte: senha "provisória" (criada num aparelho novo, sem Nuvem) perde para a dos outros aparelhos; depois, a mais recente
+  const forca = (a) => (a.prov ? 0 : 1e15) + (a.em || 0), mais = (a, b) => forca(a) > forca(b);
+  if (l && (!c || mais(l, c))) {   // a cópia local é mais nova: volta para a configuração e sobe para a nuvem
+    d.cfg = Object.assign({}, d.cfg || {}, { acesso: l }); persist(); if (nuvem) nuvem.marcar(['cfg']); return l;
+  }
+  if (c && (!l || mais(c, l))) { try { writeAtomic(ACESSO_FILE, c); } catch (e) {} }
+  return c;
+}
+// aparelho com senha provisória acabou de sincronizar: se a nuvem não tinha outra senha, a dele vira a oficial
+function oficializarAcesso() {
+  let l = null; try { l = acessoOk(readJson(ACESSO_FILE)); } catch (e) {}
+  if (!l || !l.prov || !(nuvem && nuvem.status().email)) return;
+  const d = loadData(), c = acessoOk(d.cfg && d.cfg.acesso);
+  if (c && c.hash !== l.hash && !c.prov) { acessoGet(); avisarAcesso(); return; }   // a nuvem já tinha a senha dos outros aparelhos: vale ela
+  const a = Object.assign({}, l, { em: Date.now() }); delete a.prov;
+  try { writeAtomic(ACESSO_FILE, a); } catch (e) {}
+  d.cfg = Object.assign({}, d.cfg || {}, { acesso: a }); persist(); nuvem.marcar(['cfg']);
+}
+function acessoConfere(pw) {
+  const a = acessoGet(); if (!a) return false;
+  const x = Buffer.from(hashPw(pw, a.salt), 'hex'), y = Buffer.from(a.hash, 'hex');
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+const avisarAcesso = () => { if (win && !win.isDestroyed() && currentPage === 'acesso') win.webContents.send('acesso:mudou', acessoStatus()); };
+const acessoStatus = () => ({ temSenha: !!acessoGet(), trocando, podeRedefinir, nuvem: !!(nuvem && nuvem.status().email), fin: !!secGet() });
+function trancarTudo() { liberado = false; unlocked = false; podeRedefinir = false; trocando = false; }
+ipcMain.handle('acesso:status', () => acessoStatus());
+ipcMain.handle('acesso:entrar', (_e, pw) => {
+  const now = Date.now();
+  if (now < aWait) return { ok: false, wait: Math.ceil((aWait - now) / 1000) };
+  if (acessoConfere(pw)) { liberado = true; aFails = 0; return { ok: true }; }
+  aFails++; if (aFails >= 5) { aWait = now + 30000; aFails = 0; return { ok: false, wait: 30 }; }
+  return { ok: false };
+});
+ipcMain.handle('acesso:criar', (_e, nova, atual) => {
+  nova = String(nova || '');
+  if (nova.length < 4) return { ok: false, error: 'A senha precisa ter pelo menos 4 caracteres.' };
+  const tem = !!acessoGet();
+  if (tem && !podeRedefinir && !(trocando && liberado && acessoConfere(atual))) return { ok: false, error: tem && trocando ? 'A senha atual está incorreta.' : 'Já existe uma senha de acesso.' };
+  const salt = crypto.randomBytes(16).toString('hex'), a = { salt, hash: hashPw(nova, salt), em: Date.now() };
+  if (!tem && !(nuvem && nuvem.status().email)) a.prov = true;   // primeira senha num aparelho ainda sem Nuvem
+  const d = loadData(); d.cfg = Object.assign({}, d.cfg || {}, { acesso: a });
+  try { writeAtomic(ACESSO_FILE, a); } catch (e) {}
+  persist(); if (nuvem) nuvem.marcar(['cfg']);
+  liberado = true; podeRedefinir = false; trocando = false;
+  return { ok: true };
+});
+ipcMain.handle('acesso:recuperar', async (_e, tipo, senha) => {
+  const ok = tipo === 'fin' ? (!!secGet() && checkPw(senha)) : tipo === 'nuvem' ? !!(nuvem && await nuvem.confirmarSenha(senha)) : false;
+  if (ok) podeRedefinir = true;
+  return { ok };
+});
+ipcMain.handle('acesso:trocar', () => { if (!liberado || !win) return { ok: false }; trocando = true; currentPage = 'acesso'; win.loadFile(path.join(__dirname, PAGES.acesso)); return { ok: true }; });
+ipcMain.handle('acesso:cancelar', () => { if (!liberado || !win) return { ok: false }; trocando = false; currentPage = 'producao'; win.loadFile(path.join(__dirname, PAGES.producao)); return { ok: true }; });
+
 /* ----- produção ----- */
-ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: d.cfg, cards: d.cards, events: d.events || {}, clients: d.clients || {}, contracts: d.contracts || {} }; });
+ipcMain.handle('data:load', () => { const d = loadData(); return { v: d.v, cfg: semAcesso(d.cfg), cards: d.cards, events: d.events || {}, clients: d.clients || {}, contracts: d.contracts || {} }; });
 ipcMain.handle('data:save', (_e, obj) => {
   if (!validFull(obj)) return { ok: false, error: 'Dados inválidos' };
+  if (!liberado) return { ok: false, error: 'Programa bloqueado' };
   try {
     loadData();
+    if (current.cfg && current.cfg.acesso && obj.cfg && typeof obj.cfg === 'object') obj.cfg = Object.assign({}, obj.cfg, { acesso: current.cfg.acesso });   // a senha de acesso só muda pela tela de acesso
     const antes = {}; ['cfg', 'cards', 'events', 'clients', 'contracts'].forEach((k) => { antes[k] = JSON.stringify(current[k] == null ? null : current[k]); });
     current.cfg = obj.cfg; current.cards = obj.cards;
     ['events', 'clients', 'contracts'].forEach((k) => { if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) current[k] = obj[k]; });
@@ -376,8 +445,8 @@ function setupNuvem() {
       writeAtomic(path.join(BACKUP_DIR, nome), current);
       fs.readdirSync(BACKUP_DIR).filter((f) => /^antes-da-nuvem-/.test(f)).sort().reverse().slice(20).forEach((f) => { try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch (e) {} });
     },
-    aplicarRemoto: (partes) => { if (win && !win.isDestroyed()) win.webContents.send('dados:remoto', partes); },
-    avisar: (st) => { if (win && !win.isDestroyed()) win.webContents.send('nuvem:status', st); },
+    aplicarRemoto: (partes) => { if (partes.includes('cfg')) { acessoGet(); avisarAcesso(); } if (win && !win.isDestroyed() && currentPage !== 'acesso') win.webContents.send('dados:remoto', partes); },
+    avisar: (st) => { if (win && !win.isDestroyed()) win.webContents.send('nuvem:status', st); if (st.estado === 'sincronizado') { try { oficializarAcesso(); } catch (e) {} } },
     perguntar: async () => {
       const r = await dialog.showMessageBox(win, {
         type: 'question', title: 'Sincronizar com a nuvem',
@@ -402,6 +471,7 @@ ipcMain.handle('nuvem:agora', () => nuvem.sincronizarAgora());
 let currentPage = 'producao';
 ipcMain.handle('app:goto', (_e, page) => {
   if (!PAGES[page] || !win) return { ok: false };
+  if (page !== 'acesso' && !liberado) return { ok: false, locked: true };
   if (page === 'financeiro' && !finAllowed()) return { ok: false, locked: true };
   if (page !== 'financeiro') unlocked = false;   // sair do financeiro tranca de novo
   currentPage = page;
@@ -436,16 +506,16 @@ async function quitApp(install) {
 }
 function showWindow() {
   if (!win || win.isDestroyed()) return;
+  if (!win.isVisible() && currentPage !== 'acesso') { trancarTudo(); currentPage = 'acesso'; win.loadFile(path.join(__dirname, PAGES.acesso)); }   // voltou da bandeja: pede a senha
   if (!win.isVisible()) win.show();
   if (win.isMinimized()) win.restore();
   win.focus();
 }
 async function hideToTray() {
-  if (currentPage === 'financeiro') {   // não deixa o financeiro aberto escondido
-    await flushRenderer();
-    unlocked = false; currentPage = 'producao';
-    win.loadFile(path.join(__dirname, PAGES.producao));
-  }
+  // fechou a janela: salva, tranca e deixa só a tela de acesso carregada (o Financeiro também tranca)
+  if (currentPage !== 'acesso') { await flushRenderer(); }
+  trancarTudo(); currentPage = 'acesso';
+  win.loadFile(path.join(__dirname, PAGES.acesso));
   win.hide();
   if (!trayHintShown && Notification.isSupported()) {
     trayHintShown = true;
@@ -490,7 +560,8 @@ function createWindow() {
   win.on('close', (e) => { if (!quitting) { e.preventDefault(); hideToTray(); } });
   win.on('session-end', () => { quitting = true; });   // Windows desligando
   win.on('focus', () => { if (Date.now() - lastCheck > 10 * 60000) checkUpdates('janela em foco'); });
-  win.loadFile(path.join(__dirname, 'index.html'));
+  currentPage = 'acesso';
+  win.loadFile(path.join(__dirname, PAGES.acesso));   // abre sempre pela senha de acesso
 }
 
 /* No Mac o menu do topo é obrigatório para Cmd+C, Cmd+V, Cmd+Z e Cmd+Q funcionarem. */

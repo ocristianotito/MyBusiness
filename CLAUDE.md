@@ -32,6 +32,16 @@ Textos da interface e mensagens em português do Brasil.
 - Testar com o simulador: `firebase emulators:start --only auth,firestore` e abrir o programa com
   `CC_NUVEM_EMULADOR=1` (e `CC_DATA_DIR=<pasta>` para simular outro computador).
 
+## Senha de acesso (abre o programa)
+- `src/acesso.html` + `acesso.js`: tela pedida ao abrir e ao reabrir a janela pela bandeja (fechar no X tranca).
+  O processo principal só deixa ir para `index.html`/`financeiro.html` com `liberado = true` (`app:goto`), e `data:save` recusa sem ele.
+- A senha (só o resumo scrypt `{salt, hash, em}`) fica em `cfg.acesso` e viaja pela Nuvem: é a mesma em todos os aparelhos.
+  Cópia local em `acesso.json`; vale a mais recente. Senha criada num aparelho sem Nuvem é `prov` e perde para a da nuvem
+  (`oficializarAcesso` a torna oficial se a nuvem não tiver outra). `data:load` não manda `cfg.acesso` para a tela e
+  `data:save` preserva a do processo principal.
+- Esqueceu: "Esqueci a senha" confirma com a senha da conta da Nuvem (`nuvem.confirmarSenha`) ou com a do Financeiro deste computador.
+- Trocar: menu Backup → "Trocar senha de acesso…". A senha do Financeiro continua separada (`seguranca.json`, por computador).
+
 ## Dados
 - Ficam em `%APPDATA%\Producao Cristiano Convites\dados.json` (`{v, cfg, cards, events, clients, contracts, fin}`), com backup diário em `backups/`.
   O programa se chama "Cristiano Convites" desde a 1.2.3, mas a pasta de dados mantém o nome antigo: não renomeie.

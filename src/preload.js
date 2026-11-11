@@ -40,5 +40,12 @@ contextBridge.exposeInMainWorld('api', {
   onDadosRemotos: (cb) => ipcRenderer.on('dados:remoto', (_e, p) => cb(p)),
   // navegação
   ir: (page) => ipcRenderer.invoke('app:goto', page),
+  acessoStatus: () => ipcRenderer.invoke('acesso:status'),
+  acessoEntrar: (pw) => ipcRenderer.invoke('acesso:entrar', pw),
+  acessoCriar: (nova, atual) => ipcRenderer.invoke('acesso:criar', nova, atual),
+  acessoRecuperar: (tipo, senha) => ipcRenderer.invoke('acesso:recuperar', tipo, senha),
+  acessoTrocar: () => ipcRenderer.invoke('acesso:trocar'),
+  acessoCancelar: () => ipcRenderer.invoke('acesso:cancelar'),
+  onAcesso: (cb) => ipcRenderer.on('acesso:mudou', (_e, s) => cb(s)),
   abrirLink: (url) => ipcRenderer.invoke('app:openExternal', url)
 });
