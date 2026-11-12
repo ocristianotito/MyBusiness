@@ -518,6 +518,7 @@
        <label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
        <label>Para (turma ou cliente)<input id="op-para" placeholder="Ex.: Direito UNEX 2027.1"></label>
        <label>Quantidades<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
+       <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
        <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
        <label>E-mail no rodapé<input id="op-mail" value="${esc((S.orcContato || {}).email || '')}" placeholder="seuemail@gmail.com"></label></div>
@@ -526,10 +527,10 @@
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, async (e) => {
       const ok = e.target.closest('[data-ok]'); if (!ok) return;
       const g = (id) => document.getElementById(id).value;
-      const op = { mid: g('op-m'), per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
+      const op = { mid: g('op-m'), per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
       if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
       if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305) ou marque "Mostrar também a tabela completa".'); return; }
-      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
+      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
       try { await gerarOrcPdf(op); if (ov) { ov.remove(); ov = null; } } catch (er) { ok.disabled = false; ok.textContent = 'Gerar PDF'; alert(er.message || er); }
     });
@@ -559,9 +560,9 @@
       body{font:11.5px/1.45 "Segoe UI",Helvetica,Arial,sans-serif;color:#1c2b33;margin:0;font-feature-settings:"calt" 0}
       .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #2DB5AE;padding-bottom:10px;margin-bottom:16px}
       .marca{font-size:20px;font-weight:800;color:#147a74}.marca small{display:block;font-size:10px;font-weight:600;color:#6b7f88;letter-spacing:1.6px;text-transform:uppercase}
-      .tt{text-align:right;color:#6b7f88}.tt b{display:block;font-size:17px;color:#1c2b33}
+      .tt{text-align:right;color:#6b7f88}.tt b{display:block;font-size:17px;color:#1c2b33}.tt i{display:block;font-style:normal;font-size:12px;font-weight:600;color:#40565f}
       .para{background:#f3f8f8;border:1px solid #dbe5e7;border-radius:8px;padding:7px 12px;margin-bottom:12px}.para small{color:#6b7f88;text-transform:uppercase;letter-spacing:1px;font-size:9.5px;display:block}.para b{font-size:14px}
-      h2{font-size:15px;margin:0 0 2px}.mod{color:#6b7f88;margin-bottom:10px}
+      h2{font-size:15px;margin:0 0 2px}.mod{color:#40565f;font-size:12.5px;font-weight:600;margin-bottom:10px}
       .fotos{display:grid;gap:8px;margin-bottom:12px}.fotos.n1{grid-template-columns:1fr}.fotos.n2{grid-template-columns:1fr 1fr}.fotos.n3{grid-template-columns:2fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
       .fotos img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid #dbe5e7;display:block}
       .fotos.n1 img{max-height:78mm;object-fit:contain;background:#f6f9fa}.fotos.n2 img{height:52mm}.fotos.n3 img{height:100%;min-height:0}.fotos.n3 img:first-child{grid-row:1/3;height:76mm}.fotos.n3{height:76mm}
@@ -577,10 +578,10 @@
       .val{margin-top:12px;font-weight:600}.rod{margin-top:18px;border-top:1px solid #dbe5e7;padding-top:8px;color:#6b7f88;font-size:10px;display:flex;justify-content:space-between;gap:10px}
       tr{page-break-inside:avoid}.fotos,.dest{page-break-inside:avoid}
     </style></head><body>
-      <div class="top"><div class="marca">${esc(nomeEmp)}<small>Orçamento</small></div><div class="tt"><b>${esc(tam)}</b>período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
+      <div class="top"><div class="marca">${esc(nomeEmp)}<small>Orçamento</small></div><div class="tt"><b>${esc(tam)}</b>${op.desc ? `<i>${esc(op.desc)}</i>` : ''}período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
       ${op.para ? `<div class="para"><small>Para</small><b>${esc(op.para)}</b></div>` : ''}
       ${fotos.length ? `<div class="fotos n${fotos.length}">${fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
-      <h2>Convite ${esc(tam)}</h2>${M.capa ? `<div class="mod">${esc(M.capa)}</div>` : ''}
+      <h2>Convite ${esc(tam)}</h2>${op.desc || M.capa ? `<div class="mod">${[op.desc, M.capa].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
       ${alvos.length ? `<div class="qs n${Math.min(alvos.length, 3)}">${alvos.map((a) => `<div class="qc"><b>${a.q} convites</b><span><small>Valor por convite</small>${BRL(a.val / a.q)}</span><span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : ''}
       ${op.tabela ? `<div class="sec">${alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
       <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
