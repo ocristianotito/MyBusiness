@@ -517,17 +517,19 @@
       <div class="fg"><label>Modelo<select id="op-m">${ms.map((x) => `<option value="${x.id}"${x.id === mid ? ' selected' : ''}>${esc(x.nome)}${x.capa ? ' · ' + esc(x.capa) : ''}${(x.fotos || []).length ? ' · ' + x.fotos.length + ' foto(s)' : ''}</option>`).join('')}</select></label>
        <label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
        <label>Para (turma ou cliente)<input id="op-para" placeholder="Ex.: Direito UNEX 2027.1"></label>
-       <label>Quantidade da turma<input id="op-q" inputmode="numeric" placeholder="Ex.: 120 (opcional)"></label>
+       <label>Quantidades<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
        <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
        <label>E-mail no rodapé<input id="op-mail" value="${esc((S.orcContato || {}).email || '')}" placeholder="seuemail@gmail.com"></label></div>
+      <label class="relop" style="margin-top:12px"><input type="checkbox" id="op-tab"${orcUlt.tabela ? ' checked' : ''}> Mostrar também a tabela completa de quantidades</label>
       <label class="opobs">Observações<textarea id="op-obs" rows="4" placeholder="Condições de pagamento, prazo de entrega, o que está incluso…">${esc(orcUlt.obs || '')}</textarea></label>
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, async (e) => {
       const ok = e.target.closest('[data-ok]'); if (!ok) return;
       const g = (id) => document.getElementById(id).value;
-      const op = { mid: g('op-m'), per: +g('op-p'), para: g('op-para').trim(), q: parseInt(g('op-q'), 10) || 0, validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
+      const op = { mid: g('op-m'), per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
       if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
-      orcUlt = { validade: op.validade, obs: op.obs }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
+      if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305) ou marque "Mostrar também a tabela completa".'); return; }
+      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
       try { await gerarOrcPdf(op); if (ov) { ov.remove(); ov = null; } } catch (er) { ok.disabled = false; ok.textContent = 'Gerar PDF'; alert(er.message || er); }
     });
@@ -544,11 +546,11 @@
     const linhas = rowsOf(M).map((q) => ({ q, t: orcTot(op.mid, q, op.per) })).filter((x) => x.t > 0);
     // quantidade fora da tabela: usa o valor por convite da faixa MENOR mais próxima (quanto menor a quantidade, maior o valor
     // por convite). Abaixo da primeira linha, usa a primeira linha.
-    let alvo = null;
-    if (op.q && linhas.length) {
-      const ex = linhas.find((x) => x.q === op.q), base = ex || linhas.filter((x) => x.q < op.q).pop() || linhas[0], un = base.t / base.q;
-      alvo = { q: op.q, val: Math.round((ex ? ex.t : un * op.q) * 100) / 100, base: ex ? null : base.q };
-    }
+    const preco = (q) => {
+      const ex = linhas.find((x) => x.q === q), base = ex || linhas.filter((x) => x.q < q).pop() || linhas[0], un = base.t / base.q;
+      return { q, val: Math.round((ex ? ex.t : un * q) * 100) / 100, base: ex ? null : base.q };
+    };
+    const alvos = linhas.length ? op.qs.slice().sort((a, b) => a - b).map(preco) : [];
     const hoje = new Date(), dd = (d) => d.toLocaleDateString('pt-BR'), ate = new Date(hoje.getTime() + op.validade * 86400000);
     const fotos = (M.fotos || []).slice(0, MAXF);
     const contato = [op.tel || emp.telefone, op.email || emp.email].filter(Boolean).map(esc).join(' · '), tam = tamanho(M.nome);
@@ -563,7 +565,11 @@
       .fotos{display:grid;gap:8px;margin-bottom:12px}.fotos.n1{grid-template-columns:1fr}.fotos.n2{grid-template-columns:1fr 1fr}.fotos.n3{grid-template-columns:2fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
       .fotos img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid #dbe5e7;display:block}
       .fotos.n1 img{max-height:78mm;object-fit:contain;background:#f6f9fa}.fotos.n2 img{height:52mm}.fotos.n3 img{height:100%;min-height:0}.fotos.n3 img:first-child{grid-row:1/3;height:76mm}.fotos.n3{height:76mm}
-      .dest{display:flex;gap:10px;margin-bottom:6px}.base{margin:0 0 12px;color:#6b7f88;font-size:10px}.dest div{flex:1;border:1px solid #2DB5AE;background:#e9f7f6;border-radius:8px;padding:9px 12px}.dest small{display:block;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.8px}.dest b{font-size:17px;color:#0f5e59}
+      .qs{display:grid;gap:10px;margin:4px 0 12px}.qs.n1{grid-template-columns:1fr}.qs.n2{grid-template-columns:1fr 1fr}.qs.n3{grid-template-columns:1fr 1fr 1fr}
+      .qc{border:1px solid #2DB5AE;background:#e9f7f6;border-radius:10px;padding:10px 12px;page-break-inside:avoid}.qc>b{display:block;font-size:16px;color:#0f5e59;margin-bottom:6px}
+      .qc span{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:600;padding:3px 0;border-top:1px solid #c6ebe8}.qc span small{font-size:10px;color:#40565f;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+      .qc span.tot{font-size:15px;color:#0f5e59;font-weight:800}
+      .qs.n1 .qc{display:flex;align-items:center;gap:24px}.qs.n1 .qc>b{margin:0;flex:1}.qs.n1 .qc span{border:0;gap:10px}.dest div{flex:1;border:1px solid #2DB5AE;background:#e9f7f6;border-radius:8px;padding:9px 12px}.dest small{display:block;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.8px}.dest b{font-size:17px;color:#0f5e59}
       table{width:100%;border-collapse:collapse;margin-top:4px}th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:2px solid #c9d8db}
       td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:#e9f7f6;font-weight:700}
       .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7f88;font-weight:700;margin:14px 0 4px}
@@ -575,10 +581,10 @@
       ${op.para ? `<div class="para"><small>Para</small><b>${esc(op.para)}</b></div>` : ''}
       ${fotos.length ? `<div class="fotos n${fotos.length}">${fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
       <h2>Convite ${esc(tam)}</h2>${M.capa ? `<div class="mod">${esc(M.capa)}</div>` : ''}
-      ${alvo ? `<div class="dest"><div><small>Quantidade</small><b>${alvo.q} convites</b></div><div><small>Valor por convite</small><b>${BRL(alvo.val / alvo.q)}</b></div><div><small>Total</small><b>${BRL(alvo.val)}</b></div></div>${alvo.base ? `<p class="base">Valor por convite da faixa de ${alvo.base} convites.</p>` : ''}` : ''}
-      <div class="sec">${alvo ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
+      ${alvos.length ? `<div class="qs n${Math.min(alvos.length, 3)}">${alvos.map((a) => `<div class="qc"><b>${a.q} convites</b><span><small>Valor por convite</small>${BRL(a.val / a.q)}</span><span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : ''}
+      ${op.tabela ? `<div class="sec">${alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
       <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
-      ${linhas.map((x) => `<tr class="${alvo && alvo.q === x.q ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>
+      ${linhas.map((x) => `<tr class="${alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
       ${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}
       <div class="rod"><span>${esc(nomeEmp)}${emp.sede ? '<br>' + esc(emp.sede) : ''}</span><span style="text-align:right">${contato}</span></div>
