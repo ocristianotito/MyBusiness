@@ -587,7 +587,7 @@
       ${linhas.map((x) => `<tr class="${alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
       ${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}
-      <div class="rod"><span>${esc(nomeEmp)}${emp.sede ? '<br>' + esc(emp.sede) : ''}</span><span style="text-align:right">${contato}</span></div>
+      <div class="rod"><span>${esc(nomeEmp)}</span><span style="text-align:right">${contato}</span></div>
     </body></html>`;
     const arq = 'Orçamento ' + (op.para || M.nome).replace(/[\\/:*?"<>|]+/g, '-') + ' ' + dd(hoje).replace(/\//g, '-') + '.pdf';
     const r = await window.api.gerarPdf(html, arq, 'Salvar orçamento em PDF');
