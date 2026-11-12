@@ -299,3 +299,5 @@ body.fin .ofotos figcaption button:hover{color:var(--c-teal)}body.fin .ofotos fi
 body.fin .ofadd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:160px;border:1px dashed var(--c-bd2);border-radius:var(--r-ctl);color:var(--c-mu);cursor:pointer;font-size:12px}
 body.fin .ofadd b{font-size:26px;font-weight:400;color:var(--c-teal);line-height:1}
 body.fin .ofadd:hover{border-color:var(--c-teal);color:var(--c-tx)}
+body.fin .opobs{display:block!important;width:100%;max-width:none!important;margin-top:12px}
+body.fin .opobs textarea{display:block;width:100%;box-sizing:border-box;min-height:84px;resize:vertical}
