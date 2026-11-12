@@ -288,3 +288,14 @@ body.fin .vxt tfoot td{font-weight:700;background:var(--c-head);border-bottom:0}
 body.fin .vmdlg:has(.vxw){max-width:720px}
 body.fin .relop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--c-tx);margin:6px 0 4px;cursor:pointer}
 body.fin .relop small{color:var(--c-mu);font-size:12px}
+
+/* Orçamentos: fotos do modelo */
+body.fin .ofotos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+body.fin .ofotos figure{margin:0;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);overflow:hidden}
+body.fin .ofotos img{width:100%;height:130px;object-fit:cover;display:block}
+body.fin .ofotos figcaption{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--c-mu);padding:6px 8px}
+body.fin .ofotos figcaption button{background:none;border:0;color:var(--c-mu);cursor:pointer;font-size:13px;padding:0 4px}
+body.fin .ofotos figcaption button:hover{color:var(--c-teal)}body.fin .ofotos figcaption button[data-fx]:hover{color:var(--c-red)}
+body.fin .ofadd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:160px;border:1px dashed var(--c-bd2);border-radius:var(--r-ctl);color:var(--c-mu);cursor:pointer;font-size:12px}
+body.fin .ofadd b{font-size:26px;font-weight:400;color:var(--c-teal);line-height:1}
+body.fin .ofadd:hover{border-color:var(--c-teal);color:var(--c-tx)}
