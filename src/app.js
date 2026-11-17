@@ -36,7 +36,7 @@ function conta(s){s=String(s==null?'':s).replace(/R\$|%|\s/g,'').replace(/[−�
   const v=parseFloat(y);if(isNaN(v))return NaN;t+=x[0]==='-'?-v:v}
  return Math.round(t*100)/100}
 const n0=v=>{const x=typeof v==='number'?v:conta(v);return isNaN(x)||x<0?0:Math.round(x)};
-document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT'||!/\d\s*[+\-−–]\s*\d/.test(el.value))return;
+document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT'||!/^(text|search|tel|number|)$/i.test(el.getAttribute('type')||'')||!/\d\s*[+\-−–]\s*\d/.test(el.value))return;
  const v=conta(el.value);if(isNaN(v))return;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:Math.round(v*100)%100?2:0,maximumFractionDigits:2});
  el.dispatchEvent(new Event('input',{bubbles:true}))},true);
 const fmtN=n=>(+n||0).toLocaleString('pt-BR');

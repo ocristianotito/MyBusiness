@@ -154,7 +154,7 @@ bridge = '''<script>var RODAPE=''' + repr(rodape) + ''';
    var b=td.querySelector('.cmb');if(b)b.title='Editar comentário'}
  }catch(er){}}
  /* ao sair de um campo com conta (124,69+354,38), mostra o resultado (479,07) */
- document.addEventListener('focusout',function(e){var el=e.target;if(!el||el.tagName!=='INPUT'||!/\\d\\s*[+\\-−–]\\s*\\d/.test(el.value)||typeof num!=='function')return;
+ document.addEventListener('focusout',function(e){var el=e.target;if(!el||el.tagName!=='INPUT'||!/^(text|search|tel|number|)$/i.test(el.getAttribute('type')||'')||!/\\d\\s*[+\\-−–]\\s*\\d/.test(el.value)||typeof num!=='function')return;
   var v=num(el.value);if(isNaN(v))return;anotaSoma(el);var dec=Math.round(v*100)%100!==0;el.value=v.toLocaleString('pt-BR',{minimumFractionDigits:dec?2:0,maximumFractionDigits:2})},true);
  /* dados do Financeiro que chegaram de outro aparelho pela nuvem: recarrega se não houver edição aberta */
  var remoto=false;
