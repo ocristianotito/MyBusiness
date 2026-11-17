@@ -8,11 +8,22 @@
     { id: 'f_fotos', name: 'EDIÇÃO DE FOTOS', c: '#579DFF', resp: '' },
     { id: 'f_textos', name: 'TEXTOS', c: '#6CC3E0', resp: '' },
     { id: 'f_criacao', name: 'CRIAÇÃO', c: '#9F8FEF', resp: '' },
+    { id: 'f_correcao', name: 'CORREÇÃO', c: '#F87168', resp: '' },
     { id: 'f_aprov', name: 'APROVAÇÃO', c: '#FEA362', resp: '' },
     { id: 'f_pronto', name: 'PRONTO PARA IMPRESSÃO', c: '#4BCE97', resp: '' }
   ];
   const box = document.getElementById('mod-produtividade'); if (!box) return;
   const fases = () => (Array.isArray(C().fases) && C().fases.length ? C().fases : DEF_FASES);
+  // pedido do dono (1.2.22): fase CORREÇÃO entre CRIAÇÃO e APROVAÇÃO nas fases já salvas (uma vez; se já existir, não repete)
+  function addCorrecao() {
+    if (!Array.isArray(C().fases) || !C().fases.length || C().correcao1222) return;
+    const fs = C().fases.slice(), sem = (n) => String(n || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!fs.some((f) => sem(f.name) === 'CORRECAO')) {
+      let i = fs.findIndex((f) => sem(f.name) === 'APROVACAO'); if (i < 0) i = Math.max(0, fs.length - 1);
+      fs.splice(i, 0, { id: 'f_correcao', name: 'CORREÇÃO', c: '#F87168', resp: '' });
+    }
+    cfg = Object.assign({}, C(), { fases: fs, correcao1222: 1 }); persist();
+  }
   const faseDe = (c) => { const fs = fases(); return fs.find((f) => f.id === c.fase) || fs[0]; };
   const respDe = (c) => (faseDe(c).resp || c.resp || '').trim();
   const dias = (t) => t ? Math.floor((Date.now() - t) / 86400000) : null;
@@ -32,6 +43,7 @@
   }
 
   window.renderProdutividade = function renderProdutividade() {
+    addCorrecao();
     const fs = fases(), lista = ativos();
     const nomes = [...new Set(fs.map((f) => f.resp).concat(lista.map(([, c]) => c.resp)).map((x) => String(x || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const q = busca.trim().toLowerCase();
