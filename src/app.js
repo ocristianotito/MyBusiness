@@ -20,7 +20,7 @@ const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agost
 /* ===== estado ===== */
 let cfg=null,cards=new Map(),events=new Map(),clients=new Map(),contracts=new Map(),modal=null,dragId=null,view='quadro',curModule='dashboard';
 const F={q:'',r:'',p:'',e:'',late:false,hide:false,st:'',cli:''};
-const sortL={k:'prazo',dir:1};
+const sortL={k:'colacao',dir:1};
 const pref=(k,d)=>{try{const v=localStorage.getItem('pref_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const setPref=(k,v)=>{try{localStorage.setItem('pref_'+k,JSON.stringify(v))}catch(e){}};
 try{localStorage.removeItem('pref_folded')}catch(e){}   /* colunas recolhidas saíram na 1.2.4 */
@@ -207,7 +207,9 @@ function visible(card){
  if(F.q){const h=[card.title,card.sub,card.modelo,card.resp,card.notas,cliName(card.clientId),lbls(card).map(l=>l.n).join(' ')].join(' ').toLowerCase();if(!h.includes(F.q.toLowerCase()))return false}
  return true}
 const filtering=()=>!!(F.q||F.r||F.p||F.e||F.late||F.hide||F.st||F.cli);
-function sorted(list){return list.slice().sort((a,b)=>(a[1].ord||0)-(b[1].ord||0)||((a[1].criado||0)-(b[1].criado||0)))}
+/* ordem dos cartões nas colunas: sempre pela data da colação, a mais próxima primeiro; sem data no fim (pedido do dono).
+   Ao arrastar para outra coluna, o cartão já entra no lugar certo dessa ordem. */
+function sorted(list){return list.slice().sort((a,b)=>{const x=colacaoDe(a[1])||'9999',y=colacaoDe(b[1])||'9999';return x<y?-1:x>y?1:String(a[1].title||'').localeCompare(String(b[1].title||''),'pt-BR')})}
 
 /* ===== cabeçalho, KPIs, filtros ===== */
 function renderTop(){
@@ -592,7 +594,7 @@ function dropTarget(colEl,y){const cs=[...colEl.querySelectorAll('.cardk')].filt
 board.addEventListener('dragstart',e=>{const c=e.target.closest('.cardk');if(!c)return;dragId=c.dataset.id;c.classList.add('drag');e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move'});
 board.addEventListener('dragend',()=>{dragId=null;clearMarks();document.querySelectorAll('.cardk.drag').forEach(x=>x.classList.remove('drag'))});
 board.addEventListener('dragover',e=>{const col=e.target.closest('.col');if(!col||!dragId)return;e.preventDefault();clearMarks();col.classList.add('over');
- const b=dropTarget(col,e.clientY);if(b)b.classList.add('before')});
+ });
 board.addEventListener('dragleave',e=>{const col=e.target.closest('.col');if(col&&!col.contains(e.relatedTarget))col.classList.remove('over')});
 board.addEventListener('drop',e=>{const colEl=e.target.closest('.col');if(!colEl||!dragId)return;e.preventDefault();
  const id=dragId,card=cards.get(id);if(!card)return;const col=colEl.dataset.col,before=dropTarget(colEl,e.clientY);clearMarks();
