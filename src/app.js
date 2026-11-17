@@ -236,12 +236,15 @@ function moverQA(id,qual){
  const ult=sorted([...cards.entries()].filter(([k,x])=>k!==id&&colOf(x)===col)).pop();
  saveCard(id,Object.assign({},c,{col,ord:(ult?(ult[1].ord||0):0)+1024,atualizado:Date.now()}));
  toast((c.title||'Pedido')+' → '+alvo.name)}
+/* fase da Produtividade com a cor dela (produtividade.js) */
+const faseChip=c=>{const f=typeof window.faseDaTurma==='function'?window.faseDaTurma(c):null;return f?`<span class="chip fasec" style="--fc:${esc(f.c)}" title="Fase na Produtividade">${esc(f.name)}</span>`:''};
+const faseCor=c=>{const f=typeof window.faseDaTurma==='function'?window.faseDaTurma(c):null;return f?` style="--fc:${esc(f.c)}"`:''};
 function cardHTML(id,c){
  const d=dueInfo(c),k=chk(c),pct=k.n?k.d/k.n:0,done=isDone(c);
  const qty=[c.luxo?`<span><b>${fmtN(c.luxo)}</b> luxo</span>`:'',c.simp?`<span><b>${fmtN(c.simp)}</b> simplif.</span>`:'',c.foto?`<span><b>${fmtN(c.foto)}</b> fotos</span>`:''].join('');
  const prev=(c.notas||'').trim().split('\n').filter(s=>s.trim()).slice(0,2).join('\n');
- return `<div class="cardk${d&&d.cls==='late'?' late':''}${done?' done':''}" draggable="true" tabindex="0" data-id="${esc(id)}">
- <div class="chips">${c.prio?`<span class="chip ${c.prio}">${PRIO[c.prio]||''}</span>`:''}${c.modelo?`<span class="chip mod">${esc(c.modelo)}</span>`:''}${lbls(c).map(l=>lchip(l)).join('')}</div>
+ return `<div class="cardk${d&&d.cls==='late'?' late':''}${done?' done':''}${faseCor(c)?' comfase':''}" draggable="true" tabindex="0" data-id="${esc(id)}"${faseCor(c)}>
+ <div class="chips">${faseChip(c)}${c.prio?`<span class="chip ${c.prio}">${PRIO[c.prio]||''}</span>`:''}${c.modelo?`<span class="chip mod">${esc(c.modelo)}</span>`:''}${lbls(c).map(l=>lchip(l)).join('')}</div>
  <h5>${esc(c.title||'Sem título')}</h5>${c.sub?`<div class="s">${esc(c.sub)}</div>`:''}
  ${prev?`<div class="pv">${esc(prev)}</div>`:''}
  ${qty?`<div class="qty">${qty}</div>`:''}
@@ -280,7 +283,7 @@ function renderList(){
  const fmtAt=t=>{if(!t)return'—';const d=new Date(t);return d.getDate()+' '+MES[d.getMonth()]+' '+String(d.getFullYear()).slice(2)};
  const linha=([id,c])=>{
   const d=dueInfo(c),k=chk(c),q=n0(c.luxo)+n0(c.simp);
-  return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
+  return `<tr data-id="${esc(id)}"><td><div class="ttl">${esc(c.title||'Sem título')}</div>${faseChip(c)?`<div class="tfase">${faseChip(c)}</div>`:''}${c.sub?`<div class="note">${esc(c.sub)}</div>`:''}</td>
   <td>${colacaoDe(c)?`<span class="colac">${fmtColacao(colacaoDe(c))}</span>`:'<span class="note">—</span>'}</td>
   <td>${cliName(c.clientId)?esc(cliName(c.clientId)):'<span class="note">—</span>'}</td>
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
@@ -351,7 +354,7 @@ function ovRow(id,c){
  <td>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
  <td class="${d&&d.cls==='late'?'r':''}">${d?'<span class="cal-i"></span>':''}${esc(dt)}</td>
  <td>${c.prio?`<span class="flag ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="flag">Sem prioridade</span>'}</td>
- <td><div class="ovst"><span class="stchip" style="--c:${corEtapa(col.c)}">${esc(col.name)}</span>${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
+ <td><div class="ovst"><span class="stchip" style="--c:${corEtapa(col.c)}">${esc(col.name)}</span>${faseChip(c)}${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
 function ovTable(title,rows,cls,open=true,key){
  const head='<tr><th>Demanda</th><th>Cliente</th><th>Resp.</th><th>Data</th><th>Prioridade</th><th>Etapa e etiquetas</th></tr>';
  return `<div class="ovgrp ${cls||''}"><button class="ovh" ${key?`data-ovt="${key}"`:''}><span class="car">${open?'▾':'▸'}</span>${title}<em>${rows.length}</em></button>

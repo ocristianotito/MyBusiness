@@ -328,3 +328,12 @@ body.fin .opobs textarea{display:block;width:100%;box-sizing:border-box;min-heig
 .fasrow .csw .sw{width:14px;height:14px}
 .dlg.fasdlg{max-width:820px}
 .fasrow{grid-template-columns:12px minmax(0,1.4fr) minmax(0,1fr) auto 34px 34px 34px!important}
+
+/* cor da fase: colunas da Produtividade tingidas e a fase de cada turma nas Demandas */
+.mod-prod .col.pcol{background:color-mix(in srgb,var(--fc) 9%,var(--c-card));border-color:color-mix(in srgb,var(--fc) 35%,var(--c-bd));border-top:3px solid var(--fc)}
+.mod-prod .col.pcol h4 .nm{color:var(--fc)}
+.mod-prod .col.pcol .cardk{border-left:3px solid var(--fc)}
+.mod-prod .col.pcol .pvazio{border-color:color-mix(in srgb,var(--fc) 40%,transparent)}
+.chip.fasec{background:color-mix(in srgb,var(--fc) 18%,transparent);color:var(--fc);font-weight:700;letter-spacing:.3px}
+.cardk.comfase{border-left:3px solid var(--fc)}
+.tbl .tfase{margin-top:4px}

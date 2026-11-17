@@ -25,6 +25,8 @@
     cfg = Object.assign({}, C(), { fases: fs, correcao1222: 1 }); persist();
   }
   const faseDe = (c) => { const fs = fases(); return fs.find((f) => f.id === c.fase) || fs[0]; };
+  // usado pelas Demandas para mostrar a fase de cada turma com a cor dela (turmas entregues não mostram)
+  window.faseDaTurma = (c) => (c && !isDone(c) ? faseDe(c) : null);
   const respDe = (c) => (faseDe(c).resp || c.resp || '').trim();
   const dias = (t) => t ? Math.floor((Date.now() - t) / 86400000) : null;
   const tempo = (n) => n == null ? '' : n === 0 ? 'desde hoje' : n === 1 ? 'há 1 dia' : 'há ' + n + ' dias';
@@ -57,7 +59,7 @@
       <button class="btn ghost sm" data-pcfg>Configurar fases</button></header>
       <div class="pwrap"><div class="board pboard" id="pboard">${fs.map((f, i) => {
         const l = vis.filter(([, c]) => faseDe(c).id === f.id).sort(porColacao);
-        return `<section class="col" data-fase="${esc(f.id)}"><h4><span class="dot" style="background:${esc(f.c)}"></span><span class="nm">${esc(f.name)}</span><em>${l.length}</em></h4>
+        return `<section class="col pcol" data-fase="${esc(f.id)}" style="--fc:${esc(f.c)}"><h4><span class="dot" style="background:${esc(f.c)}"></span><span class="nm">${esc(f.name)}</span><em>${l.length}</em></h4>
           ${f.resp ? `<div class="sumq">Responsável: ${esc(f.resp)}</div>` : ''}
           <div class="cbody">${l.map(([id, c]) => cartao(id, c, i === fs.length - 1, fs[i + 1])).join('') || '<div class="pvazio">Arraste uma turma para cá</div>'}</div></section>`;
       }).join('')}</div></div>`;
