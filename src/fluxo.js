@@ -224,8 +224,8 @@
     parceiroPadrao();
     const t = tot();
     const linhas = []
-      .concat((S.turmas || []).filter((x) => x.total > 0).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
-      .concat((S.parc || []).filter((x) => x.total > 0).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: 'Fechamento ' + (x.data || '—'), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
+      .concat((S.turmas || []).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
+      .concat((S.parc || []).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: 'Fechamento ' + (x.data || '—'), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
     v3xLinhas = linhas;
     const origens = ['direta'].concat([...new Set(linhas.filter((l) => l.k === 'p').map((l) => l.og))].sort());
     const nomeOg = (og) => og === 'direta' ? 'Turmas diretas' : 'Parceiro ' + og.slice(2);
@@ -245,7 +245,7 @@
         <span class="fxn"><b>${esc(l.nome)}</b><small>${l.ano}${l.sub ? ' · ' + esc(l.sub) : ''}</small></span>
         <span class="fxtrack"><span class="fxfill" style="width:${l.total / maxT * 100}%"><i style="width:${l.total ? l.rec / l.total * 100 : 0}%"></i></span></span>
         <span class="fxv"><b class="o">${BRL(l.total - l.rec)}</b><small>de ${BRL(l.total)}</small></span></button>`;
-    const barras = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og).sort((a, b) => (b.total - b.rec) - (a.total - a.rec)); const fe = !!fxFech['b:' + og];
+    const barras = porOg.map(([og, x]) => { const ls = linhas.filter((l) => l.og === og && l.total > 0).sort((a, b) => (b.total - b.rec) - (a.total - a.rec));   // barras só de quem já tem valor const fe = !!fxFech['b:' + og];
       return ls.length ? `<button type="button" class="fxsec${fe ? ' fech' : ''}" style="--oc:${corOg(og)}" data-vm="fxog" data-og="b:${esc(og)}" title="${fe ? 'Expandir' : 'Retrair'}"><span class="fxar">${fe ? '▸' : '▾'}</span><span class="fxdot"></span>${esc(nomeOg(og))}<small>${fe ? ls.length + ' turma(s) · ' : ''}a receber ${BRL(x.a)}</small></button>` + (fe ? '' : ls.map(barra).join('')) : ''; }).join('');
 
     const linhaT = (l) => { const p = l.total ? l.rec / l.total : 0, lu = l.total - l.custo;
