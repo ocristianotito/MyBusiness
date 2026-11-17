@@ -138,6 +138,15 @@ async function init(){
     const w=norm(col.name).split(/\s+/)[0],c=porNome.get(norm(col.name))||porNome.get(w);
     return Object.assign({},col,{c:c&&/^#[0-9a-f]{6}$/i.test(c)?c:(PAL_LCOL[col.c]||col.c)})})});
    persist()}
+  /* pedido do dono (1.2.18): etapas REVISÃO e APROVADO antes da última (ENTREGUES), usadas pelos botões do cartão.
+     Se já existir uma etapa com esse nome, ela é usada. Os ids ficam em cfg.colRev / cfg.colAprov. Roda uma vez. */
+  if(cfg&&Array.isArray(cfg.cols)&&!cfg.revAprov1218){
+   const cols=cfg.cols.slice(),achar=n=>cols.find(c=>String(c.name||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')===n);
+   let rev=achar('REVISAO'),apr=achar('APROVADO');const fim=cols.length?cols.length-1:0;
+   if(!rev){rev={id:'lrev'+Date.now().toString(36),name:'REVISÃO',c:'#FEA362'};cols.splice(fim,0,rev)}
+   if(!apr){apr={id:'lapr'+Date.now().toString(36),name:'APROVADO',c:'#94C748'};cols.splice(cols.indexOf(rev)+1,0,apr)}
+   cfg=Object.assign({},cfg,{cols,colRev:rev.id,colAprov:apr.id,revAprov1218:1});
+   persist()}
   /* pedido do dono (1.2.12): a data da colação que estava escrita no nome do pedido ("ADM UNOPAR 2027.1 - 20/03")
      passa para o campo Data da colação. O ano vem do nome (2027.1 → 2027) ou, se não houver, do nome da etapa
      ("FEVEREIRO 2027"). Sem ano em nenhum dos dois, não preenche. O nome do pedido não muda. Roda uma vez. */
@@ -216,6 +225,15 @@ function renderTop(){
 }
 
 /* ===== quadro ===== */
+/* botões rápidos do cartão: levam o pedido para a etapa REVISÃO ou APROVADO */
+function qaBtns(c){
+ const cs=C().cols,r=cs.find(x=>x.id===C().colRev),a=cs.find(x=>x.id===C().colAprov),at=colOf(c);if(!r&&!a)return'';
+ return `<span class="qa">${r&&at!==r.id?`<button data-qa="rev" title="Mover para ${esc(r.name)}">Revisão</button>`:''}${a&&at!==a.id?`<button data-qa="apr" title="Mover para ${esc(a.name)}">Aprovado</button>`:''}</span>`}
+function moverQA(id,qual){
+ const c=cards.get(id),col=qual==='rev'?C().colRev:C().colAprov,alvo=C().cols.find(x=>x.id===col);if(!c||!alvo)return;
+ const ult=sorted([...cards.entries()].filter(([k,x])=>k!==id&&colOf(x)===col)).pop();
+ saveCard(id,Object.assign({},c,{col,ord:(ult?(ult[1].ord||0):0)+1024,atualizado:Date.now()}));
+ toast((c.title||'Pedido')+' → '+alvo.name)}
 function cardHTML(id,c){
  const d=dueInfo(c),k=chk(c),pct=k.n?k.d/k.n:0,done=isDone(c);
  const qty=[c.luxo?`<span><b>${fmtN(c.luxo)}</b> luxo</span>`:'',c.simp?`<span><b>${fmtN(c.simp)}</b> simplif.</span>`:'',c.foto?`<span><b>${fmtN(c.foto)}</b> fotos</span>`:''].join('');
@@ -226,7 +244,7 @@ function cardHTML(id,c){
  ${prev?`<div class="pv">${esc(prev)}</div>`:''}
  ${qty?`<div class="qty">${qty}</div>`:''}
  ${k.n?`<div class="bar"><i style="width:${pct*100}%;background:${pct>=1?'var(--green)':'var(--teal)'}"></i></div>`:''}
- <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${colacaoDe(c)?`<span class="chip colac" title="Data da colação">Colação ${fmtColacao(colacaoDe(c)).slice(0,5)}</span>`:''}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div></div>`}
+ <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${colacaoDe(c)?`<span class="chip colac" title="Data da colação">Colação ${fmtColacao(colacaoDe(c)).slice(0,5)}</span>`:''}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div>${qaBtns(c)}</div>`}
 function renderBoard(){
  const b=$('board'),sl=b.scrollLeft,all=[...cards.entries()],filt=filtering();
  b.classList.toggle('single',!!F.st);
@@ -509,6 +527,7 @@ document.addEventListener('click',e=>{
   const th=t.closest('th[data-sort]');if(th){const k=th.dataset.sort;if(sortL.k===k)sortL.dir*=-1;else{sortL.k=k;sortL.dir=1}return render()}
   if(t.closest('#vCal'))return;   /* o calendário trata os próprios cliques (agenda.js) */
   if(t.closest('[data-sub],[data-ovr],[data-ovt],[data-lg],[data-lgall]'))return;
+  const qa=t.closest('[data-qa]');if(qa){const ck=qa.closest('[data-id]');if(ck)moverQA(ck.dataset.id,qa.dataset.qa);return}
   const el=t.closest('[data-id]');if(el)return openCard(el.dataset.id);
   return}
  if(t.classList.contains('ov')&&downOv){modal=null;return renderModal()}

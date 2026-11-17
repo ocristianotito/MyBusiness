@@ -301,3 +301,9 @@ body.fin .ofadd b{font-size:26px;font-weight:400;color:var(--c-teal);line-height
 body.fin .ofadd:hover{border-color:var(--c-teal);color:var(--c-tx)}
 body.fin .opobs{display:block!important;width:100%;max-width:none!important;margin-top:12px}
 body.fin .opobs textarea{display:block;width:100%;box-sizing:border-box;min-height:84px;resize:vertical}
+
+/* cartão do quadro: botões rápidos Revisão / Aprovado */
+.cardk .qa{display:flex;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--c-bd)}
+.cardk .qa button{flex:1;background:var(--c-sunk);border:1px solid var(--c-bd);color:var(--c-mu);border-radius:var(--r-ctl);padding:5px 8px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.cardk .qa button[data-qa="rev"]:hover{border-color:#FEA362;color:#FEA362;background:#2a2010}
+.cardk .qa button[data-qa="apr"]:hover{border-color:#94C748;color:#94C748;background:#1a2610}
