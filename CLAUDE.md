@@ -1,6 +1,6 @@
 # Cristiano Convites (MyBusiness)
 
-Programa Electron para Windows com menu lateral: Dashboard, Demandas (produção), Financeiro (com senha), Contratos e Clientes.
+Programa Electron para Windows com menu lateral: Dashboard, Demandas (produção), Produtividade, Financeiro (com senha), Contratos e Clientes.
 Textos da interface e mensagens em português do Brasil.
 
 ## Estrutura
@@ -20,6 +20,8 @@ Textos da interface e mensagens em português do Brasil.
 - `src/update.js`: contagem regressiva da atualização automática, usada nas duas páginas
 - `src/agenda-core.js`: regras da agenda (repetição, lembretes), usadas pela tela e pelo processo principal
 - `src/agenda.js`: calendário da Produção (Mês/Semana, compromissos, arrastar, próximos 14 dias)
+- `src/produtividade.js`: módulo Produtividade (menu lateral): quadro das fases de trabalho (fotos, textos, criação, aprovação…),
+  separado do quadro por mês. Fase no pedido (`c.fase`, `c.faseEm`, `c.fOrd`); fases em `cfg.fases` (nome, cor, responsável).
 
 ## Nuvem (Firebase: sincronização entre Windows, Mac e iPhone)
 - `src/nuvem.js` (processo principal): partes `cfg, cards, events, clients, contracts, fin` em

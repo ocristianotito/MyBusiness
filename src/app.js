@@ -100,7 +100,7 @@ function delCard(id){cards.delete(id);persist();render()}
 function saveCfg(next){cfg=next;persist();render()}
 
 /* ===== módulos (menu lateral) ===== */
-const MOD_INFO={dashboard:1,demandas:1,contratos:1,clientes:1};
+const MOD_INFO={dashboard:1,demandas:1,produtividade:1,contratos:1,clientes:1};
 function goModule(m){
  if(m==='financeiro')return openFin();
  if(!MOD_INFO[m])m='dashboard';
@@ -306,6 +306,7 @@ document.addEventListener('keydown',e=>{if(!modal&&(e.key==='Enter'||e.key===' '
 function render(){
  if(curModule==='dashboard'&&typeof renderDashboard==='function')return renderDashboard();
  if(curModule==='clientes'&&typeof renderClientes==='function')return renderClientes();
+ if(curModule==='produtividade'&&typeof renderProdutividade==='function')return renderProdutividade();
  if(curModule==='contratos'&&typeof renderContratos==='function')return renderContratos();
  renderTop();
  if(view==='overview')renderOverview();else if(view==='quadro')renderBoard();else if(view==='lista')renderList();else renderCal();
