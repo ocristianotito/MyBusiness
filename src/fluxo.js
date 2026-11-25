@@ -459,6 +459,18 @@
     window.save = function () { try { comparar(); } catch (er) {} return save0.apply(this, arguments); };
     window.save.__auto = true;
     try { foto = tirar(); } catch (er) {}
+    try { parceirosAntigos(); } catch (er) {}
+  }
+  /* pedido do dono (1.2.23): o que já tinha sido recebido dos parceiros antes da Visão do mês automática
+     entra uma vez em "Convites com parceiros" de novembro de 2026 (só a diferença que ainda não tem lançamento). */
+  function parceirosAntigos() {
+    const c = cx(); if (c.parcAntes1223 || !(S.parc || []).length) return;
+    const mes = '2026-11', hoje = new Date(), dia = ymNow() === mes ? hoje.getDate() : 30;
+    (S.parc || []).forEach((p) => {
+      const ja = c.mov.filter((m) => m.auto === 'pc:' + p.id).reduce((t, m) => t + (+m.valor || 0), 0), d = r2((+p.rec || 0) - ja);
+      if (d > 0.005) c.mov.push({ id: uid(), tipo: 'e', grupo: 'parceiros', desc: (p.nome || 'Turma de parceiro') + ' · ' + String(p.parceiro || 'parceiro').trim() + ' (recebido antes)', valor: d, dia, mes, pago: true, turmaId: '', auto: 'pc:' + p.id });
+    });
+    c.parcAntes1223 = 1; save(); if (typeof render === 'function') render();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarAuto); else ligarAuto();
 
