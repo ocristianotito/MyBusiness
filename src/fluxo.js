@@ -554,6 +554,21 @@
   }, true);
 
   let orcUlt = {}; try { orcUlt = JSON.parse(localStorage.getItem('cc.orcPdf') || '{}') || {}; } catch (er) {}
+  const fmtN = (n) => Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  // opções do orçamento a partir de Formandos, Convites por formando (um ou vários) e Quantidades
+  function opcoes() {
+    const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+    const nums = (t) => [...new Set((String(t).match(/\d+/g) || []).map(Number).filter((n) => n > 0))];
+    const nf = parseInt(v('op-nf'), 10) || 0, cpfs = nums(v('op-cpf')), qs = nums(v('op-q'));
+    if (!nf && cpfs.length > 1 && qs.length) return { erro: 'Com vários valores em "Convites por formando", informe também o número de formandos.', opts: [] };
+    const opts = [];
+    const add = (o) => { if (!opts.some((x) => x.q === o.q)) opts.push(o); };
+    if (nf && cpfs.length) cpfs.forEach((c) => add({ q: nf * c, cpf: c, nf }));
+    qs.forEach((q) => add(nf ? { q, cpf: q / nf, nf } : cpfs.length === 1 ? { q, cpf: cpfs[0], nf: q / cpfs[0] } : { q }));
+    if (!nf && !qs.length && cpfs.length) return { erro: 'Informe o número de formandos para calcular as quantidades.', opts: [] };
+    opts.sort((a, b) => a.q - b.q);
+    return { opts: opts.slice(0, 6) };
+  }
   function janelaOrcPdf() {
     const ms = (S.orc && S.orc.models) || []; if (!ms.length) return;
     const mid = (ms.find((x) => x.id === S.orcM) || ms[0]).id, per = S.orcP || 0;
@@ -562,8 +577,10 @@
        <div class="opml">${ms.map((x) => `<label class="opm"><input type="checkbox" data-opm="${x.id}"${orcUlt.todos || x.id === mid ? ' checked' : ''}> ${esc(x.nome)}<small>${(x.fotos || []).length ? x.fotos.length + ' foto(s)' : 'sem fotos'}</small></label>`).join('')}</div></div>
       <div class="fg"><label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
        <label>Para (turma ou cliente)<input id="op-para" placeholder="Ex.: Direito UNEX 2027.1"></label>
-       <label>Quantidades de convites<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
-       <label>Convites por formando<input id="op-cpf" inputmode="numeric" value="${esc(orcUlt.cpf || '')}" placeholder="Ex.: 5 (opcional)"></label><span></span>
+       <label>Formandos<input id="op-nf" inputmode="numeric" placeholder="Ex.: 27 (opcional)"></label>
+       <label>Convites por formando<input id="op-cpf" value="${esc(orcUlt.cpf || '')}" placeholder="Ex.: 5 / 10 / 15 / 20"></label>
+       <label style="grid-column:1/-1">Quantidades de convites<input id="op-q" placeholder="Ex.: 135 / 225 / 305 (ou deixe vazio e use formandos × convites por formando)"></label>
+       <div class="opcalc" id="op-calc" style="grid-column:1/-1"></div>
        <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
        <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
@@ -575,14 +592,19 @@
       const g = (id) => document.getElementById(id).value;
       const mids = [...document.querySelectorAll('[data-opm]')].filter((c) => c.checked).map((c) => c.dataset.opm);
       if (!mids.length) { alert('Marque pelo menos um modelo.'); return; }
-      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, cpf: parseInt(g('op-cpf'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
+      const oo = opcoes(); if (oo.erro) { alert(oo.erro); return; }
+      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), opts: oo.opts, qs: oo.opts.map((x) => x.q), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
       if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
-      if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305) ou marque "Mostrar também a tabela completa".'); return; }
-      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length, cpf: op.cpf || '' }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
+      if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305), ou os formandos e os convites por formando, ou marque "Mostrar também a tabela completa".'); return; }
+      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length, cpf: g('op-cpf').trim() }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
       try { await gerarOrcPdf(op); if (ov) { ov.remove(); ov = null; } } catch (er) { ok.disabled = false; ok.textContent = 'Gerar PDF'; alert(er.message || er); }
     });
     const f = ov && ov.querySelector('#op-para'); if (f) setTimeout(() => f.focus(), 40);
+    // prévia das quantidades: "27 formandos × 5 = 135 convites"
+    const calc = () => { const el = ov && ov.querySelector('#op-calc'); if (!el) return; const oo = opcoes();
+      el.innerHTML = oo.erro ? `<span class="err">${esc(oo.erro)}</span>` : oo.opts.length ? 'Opções no PDF: ' + oo.opts.map((x) => `<b>${x.q} convites</b>${x.cpf ? ` <small>(${fmtN(x.cpf)} por formando${x.nf ? ' · ' + fmtN(x.nf) + ' formandos' : ''})</small>` : ''}`).join(' · ') : ''; };
+    if (ov) { ['op-nf', 'op-cpf', 'op-q'].forEach((id) => { const i = ov.querySelector('#' + id); if (i) i.addEventListener('input', calc); }); calc(); }
     const td = ov && ov.querySelector('#op-todos');
     if (td) { td.addEventListener('change', () => ov.querySelectorAll('[data-opm]').forEach((c) => { c.checked = td.checked; }));
       ov.querySelectorAll('[data-opm]').forEach((c) => c.addEventListener('change', () => { td.checked = [...ov.querySelectorAll('[data-opm]')].every((x) => x.checked); })); }
@@ -597,7 +619,7 @@
     const nomeEmp = emp.nome || 'Cristiano Convites';
     const hoje = new Date(), dd = (d) => d.toLocaleDateString('pt-BR'), ate = new Date(hoje.getTime() + op.validade * 86400000);
     const contato = [op.tel || emp.telefone, op.email || emp.email].filter(Boolean).map(esc).join(' · ');
-    const qs = op.qs.slice().sort((a, b) => a - b);
+    const qs = op.qs.slice().sort((a, b) => a - b), optDe = (q) => (op.opts || []).find((x) => x.q === q) || { q };
     const dadosM = (mid) => {
       const M = modelOf(mid); if (!M) return null;
       const linhas = rowsOf(M).map((q) => ({ q, t: orcTot(mid, q, op.per) })).filter((x) => x.t > 0);
@@ -605,26 +627,26 @@
       // por convite). Abaixo da primeira linha, usa a primeira linha.
       const preco = (q) => {
         const ex = linhas.find((x) => x.q === q), base = ex || linhas.filter((x) => x.q < q).pop() || linhas[0], un = base.t / base.q;
-        return { q, val: Math.round((ex ? ex.t : un * q) * 100) / 100 };
+        return { ...optDe(q), val: Math.round((ex ? ex.t : un * q) * 100) / 100 };
       };
       return { M, linhas, alvos: linhas.length ? qs.map(preco) : [], tam: tamanho(M.nome), fotos: (M.fotos || []).slice(0, MAXF) };
     };
     const lista = op.mids.map(dadosM).filter(Boolean), multi = lista.length > 1;
-    const fmtForm = (n) => Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    const fmtForm = fmtN;
     const desc = (d) => [op.desc, d.M.capa].filter(Boolean).map(esc).join(' · ');
     const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}">
       ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
       ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
       ${multi ? '' : `<h2>Convite ${esc(d.tam)}</h2>${desc(d) ? `<div class="mod">${desc(d)}</div>` : ''}`}
       ${d.M.video ? `<a class="vid" href="${esc(d.M.video)}"><img src="${qrImg(d.M.video)}" alt="QR Code do vídeo"><span><b>▶ Assista ao vídeo deste modelo</b><small>Aponte a câmera do celular para o código ou clique aqui.</small><em>${esc(d.M.video)}</em></span></a>` : ''}
-      ${d.alvos.length ? `<div class="qs n${Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b>${op.cpf ? `<span><small>Convites por formando</small>${op.cpf}</span><span><small>Formandos</small>${fmtForm(a.q / op.cpf)}</span>` : ''}<span><small>Valor por convite</small>${BRL(a.val / a.q)}</span>${op.cpf ? `<span class="pf"><small>Valor por formando</small>${BRL(a.val / a.q * op.cpf)}</span>` : ''}<span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
+      ${d.alvos.length ? `<div class="qs n${d.alvos.length === 4 ? 2 : Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b>${a.cpf ? `<span><small>Convites por formando</small>${fmtForm(a.cpf)}</span><span><small>Formandos</small>${fmtForm(a.nf)}</span>` : ''}<span><small>Valor por convite</small>${BRL(a.val / a.q)}</span>${a.cpf ? `<span class="pf"><small>Valor por formando</small>${BRL(a.val / a.q * a.cpf)}</span>` : ''}<span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
       ${op.tabela && d.linhas.length ? `<div class="sec">${d.alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
       <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
       ${d.linhas.map((x) => `<tr class="${d.alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
     </section>`;
     // vários modelos: comparativo na primeira página (modelo × quantidade)
-    const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => `<th class="n">${q} convites${op.cpf ? `<br><span class="thf">${fmtForm(q / op.cpf)} formandos · ${op.cpf} por formando</span>` : ''}</th>`).join('')}</tr></thead><tbody>
-      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}${d.M.video ? `<a class="vlink" href="${esc(d.M.video)}">▶ ver vídeo</a>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${op.cpf ? `<small class="pf">${BRL(a.val / a.q * op.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
+    const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => { const o = optDe(q); return `<th class="n">${q} convites${o.cpf ? `<br><span class="thf">${fmtForm(o.nf)} formandos · ${fmtForm(o.cpf)} por formando</span>` : ''}</th>`; }).join('')}</tr></thead><tbody>
+      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}${d.M.video ? `<a class="vlink" href="${esc(d.M.video)}">▶ ver vídeo</a>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${a.cpf ? `<small class="pf">${BRL(a.val / a.q * a.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
       <p class="nota">Fotos e detalhes de cada modelo nas páginas seguintes.</p>` : (multi ? `<p class="nota">${lista.length} modelos nas páginas seguintes.</p>` : '');
     const fim = `${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}`;
