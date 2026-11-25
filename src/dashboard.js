@@ -3,7 +3,7 @@
    Números da produção, gráfico de entregas do ano, próximas entregas, clientes em produção, agenda e equipe.
    Valores em dinheiro ficam no Financeiro (protegido por senha). Usa as globais de app.js. */
 const WD_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-let dashAno = new Date().getFullYear();
+let dashAno = new Date().getFullYear(), dashAnoEscolhido = false;
 
 function smoothPath(pts) {   // curva monotônica (Fritsch–Carlson): suave e sem passar dos valores reais
   const n = pts.length; if (!n) return '';
@@ -25,21 +25,22 @@ function smoothPath(pts) {   // curva monotônica (Fritsch–Carlson): suave e s
   return d;
 }
 function chartEntregas(ano) {
-  const prazos = Array(12).fill(0), entregues = Array(12).fill(0);
+  const prazos = Array(12).fill(0), entregues = Array(12).fill(0), colacoes = Array(12).fill(0);
   cards.forEach((c) => {
     const p = parseD(c.prazo); if (p && p.getFullYear() === ano) prazos[p.getMonth()]++;
+    const k = parseD(colacaoDe(c)); if (k && k.getFullYear() === ano) colacoes[k.getMonth()]++;
     if (c.entregueEm) { const d = new Date(c.entregueEm); if (d.getFullYear() === ano) entregues[d.getMonth()]++; }
   });
   const W = 1000, H = 250, L = 46, R = 14, T = 14, Bt = 34;
-  const max = Math.max(4, ...prazos, ...entregues), step = Math.ceil(max / 4), top = step * 4;
+  const max = Math.max(4, ...prazos, ...entregues, ...colacoes), step = Math.ceil(max / 4), top = step * 4;
   const x = (i) => L + i * (W - L - R) / 11, y = (v) => T + (H - T - Bt) * (1 - v / top);
   const grid = [0, 1, 2, 3, 4].map((g) => `<line x1="${L}" x2="${W - R}" y1="${y(g * step)}" y2="${y(g * step)}" class="gl"/><text x="${L - 10}" y="${y(g * step) + 4}" class="ax" text-anchor="end">${g * step}</text>`).join('');
   const lbl = MES.map((m, i) => `<text x="${x(i)}" y="${H - 10}" class="ax" text-anchor="middle">${m.replace(/^./, (c) => c.toUpperCase())}</text>`).join('');
   const serie = (vals, cls) => { const pts = vals.map((v, i) => [x(i), y(v)]); const line = smoothPath(pts); return `<path d="${line} L${x(11)},${y(0)} L${x(0)},${y(0)} Z" class="ar ${cls}"/><path d="${line}" class="ln ${cls}"/>`; };
   const mesAtual = new Date().getFullYear() === ano ? new Date().getMonth() : -1;
-  const pts = entregues.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === mesAtual ? 5 : 0}" class="pt"><title>${MESL[i]}: ${v} entregue(s), ${prazos[i]} com prazo</title></circle>`).join('');
-  const hits = MES.map((m, i) => `<rect x="${x(i) - 38}" y="${T}" width="76" height="${H - T - Bt}" fill="transparent"><title>${MESL[i]}: ${entregues[i]} entregue(s) · ${prazos[i]} com prazo no mês</title></rect>`).join('');
-  return { svg: `<svg viewBox="0 0 ${W} ${H}" class="dchart" role="img" aria-label="Entregas por mês em ${ano}">${grid}${serie(prazos, 'pz')}${serie(entregues, 'en')}${pts}${lbl}${hits}</svg>`, tot: entregues.reduce((a, b) => a + b, 0), totP: prazos.reduce((a, b) => a + b, 0) };
+  const pts = entregues.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === mesAtual ? 5 : 0}" class="pt"><title>${MESL[i]}: ${v} entregue(s), ${prazos[i]} com prazo, ${colacoes[i]} colação(ões)</title></circle>`).join('');
+  const hits = MES.map((m, i) => `<rect x="${x(i) - 38}" y="${T}" width="76" height="${H - T - Bt}" fill="transparent"><title>${MESL[i]}: ${colacoes[i]} colação(ões) · ${entregues[i]} entregue(s) · ${prazos[i]} com prazo no mês</title></rect>`).join('');
+  return { svg: `<svg viewBox="0 0 ${W} ${H}" class="dchart" role="img" aria-label="Entregas por mês em ${ano}">${grid}${serie(colacoes, 'cl')}${serie(prazos, 'pz')}${serie(entregues, 'en')}${pts}${colacoes.map((v, i) => v ? `<text x="${x(i)}" y="${y(v) - 10}" class="vcl" text-anchor="middle">${v}</text>` : '').join('')}${lbl}${hits}</svg>`, tot: entregues.reduce((a, b) => a + b, 0), totP: prazos.reduce((a, b) => a + b, 0), totC: colacoes.reduce((a, b) => a + b, 0) };
 }
 
 function renderDashboard() {
@@ -53,12 +54,21 @@ function renderDashboard() {
   const taxa = comPrazo.length ? Math.round(noPrazo / comPrazo.length * 100) + '%' : '—';
   const vence7 = ativos.filter(([, c]) => { const d = dueInfo(c); return d && d.days >= 0 && d.days <= 7; }).length;
   const semPrazo = ativos.filter(([, c]) => !parseD(c.prazo)).length;
-  const ch = chartEntregas(dashAno);
+  let ch = chartEntregas(dashAno);
+  if (!dashAnoEscolhido && !ch.tot && !ch.totP && !ch.totC) {
+    const prox1 = ativos.map(([, c]) => colacaoDe(c)).filter((d) => d && d >= isoD(t0)).sort()[0];
+    if (prox1 && +prox1.slice(0, 4) !== dashAno) { dashAno = +prox1.slice(0, 4); ch = chartEntregas(dashAno); }
+  }
+  /* próxima colação (turmas em produção) */
+  const colProx = ativos.map(([id, c]) => ({ id, c, d: colacaoDe(c) })).filter((x) => x.d && x.d >= isoD(t0)).sort((a, b) => a.d.localeCompare(b.d));
+  const semCol = ativos.filter(([, c]) => !colacaoDe(c)).length;
 
   /* próximas entregas (prazos dos pedidos + compromissos do tipo entrega) */
   const lim = new Date(t0); lim.setDate(lim.getDate() + 14);
   const prox = ativos.filter(([, c]) => { const d = parseD(c.prazo); return d && d <= lim; }).map(([id, c]) => ({ k: 'card', id, c, date: c.prazo }));
   if (window.AgendaCore) events.forEach((ev, id) => { if (ev.tipo === 'entrega') AgendaCore.occurrences(ev, t0, lim).forEach((date) => prox.push({ k: 'ev', id, ev, date })); });
+  const limC = new Date(t0); limC.setDate(limC.getDate() + 90);
+  colProx.filter((x) => parseD(x.d) <= limC).forEach((x) => prox.push({ k: 'col', id: x.id, c: x.c, date: x.d }));
   prox.sort((a, b) => a.date.localeCompare(b.date));
   const quando = (iso) => { const d = parseD(iso), n = Math.round((d - t0) / 864e5); return n < 0 ? `${-n}d atrasado` : n === 0 ? 'Hoje' : n === 1 ? 'Amanhã' : n < 7 ? WD_LONG[d.getDay()] : d.getDate() + ' ' + MES[d.getMonth()]; };
 
@@ -71,7 +81,7 @@ function renderDashboard() {
   if (window.AgendaCore) events.forEach((ev, id) => { if (AgendaCore.occurrences(ev, t0, t0).length) hoje.push({ id, ev }); });
   hoje.sort((a, b) => (a.ev.allDay ? -1 : AgendaCore.toMin(a.ev.start)) - (b.ev.allDay ? -1 : AgendaCore.toMin(b.ev.start)));
   /* carga por responsável */
-  const resp = new Map(); ativos.forEach(([, c]) => { const r = (c.resp || '').trim() || 'Sem responsável'; const x = resp.get(r) || { n: 0, s: 0 }; x.n++; const d = dueInfo(c); if (d && d.days >= 0 && d.days <= 7) x.s++; resp.set(r, x); });
+  const resp = new Map(); ativos.forEach(([, c]) => { const r = ((window.respDaTurma ? window.respDaTurma(c) : c.resp) || '').trim() || 'Sem responsável'; const x = resp.get(r) || { n: 0, s: 0 }; x.n++; const d = dueInfo(c); if (d && d.days >= 0 && d.days <= 7) x.s++; const k = parseD(colacaoDe(c)); if (k && (k - t0) / 864e5 >= 0 && (k - t0) / 864e5 <= 30) x.c = (x.c || 0) + 1; resp.set(r, x); });
   const respL = [...resp.entries()].sort((a, b) => b[1].n - a[1].n), respMax = Math.max(1, ...respL.map(([, x]) => x.n));
 
   // mesmo cartão de número de Contratos e Clientes: ícone colorido, número e nome embaixo
@@ -81,23 +91,28 @@ function renderDashboard() {
    <span class="phsp"></span><span class="pill">${WD_LONG[agora.getDay()]}, ${agora.getDate()} de ${MESL[agora.getMonth()]} de ${agora.getFullYear()}</span></header>
   <div class="mbody"><div class="mwrap dash">
    <div class="hello"><h2>Olá, Cristiano</h2><p>Acompanhe as entregas e a produção dos convites.</p></div>
-   <div class="ckpis c3 dks">${kpi('demandas', 'Entregues no mês', entMes, entSem + ' na semana', 'g')}${kpi('dashboard', 'Em produção', ativos.length, atras ? atras + ' atrasado' + (atras > 1 ? 's' : '') : (semPrazo ? semPrazo + ' sem prazo' : ''), atras ? 'r' : 'mu')}${kpi('clientes', 'Entrega no prazo', taxa, vence7 ? vence7 + ' vence' + (vence7 > 1 ? 'm' : '') + ' em 7 dias' : '', 'o')}</div>
-   <div class="dpanel"><div class="dph"><div><b>Entregas do ano</b><small>Pedidos entregues e prazos de entrega, mês a mês</small></div><span class="phsp"></span>
-     <span class="lg"><i class="en"></i>Entregues</span><span class="lg"><i class="pz"></i>Com prazo no mês</span>
+   <div class="ckpis c3 dks">${kpi('demandas', 'Entregues no mês', entMes, entSem + ' na semana', 'g')}${kpi('dashboard', 'Em produção', ativos.length, atras ? atras + ' atrasado' + (atras > 1 ? 's' : '') : (semCol ? semCol + ' sem colação' : (semPrazo ? semPrazo + ' sem prazo' : '')), atras ? 'r' : 'mu')}${comPrazo.length || !colProx.length ? kpi('clientes', 'Entrega no prazo', taxa, vence7 ? vence7 + ' vence' + (vence7 > 1 ? 'm' : '') + ' em 7 dias' : '', 'o') : kpi('clientes', 'Próxima colação · ' + esc(colProx[0].c.title || ''), fmtColacao(colProx[0].d).slice(0, 5), quando(colProx[0].d), 'o')}</div>
+   <div class="dpanel"><div class="dph"><div><b>Colações e entregas do ano</b><small>Colações das turmas, pedidos entregues e prazos de entrega, mês a mês</small></div><span class="phsp"></span>
+     <span class="lg"><i class="cl"></i>Colações</span><span class="lg"><i class="en"></i>Entregues</span><span class="lg"><i class="pz"></i>Com prazo no mês</span>
      <select id="dano" class="hsel" aria-label="Ano">${[dashAno - 1, dashAno, dashAno + 1].map((a) => `<option${a === dashAno ? ' selected' : ''}>${a}</option>`).join('')}</select></div>
-     ${ch.svg}<div class="dpf"><span>Total em ${dashAno}</span><b>${ch.tot} entregue(s) · ${ch.totP} com prazo</b></div></div>
+     ${ch.svg}<div class="dpf"><span>Total em ${dashAno}</span><b>${ch.totC} colação(ões) · ${ch.tot} entregue(s) · ${ch.totP} com prazo</b></div></div>
    <div class="dgrid"><div class="dcol">
-    <div class="dpanel"><div class="dph"><b>Próximas entregas</b><small>${prox.length ? 'próximos 14 dias e atrasadas' : 'nada marcado para os próximos 14 dias'}</small><span class="phsp"></span><button class="linkbtn" data-dash="demandas">Ver demandas</button></div>
-     ${prox.length ? `<div class="dlist">${prox.slice(0, 10).map((it) => it.k === 'card'
+    <div class="dpanel"><div class="dph"><b>Próximas colações e entregas</b><small>${prox.length ? 'colações dos próximos 90 dias e prazos dos próximos 14' : 'nada marcado nos próximos 90 dias'}</small><span class="phsp"></span><button class="linkbtn" data-dash="demandas">Ver demandas</button></div>
+     ${prox.length ? `<div class="dlist">${prox.slice(0, 10).map((it) => it.k === 'col'
+      ? `<button class="drow" data-id="${esc(it.id)}"><span class="sdot" style="background:#9F8FEF"></span><span class="dt">${esc(it.c.title)}</span><span class="mu up">Colação ${fmtColacao(it.date).slice(0, 5)}${typeof faseChip === 'function' ? ' ' + faseChip(it.c) : ''}</span><span class="mu">${quando(it.date)}</span>${(window.respDaTurma && window.respDaTurma(it.c)) ? `<span class="av" title="${esc(window.respDaTurma(it.c))}">${esc(initials(window.respDaTurma(it.c)))}</span>` : '<span class="av empty"></span>'}</button>`
+      : it.k === 'card'
       ? `<button class="drow" data-id="${esc(it.id)}"><span class="sdot" style="background:${corEtapa(colById(colOf(it.c)).c)}"></span><span class="dt">${esc(it.c.title)}</span><span class="mu up">${esc(cliName(it.c.clientId) || it.c.sub || '')}</span><span class="${(dueInfo(it.c) || {}).cls === 'late' ? 'r' : 'mu'}">${quando(it.date)}</span>${it.c.resp ? `<span class="av" title="${esc(it.c.resp)}">${esc(initials(it.c.resp))}</span>` : '<span class="av empty"></span>'}</button>`
-      : `<button class="drow" data-dev="${esc(it.id)}" data-date="${it.date}"><span class="sdot" style="background:#34D399"></span><span class="dt">${esc(it.ev.title)}</span><span class="mu up">Entrega · agenda</span><span class="mu">${quando(it.date)}</span><span class="av empty"></span></button>`).join('')}</div>` : `<p class="note">Defina o prazo de entrega dos pedidos para eles aparecerem aqui.${semPrazo ? ` Hoje, ${semPrazo} pedido(s) em produção estão sem prazo.` : ''}</p>`}</div>
-    <div class="dpanel"><div class="dph"><b>Clientes em produção</b><span class="phsp"></span><small>${cliProd.length}</small></div>
-     ${cliProd.length ? cliProd.map(([id, x]) => `<button class="crow" data-dcli="${esc(id)}"><i style="background:${avColor(clients.get(id).nome)}"></i><span>${esc(clients.get(id).nome)}</span><div class="bar"><i style="width:${x.d / x.t * 100}%;background:var(--teal)"></i></div><em>${x.d}/${x.t}</em></button>`).join('') : `<p class="note">Ligue os pedidos aos clientes (módulo Clientes ou janela do pedido) para ver o andamento de cada um aqui. <button class="linkbtn" data-dash="clientes">Abrir Clientes</button></p>`}</div>
+      : `<button class="drow" data-dev="${esc(it.id)}" data-date="${it.date}"><span class="sdot" style="background:#34D399"></span><span class="dt">${esc(it.ev.title)}</span><span class="mu up">Entrega · agenda</span><span class="mu">${quando(it.date)}</span><span class="av empty"></span></button>`).join('')}</div>` : `<p class="note">Preencha a data da colação ou o prazo de entrega dos pedidos para eles aparecerem aqui.${semCol ? ` Hoje, ${semCol} pedido(s) em produção estão sem data de colação.` : ''}</p>`}</div>
+ ${cliProd.length || typeof window.fasesProd !== 'function' ? `<div class="dpanel"><div class="dph"><b>Clientes em produção</b><span class="phsp"></span><small>${cliProd.length}</small></div>
+     ${cliProd.length ? cliProd.map(([id, x]) => `<button class="crow" data-dcli="${esc(id)}"><i style="background:${avColor(clients.get(id).nome)}"></i><span>${esc(clients.get(id).nome)}</span><div class="bar"><i style="width:${x.d / x.t * 100}%;background:var(--teal)"></i></div><em>${x.d}/${x.t}</em></button>`).join('') : `<p class="note">Ligue os pedidos aos clientes (módulo Clientes ou janela do pedido) para ver o andamento de cada um aqui. <button class="linkbtn" data-dash="clientes">Abrir Clientes</button></p>`}</div>` : (() => {
+      const fs = window.fasesProd(), n = (f) => ativos.filter(([, c]) => (window.faseDaTurma(c) || {}).id === f.id).length, mx = Math.max(1, ...fs.map(n));
+      return `<div class="dpanel"><div class="dph"><b>Produção por fase</b><small>turmas em cada fase da Produtividade</small><span class="phsp"></span><button class="linkbtn" data-dash="produtividade">Abrir Produtividade</button></div>
+       ${fs.map((f) => `<button class="crow" data-dash="produtividade"><i style="background:${esc(f.c)}"></i><span>${esc(f.name)}</span><div class="bar"><i style="width:${n(f) / mx * 100}%;background:${esc(f.c)}"></i></div><em>${n(f)}</em></button>`).join('')}</div>`; })()}
    </div><div class="dcol">
     <div class="dpanel"><div class="dph"><b>Hoje na agenda</b><span class="phsp"></span><button class="linkbtn" data-dash="agenda">Abrir calendário</button></div>
      ${hoje.length ? hoje.map(({ id, ev }) => `<button class="arow" data-dev="${esc(id)}" data-date="${isoD(t0)}"><i style="background:${(AgendaCore.TIPOS[ev.tipo] || AgendaCore.TIPOS.outro).c}"></i><span><b>${esc(ev.title)}</b><small>${ev.allDay ? 'Dia inteiro' : esc(ev.start + (ev.end ? '–' + ev.end : ''))}${ev.local ? ' · ' + esc(ev.local) : ''}</small></span></button>`).join('') : '<p class="note">Nenhum compromisso hoje.</p>'}</div>
     <div class="dpanel"><div class="dph"><b>Equipe</b><small>pedidos em produção por responsável</small></div>
-     ${respL.length ? respL.map(([r, x]) => `<div class="rrow"><span class="av${r === 'Sem responsável' ? ' empty' : ''}">${r === 'Sem responsável' ? '' : esc(initials(r))}</span><div><div class="rtop"><b>${esc(r)}</b><em>${x.n}</em></div><div class="bar"><i style="width:${x.n / respMax * 100}%;background:var(--teal)"></i></div><small>${x.s} vence${x.s === 1 ? '' : 'm'} esta semana</small></div></div>`).join('') : '<p class="note">Nenhum pedido em produção.</p>'}</div>
+     ${respL.length ? respL.map(([r, x]) => `<div class="rrow"><span class="av${r === 'Sem responsável' ? ' empty' : ''}">${r === 'Sem responsável' ? '' : esc(initials(r))}</span><div><div class="rtop"><b>${esc(r)}</b><em>${x.n}</em></div><div class="bar"><i style="width:${x.n / respMax * 100}%;background:var(--teal)"></i></div><small>${x.s} vence${x.s === 1 ? '' : 'm'} esta semana${x.c ? ' · ' + x.c + ' colação(ões) em 30 dias' : ''}</small></div></div>`).join('') : '<p class="note">Nenhum pedido em produção.</p>'}</div>
    </div></div>
   </div></div>`;
 }
@@ -113,4 +128,4 @@ $('mod-dashboard').addEventListener('click', (e) => {
   const ev = e.target.closest('[data-dev]'); if (ev) return openEv(ev.dataset.dev, ev.dataset.date);
   const c = e.target.closest('[data-dcli]'); if (c) return openCli(c.dataset.dcli);
 });
-$('mod-dashboard').addEventListener('change', (e) => { if (e.target.id === 'dano') { dashAno = +e.target.value; renderDashboard(); } });
+$('mod-dashboard').addEventListener('change', (e) => { if (e.target.id === 'dano') { dashAno = +e.target.value; dashAnoEscolhido = true; renderDashboard(); } });

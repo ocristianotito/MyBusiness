@@ -27,7 +27,9 @@
   const faseDe = (c) => { const fs = fases(); return fs.find((f) => f.id === c.fase) || fs[0]; };
   // usado pelas Demandas para mostrar a fase de cada turma com a cor dela (turmas entregues não mostram)
   window.faseDaTurma = (c) => (c && !isDone(c) ? faseDe(c) : null);
+  window.fasesProd = () => fases();
   const respDe = (c) => (faseDe(c).resp || c.resp || '').trim();
+  window.respDaTurma = (c) => respDe(c);
   const dias = (t) => t ? Math.floor((Date.now() - t) / 86400000) : null;
   const tempo = (n) => n == null ? '' : n === 0 ? 'desde hoje' : n === 1 ? 'há 1 dia' : 'há ' + n + ' dias';
   let filtro = '', busca = '', dragId = null;

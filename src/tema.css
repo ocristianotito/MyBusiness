@@ -337,3 +337,9 @@ body.fin .opobs textarea{display:block;width:100%;box-sizing:border-box;min-heig
 .chip.fasec{background:color-mix(in srgb,var(--fc) 18%,transparent);color:var(--fc);font-weight:700;letter-spacing:.3px}
 .cardk.comfase{border-left:3px solid var(--fc)}
 .tbl .tfase{margin-top:4px}
+
+/* Dashboard: colações no gráfico */
+.lg i.cl{background:#9F8FEF}
+.dchart .ln.cl{stroke:#9F8FEF;stroke-width:2.5}.dchart .ar.cl{fill:rgba(159,143,239,.14)}
+.dchart .vcl{fill:#c4b5fd;font-size:12px;font-weight:700}
+.drow .chip.fasec{margin-left:6px}
