@@ -31,7 +31,7 @@ rep("document.getElementById('nav').innerHTML=TABS.map((n,i)=>`<button class=\"$
 rep("[v0,v1,v2,v3,v4,v5][S.tab]()", "[v0,v1,v2,(window.v3x||v3),v4,v5,v6][S.tab]()")
 rep("let S=load(),lista=null,modal=null,pendFocus=null;", "let S=load(),lista=null,modal=null,pendFocus=null;S.tab=6;")
 doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", " if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}\n if(a==='add'){const d=prompt('Descrição da despesa:');", 1)
-rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")
+rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"vendor/qrcode.js\"></script>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")
 # menu lateral
 doc = doc.replace('<body>', '<body class="withside fin">\n<aside id="side" aria-label="Menu"></aside>\n<script src="shell.js"></script>\n<script>Shell.build("financeiro")</script>', 1)
 # números com conta: "124,69+354,38" soma e "500-20" subtrai (como no Excel); o resto continua igual

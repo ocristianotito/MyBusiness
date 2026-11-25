@@ -526,8 +526,18 @@
     const f = Array.isArray(m.fotos) ? m.fotos : [];
     return `<div class="ofixas"><div class="ofixh"><b>Fotos do modelo</b><small>aparecem no orçamento em PDF · a primeira sai maior</small></div><div class="ofgrid">${[0, 1, 2].map((i) => f[i]
       ? `<figure class="ofs"><img src="${f[i]}" alt="Foto ${i + 1}"><figcaption>${i === 0 ? 'Principal' : 'Foto ' + (i + 1)}<span>${i > 0 ? `<button data-ofm="${m.id}|${i}" title="Usar como principal">★</button>` : ''}<button data-oft="${m.id}|${i}" title="Trocar foto">⟳</button><button data-ofx="${m.id}|${i}" title="Remover">✕</button></span></figcaption></figure>`
-      : `<button class="ofs ofvazio" data-ofadd="${m.id}|${i}"${i > f.length ? ' disabled' : ''}><b>+</b><span>${i === 0 ? 'Foto principal' : 'Foto ' + (i + 1)}</span></button>`).join('')}</div></div>`;
+      : `<button class="ofs ofvazio" data-ofadd="${m.id}|${i}"${i > f.length ? ' disabled' : ''}><b>+</b><span>${i === 0 ? 'Foto principal' : 'Foto ' + (i + 1)}</span></button>`).join('')}</div>
+      <div class="ofvid"><label>Link do vídeo do modelo <small>(YouTube não listado, Google Drive…) · vira QR Code e link no PDF</small><input data-ofvid="${m.id}" value="${esc(m.video || '')}" placeholder="https://youtu.be/…"></label>${m.video ? `<button class="btn ghost sm" data-ofvabrir="${esc(m.video)}">Testar link</button>` : ''}</div></div>`;
   };
+  document.addEventListener('change', (e) => {
+    const t = e.target; if (!t.dataset || !t.dataset.ofvid) return;
+    const M = modelOf(t.dataset.ofvid); if (!M) return;
+    let v = t.value.trim(); if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+    M.video = v; save(); render();
+  }, true);
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-ofvabrir]'); if (b) { e.stopPropagation(); window.open(b.dataset.ofvabrir, '_blank'); } }, true);
+  // QR Code (biblioteca vendor/qrcode.js, MIT) como imagem para o PDF
+  const qrImg = (url) => { try { const q = qrcode(0, 'M'); q.addData(url); q.make(); return q.createDataURL(5, 0); } catch (e) { return ''; } };
   const escolherFoto = (mid, i) => {
     const M = modelOf(mid); if (!M) return;
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
@@ -606,6 +616,7 @@
       ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
       ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
       ${multi ? '' : `<h2>Convite ${esc(d.tam)}</h2>${desc(d) ? `<div class="mod">${desc(d)}</div>` : ''}`}
+      ${d.M.video ? `<a class="vid" href="${esc(d.M.video)}"><img src="${qrImg(d.M.video)}" alt="QR Code do vídeo"><span><b>▶ Assista ao vídeo deste modelo</b><small>Aponte a câmera do celular para o código ou clique aqui.</small><em>${esc(d.M.video)}</em></span></a>` : ''}
       ${d.alvos.length ? `<div class="qs n${Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b>${op.cpf ? `<span><small>Convites por formando</small>${op.cpf}</span><span><small>Formandos</small>${fmtForm(a.q / op.cpf)}</span>` : ''}<span><small>Valor por convite</small>${BRL(a.val / a.q)}</span>${op.cpf ? `<span class="pf"><small>Valor por formando</small>${BRL(a.val / a.q * op.cpf)}</span>` : ''}<span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
       ${op.tabela && d.linhas.length ? `<div class="sec">${d.alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
       <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
@@ -613,7 +624,7 @@
     </section>`;
     // vários modelos: comparativo na primeira página (modelo × quantidade)
     const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => `<th class="n">${q} convites${op.cpf ? `<br><span class="thf">${fmtForm(q / op.cpf)} formandos · ${op.cpf} por formando</span>` : ''}</th>`).join('')}</tr></thead><tbody>
-      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${op.cpf ? `<small class="pf">${BRL(a.val / a.q * op.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
+      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}${d.M.video ? `<a class="vlink" href="${esc(d.M.video)}">▶ ver vídeo</a>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${op.cpf ? `<small class="pf">${BRL(a.val / a.q * op.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
       <p class="nota">Fotos e detalhes de cada modelo nas páginas seguintes.</p>` : (multi ? `<p class="nota">${lista.length} modelos nas páginas seguintes.</p>` : '');
     const fim = `${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}`;
@@ -639,6 +650,9 @@
       table{width:100%;border-collapse:collapse;margin-top:4px}th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:2px solid #c9d8db}
       td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:#e9f7f6;font-weight:700}
       table.cmp td{padding:8px}table.cmp td small{display:block;color:#6b7f88;font-size:10px;font-weight:500}table.cmp td b{font-size:13px}table.cmp td.n b{color:#0f5e59}table.cmp tbody tr:nth-child(odd) td{background:#f6f9fa}
+      .vid{display:flex;align-items:center;gap:14px;border:1px solid #c9d8db;border-radius:10px;padding:10px 12px;margin:0 0 12px;text-decoration:none;color:#1c2b33;page-break-inside:avoid}
+      .vid img{width:26mm;height:26mm;image-rendering:pixelated;flex-shrink:0}.vid b{display:block;font-size:14px;color:#0f5e59}.vid small{display:block;color:#40565f;font-size:11px;margin:2px 0}.vid em{font-style:normal;color:#147a74;font-size:10px;word-break:break-all;text-decoration:underline}
+      .vlink{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;color:#147a74}
       .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7f88;font-weight:700;margin:14px 0 4px}.nota{color:#6b7f88;font-size:10.5px;margin:8px 0 0}.sem{color:#b45309}
       .obs{page-break-inside:avoid;white-space:pre-wrap;border-left:3px solid #c9d8db;background:#f6f9fa;border-radius:4px;padding:8px 10px}
       .val{margin-top:12px;font-weight:600}.rod{margin-top:18px;border-top:1px solid #dbe5e7;padding-top:8px;color:#6b7f88;font-size:10px;display:flex;justify-content:space-between;gap:10px}
