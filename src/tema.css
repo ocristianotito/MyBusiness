@@ -343,3 +343,20 @@ body.fin .opobs textarea{display:block;width:100%;box-sizing:border-box;min-heig
 .dchart .ln.cl{stroke:#9F8FEF;stroke-width:2.5}.dchart .ar.cl{fill:rgba(159,143,239,.14)}
 .dchart .vcl{fill:#c4b5fd;font-size:12px;font-weight:700}
 .drow .chip.fasec{margin-left:6px}
+
+/* Orçamentos: fotos fixas no quadro do modelo e escolha de modelos no PDF */
+body.fin .ofixas{margin:12px 0 4px}
+body.fin .ofixh{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}body.fin .ofixh b{font-size:13px}body.fin .ofixh small{color:var(--c-mu);font-size:12px}
+body.fin .ofgrid{display:grid;grid-template-columns:repeat(3,minmax(0,220px));gap:10px}
+body.fin .ofs{margin:0;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);overflow:hidden}
+body.fin .ofs img{width:100%;height:120px;object-fit:cover;display:block}
+body.fin .ofs figcaption{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--c-mu);padding:5px 8px}
+body.fin .ofs figcaption button{background:none;border:0;color:var(--c-mu);cursor:pointer;font-size:13px;padding:0 4px}
+body.fin .ofs figcaption button:hover{color:var(--c-teal)}body.fin .ofs figcaption button[data-ofx]:hover{color:var(--c-red)}
+body.fin .ofvazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:150px;border-style:dashed;color:var(--c-mu);font:inherit;font-size:12px;cursor:pointer}
+body.fin .ofvazio b{font-size:24px;font-weight:400;color:var(--c-teal);line-height:1}body.fin .ofvazio:hover:not(:disabled){border-color:var(--c-teal);color:var(--c-tx)}body.fin .ofvazio:disabled{opacity:.35;cursor:not-allowed}
+body.fin .opmods{border:1px solid var(--c-bd);border-radius:var(--r-ctl);padding:10px 12px;margin-bottom:12px;background:var(--c-sunk)}
+body.fin .opmh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}body.fin .opmh .relop{margin:0;font-size:13px}
+body.fin .opml{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+body.fin .opm{display:flex!important;align-items:center;gap:8px;font-size:13px;color:var(--c-tx)!important;cursor:pointer;min-width:0!important}
+body.fin .opm small{margin-left:auto;color:var(--c-mu);font-size:11px}

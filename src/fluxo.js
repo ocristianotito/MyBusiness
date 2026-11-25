@@ -521,14 +521,36 @@
     pintar();
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-orcfoto]'); if (b) { e.stopPropagation(); janelaFotos(b.dataset.orcfoto); } }, true);
+  // 3 espaços de foto sempre visíveis no quadro de cada modelo (aba Orçamentos); a 1ª é a principal no PDF
+  window.__fotosFixas = (m) => {
+    const f = Array.isArray(m.fotos) ? m.fotos : [];
+    return `<div class="ofixas"><div class="ofixh"><b>Fotos do modelo</b><small>aparecem no orçamento em PDF · a primeira sai maior</small></div><div class="ofgrid">${[0, 1, 2].map((i) => f[i]
+      ? `<figure class="ofs"><img src="${f[i]}" alt="Foto ${i + 1}"><figcaption>${i === 0 ? 'Principal' : 'Foto ' + (i + 1)}<span>${i > 0 ? `<button data-ofm="${m.id}|${i}" title="Usar como principal">★</button>` : ''}<button data-oft="${m.id}|${i}" title="Trocar foto">⟳</button><button data-ofx="${m.id}|${i}" title="Remover">✕</button></span></figcaption></figure>`
+      : `<button class="ofs ofvazio" data-ofadd="${m.id}|${i}"${i > f.length ? ' disabled' : ''}><b>+</b><span>${i === 0 ? 'Foto principal' : 'Foto ' + (i + 1)}</span></button>`).join('')}</div></div>`;
+  };
+  const escolherFoto = (mid, i) => {
+    const M = modelOf(mid); if (!M) return;
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = async () => { if (!inp.files[0]) return; try { const u = await reduzir(inp.files[0]); if (!Array.isArray(M.fotos)) M.fotos = []; if (i < M.fotos.length) M.fotos[i] = u; else M.fotos.push(u); M.fotos = M.fotos.slice(0, MAXF); save(); render(); } catch (er) { alert(er.message || er); } };
+    inp.click();
+  };
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-ofadd],[data-oft],[data-ofx],[data-ofm]'); if (!t) return;
+    e.stopPropagation();
+    const [mid, si] = (t.dataset.ofadd || t.dataset.oft || t.dataset.ofx || t.dataset.ofm).split('|'), i = +si, M = modelOf(mid); if (!M) return;
+    if (t.dataset.ofadd || t.dataset.oft) return escolherFoto(mid, i);
+    if (t.dataset.ofx) { if (!confirm('Remover esta foto do modelo?')) return; M.fotos.splice(i, 1); save(); return render(); }
+    if (t.dataset.ofm) { M.fotos.unshift(M.fotos.splice(i, 1)[0]); save(); return render(); }
+  }, true);
 
   let orcUlt = {}; try { orcUlt = JSON.parse(localStorage.getItem('cc.orcPdf') || '{}') || {}; } catch (er) {}
   function janelaOrcPdf() {
     const ms = (S.orc && S.orc.models) || []; if (!ms.length) return;
     const mid = (ms.find((x) => x.id === S.orcM) || ms[0]).id, per = S.orcP || 0;
     dialog(`<h2>Gerar orçamento em PDF</h2><div class="sub">Para enviar ao cliente: fotos do modelo, preço da quantidade da turma e a tabela completa.</div>
-      <div class="fg"><label>Modelo<select id="op-m">${ms.map((x) => `<option value="${x.id}"${x.id === mid ? ' selected' : ''}>${esc(x.nome)}${x.capa ? ' · ' + esc(x.capa) : ''}${(x.fotos || []).length ? ' · ' + x.fotos.length + ' foto(s)' : ''}</option>`).join('')}</select></label>
-       <label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
+      <div class="opmods"><div class="opmh"><b>Modelos</b><label class="relop"><input type="checkbox" id="op-todos"${orcUlt.todos ? ' checked' : ''}> Todos os modelos</label></div>
+       <div class="opml">${ms.map((x) => `<label class="opm"><input type="checkbox" data-opm="${x.id}"${orcUlt.todos || x.id === mid ? ' checked' : ''}> ${esc(x.nome)}<small>${(x.fotos || []).length ? x.fotos.length + ' foto(s)' : 'sem fotos'}</small></label>`).join('')}</div></div>
+      <div class="fg"><label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
        <label>Para (turma ou cliente)<input id="op-para" placeholder="Ex.: Direito UNEX 2027.1"></label>
        <label>Quantidades<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
        <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
@@ -540,34 +562,61 @@
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, async (e) => {
       const ok = e.target.closest('[data-ok]'); if (!ok) return;
       const g = (id) => document.getElementById(id).value;
-      const op = { mid: g('op-m'), per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
+      const mids = [...document.querySelectorAll('[data-opm]')].filter((c) => c.checked).map((c) => c.dataset.opm);
+      if (!mids.length) { alert('Marque pelo menos um modelo.'); return; }
+      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
       if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
       if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305) ou marque "Mostrar também a tabela completa".'); return; }
-      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
+      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
       try { await gerarOrcPdf(op); if (ov) { ov.remove(); ov = null; } } catch (er) { ok.disabled = false; ok.textContent = 'Gerar PDF'; alert(er.message || er); }
     });
     const f = ov && ov.querySelector('#op-para'); if (f) setTimeout(() => f.focus(), 40);
+    const td = ov && ov.querySelector('#op-todos');
+    if (td) { td.addEventListener('change', () => ov.querySelectorAll('[data-opm]').forEach((c) => { c.checked = td.checked; }));
+      ov.querySelectorAll('[data-opm]').forEach((c) => c.addEventListener('change', () => { td.checked = [...ov.querySelectorAll('[data-opm]')].every((x) => x.checked); })); }
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-orcpdf]'); if (b) { e.stopPropagation(); janelaOrcPdf(); } }, true);
 
   // "23×17,5 cm" → "23x17,5 FECHADO" (nomes que não são medidas ficam como estão)
   const tamanho = (n) => { const m = String(n || '').match(/^\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(?:cm)?\.?\s*(.*)$/i); return m ? (m[1] + 'x' + m[2] + ' FECHADO' + (m[3] ? ' ' + m[3] : '')) : String(n || ''); };
   async function gerarOrcPdf(op) {
-    const M = modelOf(op.mid), P = ORC_PER[op.per];
+    const P = ORC_PER[op.per];
     let emp = {}; try { const d = await window.api.load(); emp = (d && d.cfg && d.cfg.empresa) || {}; } catch (er) {}
     const nomeEmp = emp.nome || 'Cristiano Convites';
-    const linhas = rowsOf(M).map((q) => ({ q, t: orcTot(op.mid, q, op.per) })).filter((x) => x.t > 0);
-    // quantidade fora da tabela: usa o valor por convite da faixa MENOR mais próxima (quanto menor a quantidade, maior o valor
-    // por convite). Abaixo da primeira linha, usa a primeira linha.
-    const preco = (q) => {
-      const ex = linhas.find((x) => x.q === q), base = ex || linhas.filter((x) => x.q < q).pop() || linhas[0], un = base.t / base.q;
-      return { q, val: Math.round((ex ? ex.t : un * q) * 100) / 100, base: ex ? null : base.q };
-    };
-    const alvos = linhas.length ? op.qs.slice().sort((a, b) => a - b).map(preco) : [];
     const hoje = new Date(), dd = (d) => d.toLocaleDateString('pt-BR'), ate = new Date(hoje.getTime() + op.validade * 86400000);
-    const fotos = (M.fotos || []).slice(0, MAXF);
-    const contato = [op.tel || emp.telefone, op.email || emp.email].filter(Boolean).map(esc).join(' · '), tam = tamanho(M.nome);
+    const contato = [op.tel || emp.telefone, op.email || emp.email].filter(Boolean).map(esc).join(' · ');
+    const qs = op.qs.slice().sort((a, b) => a - b);
+    const dadosM = (mid) => {
+      const M = modelOf(mid); if (!M) return null;
+      const linhas = rowsOf(M).map((q) => ({ q, t: orcTot(mid, q, op.per) })).filter((x) => x.t > 0);
+      // quantidade fora da tabela: usa o valor por convite da faixa MENOR mais próxima (quanto menor a quantidade, maior o valor
+      // por convite). Abaixo da primeira linha, usa a primeira linha.
+      const preco = (q) => {
+        const ex = linhas.find((x) => x.q === q), base = ex || linhas.filter((x) => x.q < q).pop() || linhas[0], un = base.t / base.q;
+        return { q, val: Math.round((ex ? ex.t : un * q) * 100) / 100 };
+      };
+      return { M, linhas, alvos: linhas.length ? qs.map(preco) : [], tam: tamanho(M.nome), fotos: (M.fotos || []).slice(0, MAXF) };
+    };
+    const lista = op.mids.map(dadosM).filter(Boolean), multi = lista.length > 1;
+    const desc = (d) => [op.desc, d.M.capa].filter(Boolean).map(esc).join(' · ');
+    const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}">
+      ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
+      ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
+      ${multi ? '' : `<h2>Convite ${esc(d.tam)}</h2>${desc(d) ? `<div class="mod">${desc(d)}</div>` : ''}`}
+      ${d.alvos.length ? `<div class="qs n${Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b><span><small>Valor por convite</small>${BRL(a.val / a.q)}</span><span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
+      ${op.tabela && d.linhas.length ? `<div class="sec">${d.alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
+      <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
+      ${d.linhas.map((x) => `<tr class="${d.alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
+    </section>`;
+    // vários modelos: comparativo na primeira página (modelo × quantidade)
+    const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => `<th class="n">${q} convites</th>`).join('')}</tr></thead><tbody>
+      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small></td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
+      <p class="nota">Fotos e detalhes de cada modelo nas páginas seguintes.</p>` : (multi ? `<p class="nota">${lista.length} modelos nas páginas seguintes.</p>` : '');
+    const fim = `${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
+      ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}`;
+    const rod = `<div class="rod"><span>${esc(nomeEmp)}</span><span style="text-align:right">${contato}</span></div>`;
+    const um = lista[0];
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento</title><style>
       @page{size:A4;margin:12mm 14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       body{font:11.5px/1.45 "Segoe UI",Helvetica,Arial,sans-serif;color:#1c2b33;margin:0;font-feature-settings:"calt" 0}
@@ -576,6 +625,7 @@
       .tt{text-align:right;color:#6b7f88}.tt b{display:block;font-size:17px;color:#1c2b33}.tt i{display:block;font-style:normal;font-size:12px;font-weight:600;color:#40565f}
       .para{background:#f3f8f8;border:1px solid #dbe5e7;border-radius:8px;padding:7px 12px;margin-bottom:12px}.para small{color:#6b7f88;text-transform:uppercase;letter-spacing:1px;font-size:9.5px;display:block}.para b{font-size:14px}
       h2{font-size:15px;margin:0 0 2px}.mod{color:#40565f;font-size:12.5px;font-weight:600;margin-bottom:10px}
+      .quebra{page-break-before:always}.mtop{border-bottom:2px solid #2DB5AE;padding-bottom:6px;margin-bottom:12px}.mtop b{font-size:17px;display:block}.mtop i{font-style:normal;color:#40565f;font-weight:600}
       .fotos{display:grid;gap:8px;margin-bottom:12px}.fotos.n1{grid-template-columns:1fr}.fotos.n2{grid-template-columns:1fr 1fr}.fotos.n3{grid-template-columns:2fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
       .fotos img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid #dbe5e7;display:block}
       .fotos.n1 img{max-height:78mm;object-fit:contain;background:#f6f9fa}.fotos.n2 img{height:52mm}.fotos.n3 img{height:100%;min-height:0}.fotos.n3 img:first-child{grid-row:1/3;height:76mm}.fotos.n3{height:76mm}
@@ -583,27 +633,20 @@
       .qc{border:1px solid #2DB5AE;background:#e9f7f6;border-radius:10px;padding:10px 12px;page-break-inside:avoid}.qc>b{display:block;font-size:16px;color:#0f5e59;margin-bottom:6px}
       .qc span{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:600;padding:3px 0;border-top:1px solid #c6ebe8}.qc span small{font-size:10px;color:#40565f;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
       .qc span.tot{font-size:15px;color:#0f5e59;font-weight:800}
-      .qs.n1 .qc{display:flex;align-items:center;gap:24px}.qs.n1 .qc>b{margin:0;flex:1}.qs.n1 .qc span{border:0;gap:10px}.dest div{flex:1;border:1px solid #2DB5AE;background:#e9f7f6;border-radius:8px;padding:9px 12px}.dest small{display:block;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.8px}.dest b{font-size:17px;color:#0f5e59}
+      .qs.n1 .qc{display:flex;align-items:center;gap:24px}.qs.n1 .qc>b{margin:0;flex:1}.qs.n1 .qc span{border:0;gap:10px}
       table{width:100%;border-collapse:collapse;margin-top:4px}th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:2px solid #c9d8db}
       td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:#e9f7f6;font-weight:700}
-      .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7f88;font-weight:700;margin:14px 0 4px}
+      table.cmp td{padding:8px}table.cmp td small{display:block;color:#6b7f88;font-size:10px;font-weight:500}table.cmp td b{font-size:13px}table.cmp td.n b{color:#0f5e59}table.cmp tbody tr:nth-child(odd) td{background:#f6f9fa}
+      .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7f88;font-weight:700;margin:14px 0 4px}.nota{color:#6b7f88;font-size:10.5px;margin:8px 0 0}.sem{color:#b45309}
       .obs{page-break-inside:avoid;white-space:pre-wrap;border-left:3px solid #c9d8db;background:#f6f9fa;border-radius:4px;padding:8px 10px}
       .val{margin-top:12px;font-weight:600}.rod{margin-top:18px;border-top:1px solid #dbe5e7;padding-top:8px;color:#6b7f88;font-size:10px;display:flex;justify-content:space-between;gap:10px}
-      tr{page-break-inside:avoid}.fotos,.dest{page-break-inside:avoid}
+      tr{page-break-inside:avoid}.fotos{page-break-inside:avoid}
     </style></head><body>
-      <div class="top"><div class="marca">${esc(nomeEmp)}<small>Orçamento</small></div><div class="tt"><b>${esc(tam)}</b>${op.desc ? `<i>${esc(op.desc)}</i>` : ''}período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
+      <div class="top"><div class="marca">${esc(nomeEmp)}<small>Orçamento</small></div><div class="tt">${multi ? `<b>${lista.length} modelos de convite</b>` : `<b>${esc(um.tam)}</b>${op.desc ? `<i>${esc(op.desc)}</i>` : ''}`}período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
       ${op.para ? `<div class="para"><small>Para</small><b>${esc(op.para)}</b></div>` : ''}
-      ${fotos.length ? `<div class="fotos n${fotos.length}">${fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
-      <h2>Convite ${esc(tam)}</h2>${op.desc || M.capa ? `<div class="mod">${[op.desc, M.capa].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
-      ${alvos.length ? `<div class="qs n${Math.min(alvos.length, 3)}">${alvos.map((a) => `<div class="qc"><b>${a.q} convites</b><span><small>Valor por convite</small>${BRL(a.val / a.q)}</span><span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : ''}
-      ${op.tabela ? `<div class="sec">${alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
-      <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
-      ${linhas.map((x) => `<tr class="${alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
-      ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}
-      <div class="rod"><span>${esc(nomeEmp)}</span><span style="text-align:right">${contato}</span></div>
+      ${multi ? comparativo + fim + rod + lista.map(bloco).join('') : bloco(um) + fim + rod}
     </body></html>`;
-    const arq = 'Orçamento ' + (op.para || M.nome).replace(/[\\/:*?"<>|]+/g, '-') + ' ' + dd(hoje).replace(/\//g, '-') + '.pdf';
+    const arq = 'Orçamento ' + (op.para || (multi ? lista.length + ' modelos' : um.M.nome)).replace(/[\\/:*?"<>|]+/g, '-') + ' ' + dd(hoje).replace(/\//g, '-') + '.pdf';
     const r = await window.api.gerarPdf(html, arq, 'Salvar orçamento em PDF');
     if (r && !r.ok && !r.canceled) throw new Error(r.error || 'Não foi possível gerar o PDF.');
   }
