@@ -77,6 +77,10 @@ rep(r"""<button class="btn" data-act="addm">+ novo modelo</button>""", r"""""")
 rep(r"""${T.alunos.map(a=>lrow(T,a,rg,qt)).join('')}""", r"""${alfa(T.alunos).map(a=>lrow(T,a,rg,qt)).join('')}""")
 rep(r"""function lrow(T,a,rg,qt){""", r"""function alfa(l){return l.slice().sort((x,y)=>{const a=String(x.nome||'').trim(),b=String(y.nome||'').trim();if(!a||!b)return a?-1:b?1:0;return a.localeCompare(b,'pt-BR',{sensitivity:'base'})})}
 function lrow(T,a,rg,qt){""")
+# turma de parceiro: o valor recebido pode ser qualquer valor, inclusive maior que o total (pedido do dono)
+rep(r"""dados.total=T;dados.rec=Math.min(R0,T);""", r"""dados.total=T;dados.rec=R0;""")
+rep(r"""if(T===0&&R0>0){alert('Informe o valor total antes do valor recebido.');return}""", r"""""")
+rep(r"""p.total=r.val;p.auto=r.val;p.calc=!r.exact;p.rec=Math.min(+p.rec||0,p.total)}""", r"""p.total=r.val;p.auto=r.val;p.calc=!r.exact}""")
 rep('<title>Dashboard de Convites</title>', '<title>Financeiro · Cristiano Convites</title>')
 
 m = re.search(r'<header><h1>Dashboard de Convites</h1>(<div style="display:flex.*?</div>)<nav id="nav"></nav></header>', doc, re.S)

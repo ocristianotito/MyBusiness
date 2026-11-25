@@ -927,7 +927,7 @@ document.addEventListener('click',e=>{
   if(!r){alert('Não foi possível calcular. Use "Editar pagamento" para informar a quantidade de convites e o modelo, e confira se o modelo tem valores na aba Orçamentos.');return}
   if(p.total>0&&Math.abs(p.total-(p.auto||0))>0.005&&Math.abs(p.total-r.val)>0.005){
    if(!confirm('O valor total deste cartão ('+BRL(p.total)+') foi digitado manualmente. Substituir por '+BRL(r.val)+' (modelo '+r.nome+', '+r.q+' convites'+(r.exact?'':', valor calculado')+')?'))return}
-  p.total=r.val;p.auto=r.val;p.calc=!r.exact;p.rec=Math.min(+p.rec||0,p.total)}
+  p.total=r.val;p.auto=r.val;p.calc=!r.exact}
 
  /* janelas */
  if(a==='info')modal={t:'info',id:id};
@@ -989,7 +989,7 @@ document.addEventListener('click',e=>{
   if(!isNaN(uv)&&uv<0){alert('O valor unitário não pode ser negativo.');return}
   if(!isNaN(ev)&&(ev<0||ev>100)){alert('A entrada combinada deve ficar entre 0 e 100%.');return}
   let T=isNaN(tv)?0:tv;const R0=isNaN(rv)?0:rv;
-  if(T===0&&R0>0){alert('Informe o valor total antes do valor recebido.');return}
+  
   const old=modal.id==null?null:S.parc.find(p=>p.id===modal.id);
   const dados={nome:nome,parceiro:parceiro,data:data,mes:mes,ano:Math.round(av),custo:isNaN(cv)?0:cv,unit:isNaN(uv)?0:uv,ent:isNaN(ev)?0:ev,entv:(isNaN(evv)||evv<0)?null:evv,modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};
   ['form','luxo','simp','foto'].forEach(k=>{const v=g(k);dados[k]=isNaN(v)||v<0?0:Math.round(v)});
@@ -1000,7 +1000,7 @@ document.addEventListener('click',e=>{
    /* valor total vazio: nada digitado à mão para proteger, então aplica o valor do orçamento */
    const r=orcParceiro(mid,dados.qtd||(dados.luxo+dados.simp),dados.ano);
    if(r){T=r.val;auto=T;calc=!r.exact}}
-  dados.total=T;dados.rec=Math.min(R0,T);dados.auto=auto;dados.calc=calc;
+  dados.total=T;dados.rec=R0;dados.auto=auto;dados.calc=calc;
   if(modal.id==null)S.parc.push(Object.assign({id:Date.now()},dados));
   else Object.assign(S.parc.find(p=>p.id===modal.id),dados);
   modal=null}
