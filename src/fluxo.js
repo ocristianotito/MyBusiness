@@ -292,6 +292,48 @@
     </div></div>`;
   };
   /* ===== relatório da turma (PDF para a comissão: sem custos, margem nem documentos dos formandos) ===== */
+  /* ===== Cabeçalho dos PDFs (imagem do dono: logo + contatos) =====
+     Fica nos dados do Financeiro (S.pdfCab), não no código: o repositório é público. Vale para o orçamento e o relatório da turma. */
+  function cortarCab(arq) {   // lê a imagem, corta as sobras brancas e reduz para até 2000 px de largura
+    return new Promise((ok, erro) => {
+      const fr = new FileReader();
+      fr.onerror = () => erro(new Error('Não foi possível ler a imagem.'));
+      fr.onload = () => { const im = new Image(); im.onerror = () => erro(new Error('Arquivo não é uma imagem.')); im.onload = () => {
+        const c0 = document.createElement('canvas'); c0.width = im.width; c0.height = im.height;
+        const g0 = c0.getContext('2d'); g0.fillStyle = '#fff'; g0.fillRect(0, 0, im.width, im.height); g0.drawImage(im, 0, 0);
+        const px = g0.getImageData(0, 0, im.width, im.height).data, W = im.width, H = im.height;
+        let x0 = W, y0 = H, x1 = -1, y1 = -1;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; if (px[i] < 238 || px[i + 1] < 238 || px[i + 2] < 238) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+        if (x1 < 0) { x0 = 0; y0 = 0; x1 = W - 1; y1 = H - 1; }
+        const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.012); x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W - 1, x1 + m); y1 = Math.min(H - 1, y1 + m);
+        const w = x1 - x0 + 1, h = y1 - y0 + 1, k = Math.min(1, 2000 / w), c = document.createElement('canvas');
+        c.width = Math.round(w * k); c.height = Math.round(h * k);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingQuality = 'high'; g.drawImage(c0, x0, y0, w, h, 0, 0, c.width, c.height);
+        ok(c.toDataURL('image/jpeg', 0.92)); }; im.src = fr.result; };
+      fr.readAsDataURL(arq);
+    });
+  }
+  const cabHtml = () => S.pdfCab ? `<div class="cab"><img src="${S.pdfCab}" alt=""></div>` : '';
+  const CAB_CSS = '.cab{margin:0 0 8px;padding-bottom:8px;border-bottom:1px solid #e2d6bd}.cab img{display:block;width:100%;max-height:30mm;object-fit:contain;object-position:left center}';
+  function cabCampo() {
+    return `<div class="opcab"><div class="opcabh"><b>Cabeçalho dos PDFs</b><small>sua logo e contatos no topo do orçamento e do relatório da turma</small></div>
+      ${S.pdfCab ? `<img src="${S.pdfCab}" alt="Cabeçalho">` : '<div class="opcabv">Nenhuma imagem: o PDF usa o nome da empresa.</div>'}
+      <div class="opcabb"><button type="button" class="btn ghost sm" data-cab="trocar">${S.pdfCab ? 'Trocar imagem' : 'Escolher imagem'}</button>${S.pdfCab ? '<button type="button" class="btn ghost sm" data-cab="tirar">Remover</button>' : ''}</div></div>`;
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cab]'); if (!b) return; e.stopPropagation();
+    const box = b.closest('.opcab'), pintar = () => { if (box) box.outerHTML = cabCampo(); };
+    if (b.dataset.cab === 'tirar') { if (!confirm('Remover o cabeçalho dos PDFs?')) return; delete S.pdfCab; save(); return pintar(); }
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = async () => { if (!inp.files[0]) return; try { S.pdfCab = await cortarCab(inp.files[0]); save(); pintar(); } catch (er) { alert(er.message || er); } };
+    inp.click();
+  }, true);
+  // um tom por tamanho de convite (pela posição do modelo na lista): o mesmo tom no comparativo e nas páginas do modelo
+  const TONS = [['#2DB5AE', '#0f5e59', '#e9f7f6', '#c6ebe8'], ['#C9962B', '#7a5410', '#fbf3e2', '#efdcb4'], ['#3B82F6', '#1e40af', '#eaf1fe', '#c7d9fb'],
+    ['#8B5CF6', '#5b21b6', '#f1ebfe', '#dccdfb'], ['#E11D48', '#9f1239', '#fdecef', '#f8c6d1'], ['#16A34A', '#14532d', '#e8f7ee', '#bfe6cd'],
+    ['#EA580C', '#9a3412', '#fdeee4', '#f8cfb3'], ['#64748B', '#334155', '#eef1f5', '#cfd6e0']];
+  const tomDe = (mid) => { const i = Math.max(0, ((S.orc && S.orc.models) || []).findIndex((x) => x.id === mid)); const t = TONS[i % TONS.length]; return `--c:${t[0]};--cd:${t[1]};--cl:${t[2]};--cb:${t[3]}`; };
+
   async function relatorioTurma(btn, comObs) {
     const T = typeof turmaLista === 'function' ? turmaLista() : null; if (!T) return;
     const CMN = { vf: 'Valor', ent: 'Entrada', pago: 'Pago' };
@@ -331,8 +373,9 @@
       .aviso{display:flex;gap:10px;align-items:flex-start;background:#fff8e6;border:1px solid #f3d27a;border-radius:8px;padding:9px 12px;margin:0 0 14px;color:#6b4e00;font-size:11px}
       .aviso b{color:#4a3600}.aviso i{font-style:normal;font-size:14px;line-height:1}
       .rod{margin-top:14px;color:#8a9aa2;font-size:9.5px;display:flex;justify-content:space-between}
+      ${CAB_CSS}.cab+.top .marca small{font-size:12px;letter-spacing:2px}
     </style></head><body>
-      <div class="top"><div class="marca">Cristiano Convites<small>Relatório da turma</small></div><div class="tt"><b>${esc(nome)}</b><span>${T.lista ? esc(T.lista) + ' · ' : ''}emitido em ${hoje}</span></div></div>
+      ${cabHtml()}<div class="top"><div class="marca">${S.pdfCab ? '<small>Relatório da turma</small>' : 'Cristiano Convites<small>Relatório da turma</small>'}</div><div class="tt"><b>${esc(nome)}</b><span>${T.lista ? esc(T.lista) + ' · ' : ''}emitido em ${hoje}</span></div></div>
       <div class="res"><div><small>Formandos</small><b>${linhas.length}</b></div><div><small>Valor total</small><b>${BRL(tv)}</b></div><div><small>Recebido</small><b class="g">${BRL(tp)}</b></div><div><small>Falta receber</small><b class="o">${BRL(tf)}</b></div></div>
       <div class="res" style="grid-template-columns:repeat(3,1fr)"><div><small>Quitados</small><b class="g">${nOk}</b></div><div><small>Pendentes</small><b class="o">${nW}</b></div><div><small>Pagaram a mais</small><b class="bl">${nX}</b></div></div>
       <div class="aviso"><i>ⓘ</i><span><b>Fez algum pagamento que ainda não aparece aqui?</b> É só nos enviar o comprovante que fazemos a atualização.</span></div>
@@ -355,6 +398,7 @@
     let lembra = false; try { lembra = localStorage.getItem('cc.relObs') === '1'; } catch (er) {}
     dialog(`<h2>Gerar relatório da turma</h2><div class="sub">PDF para enviar à comissão: formandos, valores, pagamentos e situação.</div>
       <label class="relop"><input type="checkbox" id="rel-obs"${lembra ? ' checked' : ''}> Mostrar as observações dos valores <small>(${n ? n + ' formando(s) com observação, ex.: "11/11 - 393,75"' : 'nenhuma observação nesta turma'})</small></label>
+      ${cabCampo()}
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, (ev) => {
       if (!ev.target.closest('[data-ok]')) return;
       const com = document.getElementById('rel-obs').checked; try { localStorage.setItem('cc.relObs', com ? '1' : '0'); } catch (er) {}
@@ -586,6 +630,7 @@
        <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
        <label>E-mail no rodapé<input id="op-mail" value="${esc((S.orcContato || {}).email || '')}" placeholder="seuemail@gmail.com"></label></div>
       <label class="relop" style="margin-top:12px"><input type="checkbox" id="op-tab"${orcUlt.tabela ? ' checked' : ''}> Mostrar também a tabela completa de quantidades</label>
+      ${cabCampo()}
       <label class="opobs">Observações<textarea id="op-obs" rows="4" placeholder="Condições de pagamento, prazo de entrega, o que está incluso…">${esc(orcUlt.obs || '')}</textarea></label>
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn" data-ok>Gerar PDF</button></div>`, async (e) => {
       const ok = e.target.closest('[data-ok]'); if (!ok) return;
@@ -634,7 +679,7 @@
     const lista = op.mids.map(dadosM).filter(Boolean), multi = lista.length > 1;
     const fmtForm = fmtN;
     const desc = (d) => [op.desc, d.M.capa].filter(Boolean).map(esc).join(' · ');
-    const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}">
+    const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}" style="${tomDe(d.M.id)}">
       ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
       ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
       ${multi ? '' : `<h2>Convite ${esc(d.tam)}</h2>${desc(d) ? `<div class="mod">${desc(d)}</div>` : ''}`}
@@ -646,7 +691,7 @@
     </section>`;
     // vários modelos: comparativo na primeira página (modelo × quantidade)
     const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => { const o = optDe(q); return `<th class="n">${q} convites${o.cpf ? `<br><span class="thf">${fmtForm(o.nf)} formandos · ${fmtForm(o.cpf)} por formando</span>` : ''}</th>`; }).join('')}</tr></thead><tbody>
-      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}${d.M.video ? `<a class="vlink" href="${esc(d.M.video)}">▶ ver vídeo</a>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${a.cpf ? `<small class="pf">${BRL(a.val / a.q * a.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
+      ${lista.map((d) => `<tr style="${tomDe(d.M.id)}"><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}${d.M.video ? `<a class="vlink" href="${esc(d.M.video)}">▶ ver vídeo</a>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${a.cpf ? `<small class="pf">${BRL(a.val / a.q * a.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
       <p class="nota">Fotos e detalhes de cada modelo nas páginas seguintes.</p>` : (multi ? `<p class="nota">${lista.length} modelos nas páginas seguintes.</p>` : '');
     const fim = `${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}`;
@@ -660,27 +705,29 @@
       .tt{text-align:right;color:#6b7f88}.tt b{display:block;font-size:17px;color:#1c2b33}.tt i{display:block;font-style:normal;font-size:12px;font-weight:600;color:#40565f}
       .para{background:#f3f8f8;border:1px solid #dbe5e7;border-radius:8px;padding:7px 12px;margin-bottom:12px}.para small{color:#6b7f88;text-transform:uppercase;letter-spacing:1px;font-size:9.5px;display:block}.para b{font-size:14px}
       h2{font-size:15px;margin:0 0 2px}.mod{color:#40565f;font-size:12.5px;font-weight:600;margin-bottom:10px}
-      .quebra{page-break-before:always}.mtop{border-bottom:2px solid #2DB5AE;padding-bottom:6px;margin-bottom:12px}.mtop b{font-size:17px;display:block}.mtop i{font-style:normal;color:#40565f;font-weight:600}
+      .quebra{page-break-before:always}.mtop{border-bottom:3px solid var(--c);background:var(--cl);border-radius:8px 8px 0 0;padding:8px 12px 7px;margin-bottom:12px}.mtop b{font-size:17px;display:block;color:var(--cd)}.mtop i{font-style:normal;color:#40565f;font-weight:600}
+      .modelo{--c:#2DB5AE;--cd:#0f5e59;--cl:#e9f7f6;--cb:#c6ebe8}.modelo h2{color:var(--cd)}.modelo .mod{border-left:3px solid var(--c);padding-left:8px}
       .fotos{display:grid;gap:8px;margin-bottom:12px}.fotos.n1{grid-template-columns:1fr}.fotos.n2{grid-template-columns:1fr 1fr}.fotos.n3{grid-template-columns:2fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
       .fotos img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid #dbe5e7;display:block}
       .fotos.n1 img{max-height:78mm;object-fit:contain;background:#f6f9fa}.fotos.n2 img{height:52mm}.fotos.n3 img{height:100%;min-height:0}.fotos.n3 img:first-child{grid-row:1/3;height:76mm}.fotos.n3{height:76mm}
       .qs{display:grid;gap:10px;margin:4px 0 12px}.qs.n1{grid-template-columns:1fr}.qs.n2{grid-template-columns:1fr 1fr}.qs.n3{grid-template-columns:1fr 1fr 1fr}
-      .qc{border:1px solid #2DB5AE;background:#e9f7f6;border-radius:10px;padding:10px 12px;page-break-inside:avoid}.qc>b{display:block;font-size:16px;color:#0f5e59;margin-bottom:6px}
-      .qc span{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:600;padding:3px 0;border-top:1px solid #c6ebe8}.qc span small{font-size:10px;color:#40565f;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
-      .qc span.tot{font-size:15px;color:#0f5e59;font-weight:800}
-      .qs.n1 .qc{max-width:60%}.qc span.pf{color:#0f5e59;font-weight:700}table.cmp td small.pf{color:#0f5e59;font-weight:600}.thf{font-weight:500;text-transform:none;letter-spacing:0;color:#6b7f88}
+      .qc{border:1px solid var(--c);border-top-width:4px;background:var(--cl);border-radius:10px;padding:10px 12px;page-break-inside:avoid}.qc>b{display:block;font-size:16px;color:var(--cd);margin-bottom:6px}
+      .qc span{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:600;padding:3px 0;border-top:1px solid var(--cb)}.qc span small{font-size:10px;color:#40565f;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+      .qc span.tot{font-size:15px;color:var(--cd);font-weight:800}
+      .qs.n1 .qc{max-width:60%}.qc span.pf{color:var(--cd);font-weight:700}table.cmp td small.pf{color:var(--cd);font-weight:600}.thf{font-weight:500;text-transform:none;letter-spacing:0;color:#6b7f88}
       table{width:100%;border-collapse:collapse;margin-top:4px}th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:2px solid #c9d8db}
-      td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:#e9f7f6;font-weight:700}
-      table.cmp td{padding:8px}table.cmp td small{display:block;color:#6b7f88;font-size:10px;font-weight:500}table.cmp td b{font-size:13px}table.cmp td.n b{color:#0f5e59}table.cmp tbody tr:nth-child(odd) td{background:#f6f9fa}
+      td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:var(--cl);font-weight:700}.modelo th{border-bottom-color:var(--c)}
+      table.cmp td{padding:8px}table.cmp td small{display:block;color:#6b7f88;font-size:10px;font-weight:500}table.cmp td b{font-size:13px}table.cmp td.n b{color:var(--cd)}table.cmp tbody td{background:var(--cl);border-bottom:3px solid #fff}table.cmp tbody td:first-child{box-shadow:inset 6px 0 0 var(--c);padding-left:14px}table.cmp tbody td:first-child b{color:var(--cd)}
       .vid{display:flex;align-items:center;gap:14px;border:1px solid #c9d8db;border-radius:10px;padding:10px 12px;margin:0 0 12px;text-decoration:none;color:#1c2b33;page-break-inside:avoid}
-      .vid img{width:26mm;height:26mm;image-rendering:pixelated;flex-shrink:0}.vid b{display:block;font-size:14px;color:#0f5e59}.vid small{display:block;color:#40565f;font-size:11px;margin:2px 0}.vid em{font-style:normal;color:#147a74;font-size:10px;word-break:break-all;text-decoration:underline}
+      .vid img{width:26mm;height:26mm;image-rendering:pixelated;flex-shrink:0}.vid{border-color:var(--cb)}.vid b{display:block;font-size:14px;color:var(--cd)}.vid small{display:block;color:#40565f;font-size:11px;margin:2px 0}.vid em{font-style:normal;color:#147a74;font-size:10px;word-break:break-all;text-decoration:underline}
       .vlink{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;color:#147a74}
       .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7f88;font-weight:700;margin:14px 0 4px}.nota{color:#6b7f88;font-size:10.5px;margin:8px 0 0}.sem{color:#b45309}
       .obs{page-break-inside:avoid;white-space:pre-wrap;border-left:3px solid #c9d8db;background:#f6f9fa;border-radius:4px;padding:8px 10px}
       .val{margin-top:12px;font-weight:600}.rod{margin-top:18px;border-top:1px solid #dbe5e7;padding-top:8px;color:#6b7f88;font-size:10px;display:flex;justify-content:space-between;gap:10px}
       tr{page-break-inside:avoid}.fotos{page-break-inside:avoid}
+      ${CAB_CSS}.cab+.top{border-bottom-width:2px;padding-bottom:6px;margin-bottom:12px}.cab+.top .marca{font-size:13px;color:#6b7f88;letter-spacing:2px;text-transform:uppercase}
     </style></head><body>
-      <div class="top"><div class="marca">${esc(nomeEmp)}<small>Orçamento</small></div><div class="tt">${multi ? `<b>${lista.length} modelos de convite</b>` : `<b>${esc(um.tam)}</b>${op.desc ? `<i>${esc(op.desc)}</i>` : ''}`}período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
+      ${cabHtml()}<div class="top"><div class="marca">${S.pdfCab ? 'Orçamento' : `${esc(nomeEmp)}<small>Orçamento</small>`}</div><div class="tt">${multi ? `<b>${lista.length} modelos de convite</b>` : `<b>${esc(um.tam)}</b>${op.desc ? `<i>${esc(op.desc)}</i>` : ''}`}período ${esc(P)} · emitido em ${dd(hoje)}</div></div>
       ${op.para ? `<div class="para"><small>Para</small><b>${esc(op.para)}</b></div>` : ''}
       ${multi ? comparativo + fim + rod + lista.map(bloco).join('') : bloco(um) + fim + rod}
     </body></html>`;

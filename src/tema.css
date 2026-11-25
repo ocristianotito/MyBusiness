@@ -367,3 +367,9 @@ body.fin .ofvid .btn{margin:0 0 2px}
 /* orçamento em PDF: prévia das opções (formandos × convites por formando) */
 body.fin .opcalc{font-size:12px;color:var(--c-mu);line-height:1.6;min-height:18px}
 body.fin .opcalc b{color:var(--c-teal);font-weight:600}body.fin .opcalc small{color:var(--c-mu)}body.fin .opcalc .err{color:var(--c-red)}
+/* cabeçalho dos PDFs (janela do orçamento) */
+body.fin .opcab{margin-top:12px;border:1px solid var(--c-bd);border-radius:var(--r-ctl);padding:10px 12px;background:var(--c-sunk)}
+body.fin .opcabh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}body.fin .opcabh small{color:var(--c-mu);font-size:12px}
+body.fin .opcab img{display:block;max-width:100%;max-height:70px;background:#fff;border-radius:6px;padding:6px;box-sizing:border-box}
+body.fin .opcabv{color:var(--c-mu);font-size:12px}
+body.fin .opcabb{display:flex;gap:8px;margin-top:8px}body.fin .opcabb .btn{margin:0}
