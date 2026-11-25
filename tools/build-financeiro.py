@@ -226,5 +226,13 @@ for name in ['D_ADM','D_SIS','D_AGR','D_DIR','D_ENF','D_FAI','T0']:
 doc, n = re.subn(r'const P0=\[\n.*?\n\]\.map', 'const P0=[].map', doc, count=1, flags=re.S)
 assert n == 1, 'P0'
 assert not re.search(r'\d{3}\.\d{3}\.\d{3}-\d{2}', doc), 'ainda há CPF no código'
+# Períodos do orçamento até 2031.2. Períodos sem acréscimo salvo seguem o mesmo passo dos dois últimos períodos
+# preenchidos (ex.: 0 / 3,75 / 7,5 / 11,25 → 15 / 18,75 / …), sem mexer nos valores já salvos.
+rep("const ORC_PER=['2027.1','2027.2','2028.1','2028.2'];",
+    "const ORC_PER=['2027.1','2027.2','2028.1','2028.2','2029.1','2029.2','2030.1','2030.2','2031.1','2031.2'];\n"
+    "function acrDe(i){const a=S.orc.acr||[];if(a[i]!=null&&a[i]!=='')return +a[i]||0;let n=Math.min(a.length,i)-1;while(n>=0&&(a[n]==null||a[n]===''))n--;"
+    "if(n<0)return Math.round(3.75*i*100)/100;const st=n>0&&a[n-1]!=null?(+a[n]||0)-(+a[n-1]||0):3.75;return Math.round(((+a[n]||0)+st*(i-n))*100)/100}")
+rep("*(1+(S.orc.acr[i]||0)/100)*100)/100;", "*(1+acrDe(i)/100)*100)/100;")
+rep('value="${fin(S.orc.acr[i]||0)}"', 'value="${fin(acrDe(i))}"')
 (root / 'src' / 'financeiro.html').write_text(doc, encoding='utf-8')
 print('ok', len(doc))
