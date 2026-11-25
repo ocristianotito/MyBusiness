@@ -552,7 +552,8 @@
        <div class="opml">${ms.map((x) => `<label class="opm"><input type="checkbox" data-opm="${x.id}"${orcUlt.todos || x.id === mid ? ' checked' : ''}> ${esc(x.nome)}<small>${(x.fotos || []).length ? x.fotos.length + ' foto(s)' : 'sem fotos'}</small></label>`).join('')}</div></div>
       <div class="fg"><label>Período<select id="op-p">${ORC_PER.map((p, i) => `<option value="${i}"${i === per ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
        <label>Para (turma ou cliente)<input id="op-para" placeholder="Ex.: Direito UNEX 2027.1"></label>
-       <label>Quantidades<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
+       <label>Quantidades de convites<input id="op-q" placeholder="Ex.: 135 / 225 / 305"></label>
+       <label>Convites por formando<input id="op-cpf" inputmode="numeric" value="${esc(orcUlt.cpf || '')}" placeholder="Ex.: 5 (opcional)"></label><span></span>
        <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
        <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
@@ -564,10 +565,10 @@
       const g = (id) => document.getElementById(id).value;
       const mids = [...document.querySelectorAll('[data-opm]')].filter((c) => c.checked).map((c) => c.dataset.opm);
       if (!mids.length) { alert('Marque pelo menos um modelo.'); return; }
-      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
+      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), qs: [...new Set((g('op-q').match(/\d+/g) || []).map(Number).filter((n) => n > 0))].slice(0, 6), tabela: document.getElementById('op-tab').checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, cpf: parseInt(g('op-cpf'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
       if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
       if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305) ou marque "Mostrar também a tabela completa".'); return; }
-      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
+      orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length, cpf: op.cpf || '' }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
       try { await gerarOrcPdf(op); if (ov) { ov.remove(); ov = null; } } catch (er) { ok.disabled = false; ok.textContent = 'Gerar PDF'; alert(er.message || er); }
     });
@@ -599,19 +600,20 @@
       return { M, linhas, alvos: linhas.length ? qs.map(preco) : [], tam: tamanho(M.nome), fotos: (M.fotos || []).slice(0, MAXF) };
     };
     const lista = op.mids.map(dadosM).filter(Boolean), multi = lista.length > 1;
+    const fmtForm = (n) => Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
     const desc = (d) => [op.desc, d.M.capa].filter(Boolean).map(esc).join(' · ');
     const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}">
       ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
       ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}
       ${multi ? '' : `<h2>Convite ${esc(d.tam)}</h2>${desc(d) ? `<div class="mod">${desc(d)}</div>` : ''}`}
-      ${d.alvos.length ? `<div class="qs n${Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b><span><small>Valor por convite</small>${BRL(a.val / a.q)}</span><span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
+      ${d.alvos.length ? `<div class="qs n${Math.min(d.alvos.length, 3)}">${d.alvos.map((a) => `<div class="qc"><b>${a.q} convites</b>${op.cpf ? `<span><small>Convites por formando</small>${op.cpf}</span><span><small>Formandos</small>${fmtForm(a.q / op.cpf)}</span>` : ''}<span><small>Valor por convite</small>${BRL(a.val / a.q)}</span>${op.cpf ? `<span class="pf"><small>Valor por formando</small>${BRL(a.val / a.q * op.cpf)}</span>` : ''}<span class="tot"><small>Total</small>${BRL(a.val)}</span></div>`).join('')}</div>` : (d.linhas.length ? '' : '<p class="sem">Este modelo ainda não tem valores na tabela de orçamentos.</p>')}
       ${op.tabela && d.linhas.length ? `<div class="sec">${d.alvos.length ? 'Tabela completa para comparação' : 'Valores por quantidade'}</div>
       <table><thead><tr><th>Quantidade</th><th class="n">Valor por convite</th><th class="n">Total</th></tr></thead><tbody>
       ${d.linhas.map((x) => `<tr class="${d.alvos.some((a) => a.q === x.q) ? 'hl' : ''}"><td>${x.q} convites</td><td class="n">${BRL(x.t / x.q)}</td><td class="n">${BRL(x.t)}</td></tr>`).join('')}</tbody></table>` : ''}
     </section>`;
     // vários modelos: comparativo na primeira página (modelo × quantidade)
-    const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => `<th class="n">${q} convites</th>`).join('')}</tr></thead><tbody>
-      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small></td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
+    const comparativo = multi && qs.length ? `<div class="sec">Comparativo dos modelos</div><table class="cmp"><thead><tr><th>Modelo</th>${qs.map((q) => `<th class="n">${q} convites${op.cpf ? `<br><span class="thf">${fmtForm(q / op.cpf)} formandos · ${op.cpf} por formando</span>` : ''}</th>`).join('')}</tr></thead><tbody>
+      ${lista.map((d) => `<tr><td><b>${esc(d.tam)}</b>${desc(d) ? `<small>${desc(d)}</small>` : ''}</td>${qs.map((q) => { const a = d.alvos.find((x) => x.q === q); return a ? `<td class="n"><b>${BRL(a.val)}</b><small>${BRL(a.val / a.q)} por convite</small>${op.cpf ? `<small class="pf">${BRL(a.val / a.q * op.cpf)} por formando</small>` : ''}</td>` : '<td class="n">—</td>'; }).join('')}</tr>`).join('')}</tbody></table>
       <p class="nota">Fotos e detalhes de cada modelo nas páginas seguintes.</p>` : (multi ? `<p class="nota">${lista.length} modelos nas páginas seguintes.</p>` : '');
     const fim = `${op.obs ? `<div class="sec">Observações</div><div class="obs">${esc(op.obs)}</div>` : ''}
       ${op.validade ? `<div class="val">Orçamento válido por ${op.validade} dias, até ${dd(ate)}.</div>` : ''}`;
@@ -633,7 +635,7 @@
       .qc{border:1px solid #2DB5AE;background:#e9f7f6;border-radius:10px;padding:10px 12px;page-break-inside:avoid}.qc>b{display:block;font-size:16px;color:#0f5e59;margin-bottom:6px}
       .qc span{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:600;padding:3px 0;border-top:1px solid #c6ebe8}.qc span small{font-size:10px;color:#40565f;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
       .qc span.tot{font-size:15px;color:#0f5e59;font-weight:800}
-      .qs.n1 .qc{display:flex;align-items:center;gap:24px}.qs.n1 .qc>b{margin:0;flex:1}.qs.n1 .qc span{border:0;gap:10px}
+      .qs.n1 .qc{max-width:60%}.qc span.pf{color:#0f5e59;font-weight:700}table.cmp td small.pf{color:#0f5e59;font-weight:600}.thf{font-weight:500;text-transform:none;letter-spacing:0;color:#6b7f88}
       table{width:100%;border-collapse:collapse;margin-top:4px}th{background:#eef4f5;color:#40565f;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:2px solid #c9d8db}
       td{padding:3.5px 8px;border-bottom:1px solid #e3eaec}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.hl td{background:#e9f7f6;font-weight:700}
       table.cmp td{padding:8px}table.cmp td small{display:block;color:#6b7f88;font-size:10px;font-weight:500}table.cmp td b{font-size:13px}table.cmp td.n b{color:#0f5e59}table.cmp tbody tr:nth-child(odd) td{background:#f6f9fa}
