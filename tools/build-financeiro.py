@@ -234,12 +234,27 @@ rep("const ORC_PER=['2027.1','2027.2','2028.1','2028.2'];",
     "if(n<0)return Math.round(3.75*i*100)/100;const st=n>0&&a[n-1]!=null?(+a[n]||0)-(+a[n-1]||0):3.75;return Math.round(((+a[n]||0)+st*(i-n))*100)/100}")
 rep("*(1+(S.orc.acr[i]||0)/100)*100)/100;", "*(1+acrDe(i)/100)*100)/100;")
 rep('value="${fin(S.orc.acr[i]||0)}"', 'value="${fin(acrDe(i))}"')
-# Acrílico: valor por convite no primeiro período (S.orc.acril) e projeção para os outros períodos com os mesmos acréscimos
-rep("value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>",
-    "value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>"
-    "<div class=\"oacril\"><label>Acrílico · valor por convite em ${ORC_PER[0]} (R$)<input data-acril inputmode=\"decimal\" value=\"${S.orc.acril?fin(S.orc.acril):''}\" placeholder=\"Ex.: 12,50\"></label>"
-    "${S.orc.acril?`<div class=\"oacp\"><small>Projeção com os acréscimos acima</small><div>${ORC_PER.map((p,i)=>`<span class=\"${i===per?'on':''}\"><b>${p}</b>${BRL(acrilDe(i))}</span>`).join('')}</div></div>`:'<div class=\"oacp\"><small>Digite o valor do acrílico para ver a projeção de cada período.</small></div>'}</div>")
-rep("function acrDe(i){", "function acrilDe(i){const b=+S.orc.acril||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\nfunction acrDe(i){")
-rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.acril!==undefined){const v=num(t.value);S.orc.acril=isNaN(v)||v<=0?0:v;return render()}\n if(t.dataset.ac!==undefined){")
+# Acrílico: opção "Com acrílico" ao lado do Período. O valor por convite (S.orc.acril, no primeiro período) fica na janela
+# expansível dos acréscimos; com a opção marcada, a tabela ganha a coluna Acrílico (valor do período × quantidade) e o total inclui.
+# orcTot continua sem acrílico (é usado nos valores dos parceiros); a tela e o PDF usam orcTotA.
+rep("${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>",
+    "<label class=\"oacchk\"><span>Acrílico</span><span class=\"oacbox\"><input type=\"checkbox\" data-acon${S.orc.comAcril?' checked':''}${S.orc.acril?'':' disabled'}> Com acrílico"
+    "<small>${S.orc.acril?BRL(acrilDe(per))+' por convite em '+ORC_PER[per]:'informe o valor em Acréscimos e acrílico'}</small></span></label>"
+    "<button class=\"btn ghost sm oacbtn\" data-act=\"acrab\">${acrAberto()?'▾':'▸'} Acréscimos e acrílico</button></div>"
+    "${acrAberto()?`<div class=\"oacpan\"><div class=\"orow\">${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>"
+    "<div class=\"orow\" style=\"margin-top:12px\"><label style=\"flex:0 1 300px\">Acrílico · valor por convite em ${ORC_PER[0]} (R$)<input data-acril inputmode=\"decimal\" value=\"${S.orc.acril?fin(S.orc.acril):''}\" placeholder=\"Ex.: 12,50\"></label>"
+    "<span class=\"note\" style=\"align-self:center\">Nos outros períodos o acrílico sobe com os mesmos acréscimos dos convites.</span></div></div>`:''}")
+rep("function acrDe(i){", "function acrilDe(i){const b=+S.orc.acril||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\n"
+    "function acrQ(q,i,com){return (com===undefined?S.orc.comAcril:com)&&S.orc.acril?Math.round(acrilDe(i)*q*100)/100:0}\n"
+    "function orcTotA(m,q,i,com){return orcTot(m,q,i)+acrQ(q,i,com)}\n"
+    "function acrAberto(){try{return localStorage.getItem('cc.orcAcr')==='1'}catch(e){return false}}\n"
+    "function acrDe(i){")
+rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.acril!==undefined){const v=num(t.value);S.orc.acril=isNaN(v)||v<=0?0:v;if(!S.orc.acril)S.orc.comAcril=false;return render()}\n"
+    " if(t.dataset.acon!==undefined){S.orc.comAcril=t.checked;return render()}\n if(t.dataset.ac!==undefined){")
+rep("<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTot(m.id,q,per);",
+    "${acrQ(1,per)?'<th>Acrílico</th>':''}<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTotA(m.id,q,per);")
+rep("${xs.map(c=>inp(c.k,q)).join('')}<td class=\"tt\">", "${xs.map(c=>inp(c.k,q)).join('')}${acrQ(1,per)?`<td style=\"text-align:right\">${BRL(acrQ(q,per))}</td>`:''}<td class=\"tt\">")
+rep(" if(a==='addm'){", " if(a==='acrab'){try{localStorage.setItem('cc.orcAcr',acrAberto()?'0':'1')}catch(e){}return render()}\n if(a==='addm'){")
+rep("+ as colunas extras (e as colunas que você criar).", "+ as colunas extras (e as colunas que você criar) + o acrílico, quando \"Com acrílico\" estiver marcado.")
 (root / 'src' / 'financeiro.html').write_text(doc, encoding='utf-8')
 print('ok', len(doc))

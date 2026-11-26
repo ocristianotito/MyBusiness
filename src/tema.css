@@ -373,11 +373,9 @@ body.fin .opcabh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin
 body.fin .opcab img{display:block;max-width:100%;max-height:70px;background:#fff;border-radius:6px;padding:6px;box-sizing:border-box}
 body.fin .opcabv{color:var(--c-mu);font-size:12px}
 body.fin .opcabb{display:flex;gap:8px;margin-top:8px}body.fin .opcabb .btn{margin:0}
-/* Orçamentos: acrílico e projeção por período */
-body.fin .oacril{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--c-bd)}
-body.fin .oacril label{flex:0 1 260px;min-width:220px}
-body.fin .oacp{flex:1;min-width:280px}body.fin .oacp small{display:block;color:var(--c-mu);font-size:12px;margin-bottom:6px}
-body.fin .oacp div{display:flex;flex-wrap:wrap;gap:6px}
-body.fin .oacp span{display:flex;flex-direction:column;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:8px;padding:4px 8px;font-size:12.5px;font-variant-numeric:tabular-nums}
-body.fin .oacp span b{font-size:11px;color:var(--c-mu);font-weight:600}
-body.fin .oacp span.on{border-color:var(--c-teal);color:var(--c-teal)}
+/* Orçamentos: opção do acrílico ao lado do período e janela expansível dos acréscimos */
+body.fin .oacchk{flex:0 1 auto!important;min-width:0!important}
+body.fin .oacbox{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border:1px solid var(--c-bd);border-radius:var(--r-ctl);background:var(--c-sunk);color:var(--c-tx);font-size:13px;margin-top:5px;cursor:pointer;white-space:nowrap}
+body.fin .oacbox input{margin:0;width:auto}body.fin .oacbox small{color:var(--c-mu);font-size:12px}
+body.fin .oacbtn{align-self:flex-end;margin:0 0 2px auto!important}
+body.fin .oacpan{margin-top:14px;padding-top:14px;border-top:1px solid var(--c-bd)}
