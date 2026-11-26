@@ -23,6 +23,17 @@ Textos da interface e mensagens em português do Brasil.
 - `src/produtividade.js`: módulo Produtividade (menu lateral): quadro das fases de trabalho (fotos, textos, criação, aprovação…),
   separado do quadro por mês. Fase no pedido (`c.fase`, `c.faseEm`, `c.fOrd`); fases em `cfg.fases` (nome, cor, responsável).
 
+## Revisão 1.2.28 (andamento e cadastros num lugar só)
+- Andamento: fica nas fases da Produtividade. As etapas REVISÃO/APROVADO saíram do quadro (migração `semRevAprov1228`);
+  os botões Correção/Aprovado do cartão mudam a fase (`window.moverFase`), Entregue leva para a etapa ENTREGUE (`colEnt`).
+- Etapas com nome de mês seguem a colação (`colMes`, `colDoMes`, `mesErrado`): ao salvar a colação o pedido muda de etapa;
+  divergências antigas mostram o chip "⚠ colação em …".
+- Responsável: o da fase (`respC`). Visão geral e Calendário usam o prazo ou, sem prazo, a colação.
+- Financeiro: custo da turma = soma das saídas ligadas (`ref` 't:id'/'p:id', `recalcCusto`); turma ligada ao pedido
+  (`t.pedido`/`p.pedido`); despesas antigas (`S.lanc`) migradas para Entradas e saídas (`cx.lancMig1228`);
+  abas antigas e relatório em jsPDF removidos pelo `tools/build-financeiro.py`.
+- Antes de cada versão nova abrir, o programa copia `dados.json` para `backups/antes-da-versao-X.json`.
+
 ## Nuvem (Firebase: sincronização entre Windows, Mac e iPhone)
 - `src/nuvem.js` (processo principal): partes `cfg, cards, events, clients, contracts, fin` em
   `usuarios/{uid}/partes/{parte}` (meta `{ts, n, dev, tam}`) + pedaços `{parte}__{i}` com o JSON (até 700 mil caracteres cada).

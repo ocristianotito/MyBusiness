@@ -4,7 +4,9 @@ const PAL={teal:'#2DB5AE',azul:'#60A5FA',roxo:'#A78BFA',laranja:'#F0A53F',verde:
 const PALN={teal:'Teal',azul:'Azul',roxo:'Roxo',laranja:'Laranja',verde:'Verde',vermelho:'Vermelho',cinza:'Cinza'};
 const DEF_CFG={brand:'Cristiano Convites',
  cols:[{id:'pedido',name:'Pedido / briefing',c:'cinza'},{id:'arte',name:'Arte e layout',c:'roxo'},{id:'aprov',name:'Aprovação do cliente',c:'laranja'},{id:'grafica',name:'Gráfica',c:'azul'},{id:'acab',name:'Acabamento',c:'teal'},{id:'mont',name:'Montagem e conferência',c:'teal'},{id:'entregue',name:'Entregue',c:'verde'}],
- check:['Edição de foto','Criação Brasão','Criação Convite','Correção','Aprovação','Assinatura boneca','Impressão','Entrega']};
+ check:['Criação Brasão','Assinatura boneca']};
+/* itens do checklist antigo que viraram fases da Produtividade ou a etapa ENTREGUE (revisão 1.2.28) */
+const CHECK_FASES=['Edição de foto','Criação Convite','Correção','Aprovação','Impressão','Entrega'];
 const CHECK_ANTIGO=['Layout aprovado pelo cliente','Arquivo enviado à gráfica','Impressão conferida','Hotstamp','Corte / faca','Lacre','Montagem','Conferência de nomes','Embalagem'];
 const CHECK_EQUIV={'Layout aprovado pelo cliente':'Aprovação','Impressão conferida':'Impressão'};
 const MODELOS=['23x17,5 cm','25x18 cm','20x22 cm','24x22 cm','27x25 cm','Simples 15x22 cm','Caixa','Miolo 16 páginas'];
@@ -24,7 +26,7 @@ const sortL={k:'colacao',dir:1};
 const pref=(k,d)=>{try{const v=localStorage.getItem('pref_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const setPref=(k,v)=>{try{localStorage.setItem('pref_'+k,JSON.stringify(v))}catch(e){}};
 try{localStorage.removeItem('pref_folded')}catch(e){}   /* colunas recolhidas saíram na 1.2.4 */
-let ovRange=pref('ovRange',7),ovSemData=false;
+let ovRange=pref('ovRange',30),ovSemData=false;if(![7,30,90].includes(ovRange))ovRange=30;
 
 /* ===== utilidades ===== */
 const $=id=>document.getElementById(id);
@@ -41,6 +43,8 @@ document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!==
  el.dispatchEvent(new Event('input',{bubbles:true}))},true);
 const fmtN=n=>(+n||0).toLocaleString('pt-BR');
 const C=()=>cfg||DEF_CFG;
+/* responsável: o da fase na Produtividade (cada fase tem o seu); o do pedido fica só de reserva */
+const respC=c=>String((typeof window.respDaTurma==='function'?window.respDaTurma(c):c.resp)||'').trim();
 const lastCol=()=>{const c=C().cols;return c.length?c[c.length-1].id:null};
 const colOf=card=>C().cols.some(c=>c.id===card.col)?card.col:(C().cols[0]||{}).id;
 const colIdx=card=>C().cols.findIndex(c=>c.id===colOf(card));
@@ -59,6 +63,15 @@ function dueInfo(card){const d=parseD(card.prazo);if(!d)return null;
 const initials=s=>String(s||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
 const chk=card=>{const l=Array.isArray(card.check)?card.check:[];return{n:l.length,d:l.filter(x=>x&&x.d).length}};
 /* data da colação do pedido (campo próprio; se estiver vazio, usa a do cliente ligado ao pedido) */
+/* etapas com nome de mês ("FEVEREIRO 2027"): o pedido fica na etapa do mês da colação */
+const MESES_N=['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+const semAc=x=>String(x||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const colMes=col=>{const m=semAc(col&&col.name).match(/^([A-Z]+)(?:\s+(\d{4}))?$/);if(!m)return null;const i=MESES_N.indexOf(m[1]);return i<0?null:{m:i+1,a:m[2]?+m[2]:0}};
+const colDoMes=data=>{const p=String(data||'').split('-');if(p.length<2)return null;const a=+p[0],m=+p[1];
+ const cs=C().cols.map(c=>[c,colMes(c)]).filter(([,x])=>x&&x.m===m);return((cs.find(([,x])=>x.a===a)||cs.find(([,x])=>!x.a))||[])[0]||null};
+/* pedido numa etapa de mês diferente do mês da colação: devolve a etapa certa (se existir no quadro) */
+const mesErrado=c=>{const cm=colMes(colById(colOf(c))),d=colacaoDe(c);if(!cm||!d)return null;const p=d.split('-');
+ if(+p[1]===cm.m&&(!cm.a||+p[0]===cm.a))return null;return{alvo:colDoMes(d),mes:MES[+p[1]-1]+'/'+p[0].slice(2)}};
 const colacaoDe=c=>c.colacao||((c.clientId&&clients.get(c.clientId)||{}).colacao)||'';
 const fmtColacao=iso=>{const p=String(iso||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):''};
 const lbls=c=>Array.isArray(c.labels)?c.labels.filter(x=>x&&x.n):[];
@@ -138,6 +151,29 @@ async function init(){
     const w=norm(col.name).split(/\s+/)[0],c=porNome.get(norm(col.name))||porNome.get(w);
     return Object.assign({},col,{c:c&&/^#[0-9a-f]{6}$/i.test(c)?c:(PAL_LCOL[col.c]||col.c)})})});
    persist()}
+  /* revisão 1.2.28 (item 3): etapa de mês sem ano ("ABRIL") ganha o ano pela etapa de mês anterior ("MARÇO 2027" → "ABRIL 2027"). Roda uma vez. */
+  if(cfg&&Array.isArray(cfg.cols)&&!cfg.mesAno1228){
+   let ant=null;const cols=cfg.cols.map(c=>{const x=colMes(c);if(!x)return c;
+    if(!x.a&&ant){const a=x.m>=ant.m?ant.a:ant.a+1;ant={m:x.m,a};return Object.assign({},c,{name:String(c.name).trim()+' '+a})}
+    if(x.a)ant=x;return c});
+   cfg=Object.assign({},cfg,{cols,mesAno1228:1});persist()}
+  /* revisão 1.2.28 (item 2): o andamento fica na Produtividade. Pedidos nas etapas REVISÃO/APROVADO do quadro passam para
+     as fases CORREÇÃO/PRONTO PARA IMPRESSÃO e voltam para a etapa do mês da colação (ou a etapa antes de REVISÃO);
+     as duas etapas saem do quadro (os botões Correção/Aprovado do cartão passam a mudar a fase).
+     O checklist padrão fica só com o que não é fase. Roda uma vez. */
+  if(cfg&&Array.isArray(cfg.cols)&&!cfg.semRevAprov1228){
+   const fs=Array.isArray(cfg.fases)&&cfg.fases.length?cfg.fases:[],fid=(n,d)=>((fs.find(f=>semAc(f.name)===n)||{}).id)||d;
+   const fCor=fid('CORRECAO','f_correcao'),fPro=fid('PRONTO PARA IMPRESSAO','f_pronto');
+   const rev=cfg.colRev,apr=cfg.colAprov,iRev=cfg.cols.findIndex(c=>c.id===rev);
+   const reserva=(cfg.cols.slice(0,iRev<0?cfg.cols.length:iRev).filter(c=>c.id!==rev&&c.id!==apr).pop()||cfg.cols[0]||{}).id;
+   const agora=Date.now();
+   cards.forEach((c,id)=>{if(c.col!==rev&&c.col!==apr)return;
+    const fase=c.col===rev?fCor:fPro,h=Object.assign({},c.fHist||{});h[fase]=agora;
+    const alvo=(colDoMes(colacaoDe(c))||{}).id;
+    cards.set(id,Object.assign({},c,{col:alvo&&alvo!==rev&&alvo!==apr?alvo:reserva,fase,faseEm:agora,fHist:h}))});
+   const tirar=t=>!CHECK_FASES.map(semAc).includes(semAc(t));
+   cfg=Object.assign({},cfg,{cols:cfg.cols.filter(c=>c.id!==rev&&c.id!==apr),check:(Array.isArray(cfg.check)?cfg.check:[]).filter(tirar),semRevAprov1228:1});
+   persist()}
   /* pedido do dono (1.2.28): etapa ENTREGUE no fim do quadro (aprovado ainda não é finalizado).
      Se já existir uma etapa ENTREGUE/ENTREGUES, ela é usada; senão é criada como a última. Roda uma vez. */
   if(cfg&&Array.isArray(cfg.cols)&&cfg.cols.length&&!cfg.entregue1228){
@@ -148,7 +184,7 @@ async function init(){
    persist()}
   /* pedido do dono (1.2.18): etapas REVISÃO e APROVADO antes da última (ENTREGUES), usadas pelos botões do cartão.
      Se já existir uma etapa com esse nome, ela é usada. Os ids ficam em cfg.colRev / cfg.colAprov. Roda uma vez. */
-  if(cfg&&Array.isArray(cfg.cols)&&!cfg.revAprov1218){
+  if(cfg&&Array.isArray(cfg.cols)&&!cfg.revAprov1218&&!cfg.semRevAprov1228){
    const cols=cfg.cols.slice(),achar=n=>cols.find(c=>String(c.name||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')===n);
    let rev=achar('REVISAO'),apr=achar('APROVADO');const fim=cols.length?cols.length-1:0;
    if(!rev){rev={id:'lrev'+Date.now().toString(36),name:'REVISÃO',c:'#FEA362'};cols.splice(fim,0,rev)}
@@ -208,11 +244,11 @@ function visible(card){
  if(F.hide&&isDone(card))return false;
  if(F.st&&colOf(card)!==F.st)return false;
  if(F.cli&&(card.clientId||'')!==F.cli)return false;
- if(F.r&&(card.resp||'')!==F.r)return false;
+ if(F.r&&respC(card)!==F.r)return false;
  if(F.p&&card.prio!==F.p)return false;
  if(F.e&&!lbls(card).some(l=>l.n===F.e))return false;
  if(F.late){const d=dueInfo(card);if(!d||d.cls!=='late')return false}
- if(F.q){const h=[card.title,card.sub,card.modelo,card.resp,card.notas,cliName(card.clientId),lbls(card).map(l=>l.n).join(' ')].join(' ').toLowerCase();if(!h.includes(F.q.toLowerCase()))return false}
+ if(F.q){const h=[card.title,card.sub,card.modelo,respC(card),card.notas,cliName(card.clientId),lbls(card).map(l=>l.n).join(' ')].join(' ').toLowerCase();if(!h.includes(F.q.toLowerCase()))return false}
  return true}
 const filtering=()=>!!(F.q||F.r||F.p||F.e||F.late||F.hide||F.st||F.cli);
 /* ordem dos cartões nas colunas: sempre pela data da colação, a mais próxima primeiro; sem data no fim (pedido do dono).
@@ -222,7 +258,7 @@ function sorted(list){return list.slice().sort((a,b)=>{const x=colacaoDe(a[1])||
 /* ===== cabeçalho, KPIs, filtros ===== */
 function renderTop(){
  const cf=C(),all=[...cards.values()];
- const resps=[...new Set(all.map(c=>(c.resp||'').trim()).filter(Boolean))].sort();
+ const resps=[...new Set(all.map(c=>respC(c)).filter(Boolean))].sort();
  if(F.r&&!resps.includes(F.r))F.r='';
  $('fr').innerHTML='<option value="">Responsável</option>'+resps.map(r=>`<option${r===F.r?' selected':''}>${esc(r)}</option>`).join('');
  const ls=[...allLabels().keys()].sort();
@@ -236,14 +272,19 @@ function renderTop(){
 
 /* ===== quadro ===== */
 /* botões rápidos do cartão: levam o pedido para a etapa REVISÃO ou APROVADO */
+/* botões rápidos do cartão: Correção e Aprovado mudam a FASE (Produtividade); Entregue leva para a etapa ENTREGUE */
+const faseNome=n=>{const fs=typeof window.fasesProd==='function'?window.fasesProd():[];return fs.find(f=>semAc(f.name)===n)||null};
 function qaBtns(c){
- const cs=C().cols,r=cs.find(x=>x.id===C().colRev),a=cs.find(x=>x.id===C().colAprov),en=cs.find(x=>x.id===colEnt()),at=colOf(c);if(!r&&!a&&!en)return'';
- return `<span class="qa">${r&&at!==r.id?`<button data-qa="rev" title="Mover para ${esc(r.name)}">Revisão</button>`:''}${a&&at!==a.id?`<button data-qa="apr" title="Mover para ${esc(a.name)}">Aprovado</button>`:''}${en&&at!==en.id?`<button data-qa="ent" title="Mover para ${esc(en.name)}: pedido finalizado">Entregue</button>`:''}</span>`}
+ const en=C().cols.find(x=>x.id===colEnt()),at=colOf(c),fa=typeof window.faseDaTurma==='function'?window.faseDaTurma(c):null;
+ const cor=faseNome('CORRECAO'),pro=faseNome('PRONTO PARA IMPRESSAO');
+ if(isDone(c))return '';
+ return `<span class="qa">${cor&&(!fa||fa.id!==cor.id)?`<button data-qa="rev" title="Fase ${esc(cor.name)} na Produtividade">Correção</button>`:''}${pro&&(!fa||fa.id!==pro.id)?`<button data-qa="apr" title="Aprovado pelo cliente: fase ${esc(pro.name)} na Produtividade">Aprovado</button>`:''}${en&&at!==en.id?`<button data-qa="ent" title="Mover para ${esc(en.name)}: pedido finalizado">Entregue</button>`:''}</span>`}
 window.marcarEntregue=id=>moverQA(id,'ent');
 /* etapa ENTREGUE (a última do quadro): o pedido finalizado, depois de aprovado e impresso */
 const colEnt=()=>C().colEnt&&C().cols.some(x=>x.id===C().colEnt)?C().colEnt:lastCol();
 function moverQA(id,qual){
- const c=cards.get(id),col=qual==='rev'?C().colRev:qual==='ent'?colEnt():C().colAprov,alvo=C().cols.find(x=>x.id===col);if(!c||!alvo)return;
+ if(qual!=='ent'){const f=faseNome(qual==='rev'?'CORRECAO':'PRONTO PARA IMPRESSAO');if(f&&typeof window.moverFase==='function')window.moverFase(id,f.id);return}
+ const c=cards.get(id),col=colEnt(),alvo=C().cols.find(x=>x.id===col);if(!c||!alvo)return;
  const ult=sorted([...cards.entries()].filter(([k,x])=>k!==id&&colOf(x)===col)).pop();
  const next=Object.assign({},c,{col,ord:(ult?(ult[1].ord||0):0)+1024,atualizado:Date.now()});
  if(col===lastCol()&&colOf(c)!==col)next.entregueEm=Date.now();
@@ -262,7 +303,7 @@ function cardHTML(id,c){
  ${prev?`<div class="pv">${esc(prev)}</div>`:''}
  ${qty?`<div class="qty">${qty}</div>`:''}
  ${k.n?`<div class="bar"><i style="width:${pct*100}%;background:${pct>=1?'var(--green)':'var(--teal)'}"></i></div>`:''}
- <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="chip">Sem prazo</span>'}${colacaoDe(c)?`<span class="chip colac" title="Data da colação">Colação ${fmtColacao(colacaoDe(c)).slice(0,5)}</span>`:''}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:''}</div>${qaBtns(c)}</div>`}
+ <div class="foot">${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:colacaoDe(c)?'':'<span class="chip">Sem prazo</span>'}${colacaoDe(c)?`<span class="chip colac" title="Data da colação">Colação ${fmtColacao(colacaoDe(c)).slice(0,5)}</span>`:''}${(()=>{const e=mesErrado(c);return e?`<button class="chip mesx" ${e.alvo?`data-mvmes="${esc(e.alvo.id)}"`:''} title="${e.alvo?'O pedido está numa etapa de outro mês. Clique para levar para '+esc(e.alvo.name):'O quadro não tem a etapa do mês da colação'}">⚠ colação em ${e.mes}${e.alvo?' · mover':''}</button>`:''})()}${k.n?`<span>${k.d}/${k.n}</span>`:''}<span class="sp"></span>${respC(c)?`<span class="av" title="${esc(respC(c))}">${esc(initials(respC(c)))}</span>`:''}</div>${qaBtns(c)}</div>`}
 function renderBoard(){
  const b=$('board'),sl=b.scrollLeft,all=[...cards.entries()],filt=filtering();
  b.classList.toggle('single',!!F.st);
@@ -285,7 +326,7 @@ const LCOLS=[
  {k:'labels',n:'Etiquetas',v:c=>lbls(c).map(l=>l.n).join(' ').toLowerCase()},
  {k:'prazo',n:'Prazo',v:c=>c.prazo||'9999'},
  {k:'prio',n:'Prioridade',v:c=>PRIO_RANK[c.prio||'']},
- {k:'resp',n:'Responsável',v:c=>(c.resp||'~').toLowerCase()},
+ {k:'resp',n:'Responsável',v:c=>(respC(c)||'~').toLowerCase()},
  {k:'qtd',n:'Convites',v:c=>n0(c.luxo)+n0(c.simp)},
  {k:'check',n:'Checklist',v:c=>{const k=chk(c);return k.n?k.d/k.n:-1}},
  {k:'atualizado',n:'Atualizado',v:c=>-(c.atualizado||c.criado||0)}];
@@ -302,7 +343,7 @@ function renderList(){
   <td><div class="chips">${lbls(c).map(l=>lchip(l)).join('')}</div></td>
   <td>${d?`<span class="chip ${d.cls}">${esc(d.txt)}</span>`:'<span class="note">—</span>'}</td>
   <td>${c.prio?`<span class="chip ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="note">—</span>'}</td>
-  <td>${c.resp?esc(c.resp):'<span class="note">—</span>'}</td>
+  <td>${respC(c)?esc(respC(c)):'<span class="note">—</span>'}</td>
   <td class="num">${q?fmtN(q):'<span class="note">—</span>'}</td>
   <td>${k.n?`<div class="mini"><div class="bar"><i style="width:${k.d/k.n*100}%;background:${k.d===k.n?'var(--green)':'var(--teal)'}"></i></div><span class="note">${k.d}/${k.n}</span></div>`:'<span class="note">—</span>'}</td>
   <td class="note">${fmtAt(c.atualizado||c.criado)}</td></tr>`};
@@ -357,14 +398,15 @@ document.addEventListener('click',e=>{
  else if(k==='clientes')return goModule('clientes');
  render()});
 
-/* ===== visão geral (tabelas por prazo) ===== */
+/* ===== visão geral (tabelas por data: o prazo de entrega ou, sem prazo, a data da colação) ===== */
+const alvo=c=>c.prazo||colacaoDe(c)||'';
 const WDL=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 function ovRow(id,c){
- const col=colById(colOf(c)),d=dueInfo(c),cn=cliName(c.clientId);
- const dt=d?(d.cls==='late'||Math.abs(d.days)>6?d.txt.split(' · ')[0]:(d.days===0?'Hoje':d.days===1?'Amanhã':WDL[parseD(c.prazo).getDay()])):'—';
+ const col=colById(colOf(c)),d=dueInfo(c),cn=cliName(c.clientId),cl=colacaoDe(c);
+ const dt=d?(d.cls==='late'||Math.abs(d.days)>6?d.txt.split(' · ')[0]:(d.days===0?'Hoje':d.days===1?'Amanhã':WDL[parseD(c.prazo).getDay()])):cl?'Colação '+fmtColacao(cl).slice(0,5):'—';
  return `<tr data-id="${esc(id)}"><td><div class="ovt"><b>${esc(c.title||'Sem título')}</b></div></td>
  <td class="mu up">${esc(cn||c.sub||'—')}</td>
- <td>${c.resp?`<span class="av" title="${esc(c.resp)}">${esc(initials(c.resp))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
+ <td>${respC(c)?`<span class="av" title="${esc(respC(c))}">${esc(initials(respC(c)))}</span>`:'<span class="av empty" title="Sem responsável"></span>'}</td>
  <td class="${d&&d.cls==='late'?'r':''}">${d?'<span class="cal-i"></span>':''}${esc(dt)}</td>
  <td>${c.prio?`<span class="flag ${c.prio}">${PRIO[c.prio]}</span>`:'<span class="flag">Sem prioridade</span>'}</td>
  <td><div class="ovst"><span class="stchip" style="--c:${corEtapa(col.c)}">${esc(col.name)}</span>${faseChip(c)}${lbls(c).map(l=>lchip(l)).join('')}</div></td></tr>`}
@@ -376,21 +418,21 @@ function renderOverview(){
  const all=[...cards.entries()].filter(([,c])=>visible(c)&&!isDone(c));   /* entregues não entram na visão por prazo */
  const t0=today(),lim=new Date(t0);lim.setDate(lim.getDate()+ovRange);
  const late=[],byDay=new Map(),semData=[];let alem=0;
- all.forEach(([id,c])=>{const d=parseD(c.prazo);if(!d){semData.push([id,c]);return}
+ all.forEach(([id,c])=>{const k=alvo(c),d=parseD(k);if(!d){semData.push([id,c]);return}
   if(d<t0){late.push([id,c]);return}
   if(d>lim){alem++;return}
-  const k=c.prazo;if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push([id,c])});
- const byP=(a,b)=>String(a[1].prazo).localeCompare(String(b[1].prazo))||(PRIO_RANK[a[1].prio||'']-PRIO_RANK[b[1].prio||'']);
+  if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push([id,c])});
+ const byP=(a,b)=>String(alvo(a[1])).localeCompare(String(alvo(b[1])))||(PRIO_RANK[a[1].prio||'']-PRIO_RANK[b[1].prio||'']);
  late.sort(byP);
  const days=[...byDay.keys()].sort();
  const n=days.reduce((s,k)=>s+byDay.get(k).length,0);
- $('vOverview').innerHTML=`<div class="ovtop"><div class="seg">${[7,14,30].map(x=>`<button data-ovr="${x}" class="${ovRange===x?'on':''}">${x} dias</button>`).join('')}</div>
- <h3>Próximos ${ovRange} dias <small>${n} pedido(s) · ${late.length} atrasado(s)</small></h3></div>
+ $('vOverview').innerHTML=`<div class="ovtop"><div class="seg">${[7,30,90].map(x=>`<button data-ovr="${x}" class="${ovRange===x?'on':''}">${x} dias</button>`).join('')}</div>
+ <h3>Próximos ${ovRange} dias <small>${n} pedido(s) · ${late.length} atrasado(s) · pelo prazo de entrega ou, sem prazo, pela colação</small></h3></div>
  ${late.length?ovTable('<span class="warn-i"></span>Atrasados',late,'late'):''}
  ${days.map(k=>{const d=parseD(k);return ovTable(`${WDL[d.getDay()]} · ${d.getDate()} ${MES[d.getMonth()]}`,byDay.get(k).sort(byP),'')}).join('')}
- ${!late.length&&!days.length?`<div class="banner">Nenhum pedido com prazo nos próximos ${ovRange} dias. ${semData.length?'Defina o prazo de entrega dos pedidos para eles aparecerem aqui.':''}</div>`:''}
- ${semData.length?ovTable('Sem data de entrega',semData,'nodate',ovSemData,'semdata'):''}
- ${alem?`<p class="note">Mais ${alem} pedido(s) com prazo além de ${ovRange} dias.</p>`:''}`}
+ ${!late.length&&!days.length?`<div class="banner">Nenhum pedido com prazo ou colação nos próximos ${ovRange} dias.</div>`:''}
+ ${semData.length?ovTable('Sem prazo nem colação',semData,'nodate',ovSemData,'semdata'):''}
+ ${alem?`<p class="note">Mais ${alem} pedido(s) com data além de ${ovRange} dias.</p>`:''}`}
 document.addEventListener('click',e=>{
  if(modal)return;
  const r=e.target.closest('[data-ovr]');if(r){ovRange=+r.dataset.ovr;setPref('ovRange',ovRange);return render()}
@@ -423,7 +465,7 @@ function renderModal(){
   <label>Prazo de entrega<input id="m-prazo" type="date" value="${esc(c.prazo)}"></label>
   <label>Data da colação<input id="m-colacao" type="date" value="${esc(c.colacao||'')}"></label>
   <label>Prioridade<select id="m-prio"><option value=""${c.prio?'':' selected'}>Sem prioridade</option>${Object.entries(PRIO).map(([k2,v])=>`<option value="${k2}"${c.prio===k2?' selected':''}>${v}</option>`).join('')}</select></label>
-  <label>Responsável<input id="m-resp" list="resps" value="${esc(c.resp)}" placeholder="Quem cuida deste pedido"></label>
+  <label>Responsável<input id="m-resp" type="hidden" value="${esc(c.resp)}"><span class="mresp">${respC(c)?esc(respC(c)):'<span class="note">sem responsável</span>'}<small class="note">vem da fase na Produtividade (Configurar fases)</small></span></label>
  </div>
  <div class="fg3" style="margin-top:12px">
   <label>Convites luxo<input id="m-luxo" inputmode="numeric" value="${esc(c.luxo||'')}"></label>
@@ -461,10 +503,12 @@ function saveModal(){
  readForm();const c=modal.c,id=modal.id||newId(),old=modal.id?cards.get(modal.id):null;
  if(!c.title){const e=$('m-title');e.focus();e.placeholder='Dê um nome ao cartão (ex.: Direito · 2027.1)';return}
  c.check=c.check.filter(x=>x&&String(x.t).trim());
+ let mudouMes='';
+ if(c.colacao&&(!old||old.colacao!==c.colacao)&&(!old||old.col===c.col)&&colMes(colById(c.col))){const a=colDoMes(c.colacao);if(a&&a.id!==c.col){c.col=a.id;mudouMes=a.name}}
  if(!old||old.col!==c.col){c.ord=endOrd(c.col,id);if(c.col===lastCol())c.entregueEm=Date.now()}
  if(!c.criado)c.criado=Date.now();
  c.atualizado=Date.now();
- modal=null;renderModal();saveCard(id,c);toast(old?'Cartão salvo':'Pedido criado')}
+ modal=null;renderModal();saveCard(id,c);toast((old?'Cartão salvo':'Pedido criado')+(mudouMes?' · foi para '+mudouMes+' (mês da colação)':''))}
 
 /* ===== configurações ===== */
 function openCfg(){modal={t:'cfg',c:JSON.parse(JSON.stringify(C()))};if(!Array.isArray(modal.c.check))modal.c.check=[];renderModal()}
@@ -546,6 +590,7 @@ document.addEventListener('click',e=>{
   const th=t.closest('th[data-sort]');if(th){const k=th.dataset.sort;if(sortL.k===k)sortL.dir*=-1;else{sortL.k=k;sortL.dir=1}return render()}
   if(t.closest('#vCal'))return;   /* o calendário trata os próprios cliques (agenda.js) */
   if(t.closest('[data-sub],[data-ovr],[data-ovt],[data-lg],[data-lgall]'))return;
+  const mv=t.closest('[data-mvmes]');if(mv){const ck=mv.closest('[data-id]'),c=ck&&cards.get(ck.dataset.id);if(c){const col=mv.dataset.mvmes;saveCard(ck.dataset.id,Object.assign({},c,{col,ord:endOrd(col,ck.dataset.id),atualizado:Date.now()}));toast((c.title||'Pedido')+' → '+colById(col).name)}return}
   const qa=t.closest('[data-qa]');if(qa){const ck=qa.closest('[data-id]');if(ck)moverQA(ck.dataset.id,qa.dataset.qa);return}
   const el=t.closest('[data-id]');if(el)return openCard(el.dataset.id);
   return}

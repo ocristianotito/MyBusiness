@@ -256,5 +256,37 @@ rep("<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcT
 rep("${xs.map(c=>inp(c.k,q)).join('')}<td class=\"tt\">", "${xs.map(c=>inp(c.k,q)).join('')}${acrQ(1,per)?`<td style=\"text-align:right\">${BRL(acrQ(q,per))}</td>`:''}<td class=\"tt\">")
 rep(" if(a==='addm'){", " if(a==='acrab'){try{localStorage.setItem('cc.orcAcr',acrAberto()?'0':'1')}catch(e){}return render()}\n if(a==='addm'){")
 rep("+ as colunas extras (e as colunas que você criar).", "+ as colunas extras (e as colunas que você criar) + o acrílico, quando \"Com acrílico\" estiver marcado.")
+# Revisão 1.2.28 (item 9): tira as abas antigas escondidas (Clientes/Turmas, Visão geral, Pagamentos, Convites com parceiros)
+# e o relatório antigo em jsPDF (o botão dele já não existe: o relatório é o de fluxo.js). Abre sempre numa aba visível.
+def tirar_funcao(nome):
+    global doc
+    ls = doc.split('\n')
+    i = next((k for k, l in enumerate(ls) if re.match(r'(async )?function %s\(' % nome, l) or re.match(r'const %s=' % nome, l)), None)
+    assert i is not None, nome
+    k = i + 1
+    while k < len(ls) and not re.match(r'(async )?function |const |let |var |document\.|/\*|window\.', ls[k]):
+        k += 1
+    del ls[i:k]
+    doc = '\n'.join(ls)
+for nome in ['v0', 'v2', 'v3', 'v4', 'v5', 'parcResumo', 'relBody', 'loadJs', 'pdfLib', 'pdfRel', 'baixaPdf', 'showRel', 'openRel']:
+    tirar_funcao(nome)
+rep("document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-rel]');if(b)openRel()});\n", '')
+rep("[v0,v1,v2,(window.v3x||v3),v4,v5,v6,window.v7][S.tab]()", "[v6,v1,v6,window.v3x,v6,v6,v6,window.v7][S.tab]()")
+rep("const T=turmaLista();if(!T)return v0();", "const T=turmaLista();if(!T)return window.v3x();")
+rep("if(!(S.tab>=0&&S.tab<TABS.length))S.tab=0;", "if(![6,7,3,1].includes(S.tab))S.tab=6;")
+# Revisão 1.2.28 (item 7): o custo da turma vem só das saídas ligadas a ela (Entradas e saídas); o campo fica só para leitura.
+rep('<label class="full">Custo da turma (R$)<input id="ed-custo" inputmode="decimal" value="${x.custo?fin(x.custo):\'\'}"></label>',
+    '<label class="full">Custo da turma (R$) · soma das saídas desta turma<input id="ed-custo" readonly class="ro" value="${x.custo?fin(x.custo):\'\'}" title="Para mudar, lance ou edite as saídas da turma em Financeiro → Entradas e saídas"><small class="note">Para mudar, lance ou edite as saídas desta turma em <b>Entradas e saídas</b> (gráfica, fotografia, acrílico…).</small></label>')
+rep("${f('custo','Custo (R$)',nz(x.custo),'full')}",
+    "<label class=\"full\">Custo (R$) · soma das saídas desta turma<input id=\"p-custo\" readonly class=\"ro\" value=\"${fmtIn(nz(x.custo))}\"><small class=\"note\">Para mudar, lance as saídas desta turma em <b>Entradas e saídas</b>.</small></label>")
+# Revisão 1.2.28 (item 1): turma do Financeiro ligada ao pedido das Demandas (campo "pedido"); a lista vem de fluxo.js.
+rep('<small class="note">Para mudar, lance ou edite as saídas desta turma em <b>Entradas e saídas</b> (gráfica, fotografia, acrílico…).</small></label>',
+    '<small class="note">Para mudar, lance ou edite as saídas desta turma em <b>Entradas e saídas</b> (gráfica, fotografia, acrílico…).</small></label>${window.__pedidoCampo?window.__pedidoCampo(x,\'ed-ped\'):\'\'}')
+rep("<small class=\"note\">Para mudar, lance as saídas desta turma em <b>Entradas e saídas</b>.</small></label>",
+    "<small class=\"note\">Para mudar, lance as saídas desta turma em <b>Entradas e saídas</b>.</small></label>${window.__pedidoCampo?window.__pedidoCampo(x,'p-ped'):''}")
+rep("  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2}",
+    "  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2;const pd=document.getElementById('ed-ped');if(pd)x.pedido=pd.value}")
+rep("modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};",
+    "modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};const pd=document.getElementById('p-ped');if(pd)dados.pedido=pd.value;")
 (root / 'src' / 'financeiro.html').write_text(doc, encoding='utf-8')
 print('ok', len(doc))

@@ -30,6 +30,8 @@
   window.fasesProd = () => fases();
   const respDe = (c) => (faseDe(c).resp || c.resp || '').trim();
   window.respDaTurma = (c) => respDe(c);
+  // usado pelos botões Correção / Aprovado do cartão nas Demandas
+  window.moverFase = (id, faseId) => mover(id, faseId);
   const dias = (t) => t ? Math.floor((Date.now() - t) / 86400000) : null;
   const tempo = (n) => n == null ? '' : n === 0 ? 'desde hoje' : n === 1 ? 'há 1 dia' : 'há ' + n + ' dias';
   let filtro = '', busca = '', dragId = null;

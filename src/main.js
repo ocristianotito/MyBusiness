@@ -594,5 +594,15 @@ app.on('before-quit', (e) => {
   quitting = true;
 });
 app.on('activate', () => showWindow());   // clique no ícone do Dock
-app.whenReady().then(() => { loadData(); createWindow(); createTray(); setupUpdater(); setupNuvem(); });
+// cópia dos dados antes de cada versão nova abrir pela primeira vez (as mudanças automáticas da versão mexem nos dados);
+// fica em backups/antes-da-versao-X.json e não é apagada com os backups diários
+function copiaDaVersao() {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return;
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const f = path.join(BACKUP_DIR, 'antes-da-versao-' + app.getVersion() + '.json');
+    if (!fs.existsSync(f)) fs.copyFileSync(DATA_FILE, f);
+  } catch (e) {}
+}
+app.whenReady().then(() => { copiaDaVersao(); loadData(); createWindow(); createTray(); setupUpdater(); setupNuvem(); });
 app.on('window-all-closed', () => { if (quitting) app.quit(); });

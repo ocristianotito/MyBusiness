@@ -81,7 +81,7 @@
   window.v6 = function v6() {
     const c = cx(), r = resumo(mes), lucro = r.ePago - r.sPago, meta = +S.meta || 0, pm = meta ? r.ePago / meta : 0, sal = saldo(mes), g = grafico();
     const linha = (x) => `<div class="vmrow${x.pago ? ' pago' : ''}"><button class="vmck${x.pago ? ' on' : ''}" data-vm="tog" data-src="${x.src}" data-id="${x.id}" title="${x.pago ? 'Marcar como não pago' : 'Marcar como pago'}" aria-pressed="${x.pago}"></button>
-      <span class="vmd">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}</span><span class="vmcat ${x.grupo}">${CAT[x.grupo] || ''}</span><span class="vmdia">${x.dia ? String(x.dia).padStart(2, '0') : '—'}</span>
+      <span class="vmd">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}</span><span class="vmcat ${x.grupo}">${esc(x.cat || CAT[x.grupo] || '')}</span><span class="vmdia">${x.dia ? String(x.dia).padStart(2, '0') : '—'}</span>
       <span class="vmv ${x.tipo}">${x.valor == null ? `<button class="vmdef" data-vm="edit" data-src="${x.src}" data-id="${x.id}">definir</button>` : BRL(x.valor)}</span>
       <span class="vmact"><button data-vm="edit" data-src="${x.src}" data-id="${x.id}" title="Editar">Editar</button><button data-vm="del" data-src="${x.src}" data-id="${x.id}" title="Excluir">Excluir</button></span></div>`;
     const painel = (tipo) => {
@@ -131,14 +131,14 @@
     if (src === 'mov') it = c.mov.find((x) => x.id === id);
     if (src === 'rec') { const r = c.rec.find((x) => x.id === id); const st = c.recSt[id + '|' + mes] || {}; it = r && Object.assign({}, r, { valor: st.valor != null ? st.valor : r.valor, pago: !!st.pago }); }
     const novo = !it;
-    it = it || { tipo, grupo: grupo || GRUPOS[tipo][0][0], desc: '', valor: null, dia: '', pago: false };
+    it = it || { tipo, grupo: grupo || GRUPOS[tipo][0][0], desc: '', valor: null, dia: '', pago: false, cat: grupo ? ({ turmas: 'Turma', parceiros: 'Parceiro', graficas: 'Gráfica', fixas: '', variaveis: '', outras: '' })[grupo] || '' : '' };
     tipo = it.tipo;
     const turmas = (S.turmas || []).map((t) => [t.id, t.curso + ' ' + t.per + (t.lista ? ' · ' + t.lista : '')]);
     dialog(`<h2>${novo ? (tipo === 'e' ? 'Nova entrada' : 'Nova saída') : 'Editar lançamento'}</h2><div class="sub">${ymNome(mes)}${src === 'rec' ? ' · repete todo mês: o valor e o pago valem para este mês' : ''}</div>
       <div class="fg"><label class="full">Descrição<input id="vm-desc" value="${esc(it.desc)}" placeholder="${tipo === 'e' ? 'Ex.: Parcela comissão Direito UNEX' : 'Ex.: Gráfica, aluguel, internet'}"></label>
       <label>${tipo === 'e' ? 'De quem (pessoa ou empresa)' : 'Para quem (empresa ou pessoa)'}<input id="vm-para" list="vm-paras" value="${esc(it.para || '')}" placeholder="${tipo === 'e' ? 'Ex.: Comissão Direito UNEX' : 'Ex.: Gráfica Silva, Papelaria Central'}"><datalist id="vm-paras">${parasUsados().map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       <label>Categoria<input id="vm-cat" list="vm-cats" value="${esc(it.cat || '')}" placeholder="${tipo === 'e' ? 'Ex.: Turma, Venda avulsa' : 'Ex.: Material, Gráfica, Aluguel'}"><datalist id="vm-cats">${catsDe(tipo).map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
-      <label>Grupo<select id="vm-grp">${GRUPOS[tipo].map(([k, n]) => `<option value="${k}"${it.grupo === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+      <input type="hidden" id="vm-grp" value="${esc(it.grupo)}">
       <label>Valor (R$)<input id="vm-val" inputmode="decimal" value="${fmtV(it.valor)}" placeholder="deixe vazio para definir depois"></label>
       <label>Dia do mês<input id="vm-dia" inputmode="numeric" value="${it.dia || ''}" placeholder="1 a 31"></label>
       ${tipo === 's' && src !== 'rec' && opcoesRef().length ? `<label class="full">Turma desta saída (opcional)<select id="vm-ref"><option value="">— nenhuma —</option>${refGrupos().map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n]) => `<option value="${k}"${it.ref === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><small class="vmrefinfo" id="vm-refinfo"></small></label>` : ''}
@@ -153,7 +153,7 @@
       const desc = g('vm-desc').trim(); if (!desc) { document.getElementById('vm-err').textContent = 'Escreva uma descrição.'; return; }
       const valor = parseV(g('vm-val')), dia = Math.min(31, Math.max(0, parseInt(g('vm-dia'), 10) || 0)) || '', pago = document.getElementById('vm-pago').checked;
       const para = g('vm-para').trim(), cat = g('vm-cat').trim(), ref = g('vm-ref'), ref0 = (it && it.ref) || '';
-      const grp = g('vm-grp'), tur = g('vm-tur'), repetir = document.getElementById('vm-rec') && document.getElementById('vm-rec').checked;
+      const grp = (cat && grupoDaCat(tipo, cat)) || g('vm-grp'), tur = g('vm-tur'), repetir = document.getElementById('vm-rec') && document.getElementById('vm-rec').checked;
       if (src === 'rec') {
         const r = c.rec.find((x) => x.id === id); Object.assign(r, { desc, grupo: grp, dia, turmaId: tur || '', para, cat });
         const k = id + '|' + mes; c.recSt[k] = Object.assign({}, c.recSt[k] || {}, { pago, valor: valor });
@@ -172,9 +172,6 @@
     if (rs && ri) { const info = () => { const k = rs.value; if (!k) { ri.textContent = ''; return; } const l = ligadas(k).filter((x) => x.id !== id), t = l.reduce((a, x) => a + (+x.valor || 0), 0);
         ri.innerHTML = l.length ? `Esta turma já tem <b>${BRL(t)}</b> em ${l.length} saída(s): ${l.map((x) => esc(x.cat || x.desc)).slice(0, 4).join(', ')}${l.length > 4 ? '…' : ''}. O valor desta saída soma no custo da turma.` : 'Primeira saída desta turma: o valor vira o custo dela em Turmas e parceiros.'; };
       rs.addEventListener('change', info); info(); }
-    const ci = ov && ov.querySelector('#vm-cat'), gs = ov && ov.querySelector('#vm-grp');
-    if (ci && gs) { let mexeu = !novo; gs.addEventListener('change', () => { mexeu = true; });
-      ci.addEventListener('input', () => { if (mexeu) return; const k = grupoDaCat(tipo, ci.value); if (k) gs.value = k; }); }
   }
   function grupoDaCat(tipo, cat) {
     const c = String(cat || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -317,6 +314,31 @@
     }
   });
 
+  /* ===== revisão 1.2.28 (item 1): turma do Financeiro ligada ao pedido das Demandas =====
+     t.pedido / p.pedido = id do pedido. A colação vem do pedido (um lugar só). Os pedidos são lidos do arquivo de dados. */
+  let pedidos = new Map();
+  const normT = (t) => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, ' ').trim();
+  async function lerPedidos() {
+    try { const d = await window.api.load(); const cs = (d && d.cards) || {}; pedidos = new Map(Object.entries(cs).map(([id, c]) => [id, c])); } catch (er) {}
+    return pedidos;
+  }
+  const colDe = (c) => c && c.colacao ? c.colacao.split('-').reverse().join('/') : '';
+  function pedInfo(x) { const c = x && x.pedido ? pedidos.get(x.pedido) : null; if (!c) return ''; const d = colDe(c); return d ? 'Colação ' + d : 'Pedido ligado'; }
+  window.__pedidoCampo = (x, idCampo) => {
+    const ls = [...pedidos.entries()].sort((a, b) => String(a[1].title || '').localeCompare(String(b[1].title || ''), 'pt-BR'));
+    return `<label class="full">Pedido nas Demandas<select id="${idCampo}"><option value="">— não ligado —</option>${ls.map(([id, c]) => `<option value="${esc(id)}"${x.pedido === id ? ' selected' : ''}>${esc(c.title || 'Sem título')}${c.colacao ? ' · colação ' + colDe(c) : ''}</option>`).join('')}</select><small class="note">Ligando a turma ao pedido, a data da colação vem do pedido e aparece aqui no Financeiro.</small></label>`;
+  };
+  // liga sozinho quando o nome é igual (turma "Curso Período" ou parceiro = título do pedido); só uma vez por turma
+  function ligarPedidos() {
+    if (!pedidos.size) return false;
+    const porNome = new Map(); pedidos.forEach((c, id) => { const k = normT(c.title); if (k && !porNome.has(k)) porNome.set(k, id); });
+    let mud = false;
+    (S.turmas || []).forEach((t) => { if (t.pedido || t.pedTentou) return; t.pedTentou = 1; const id = porNome.get(normT(t.curso + ' ' + t.per)) || porNome.get(normT(t.curso)); if (id) t.pedido = id; mud = true; });
+    (S.parc || []).forEach((p) => { if (p.pedido || p.pedTentou) return; p.pedTentou = 1; const id = porNome.get(normT(p.nome)); if (id) p.pedido = id; mud = true; });
+    return mud;
+  }
+  document.addEventListener('DOMContentLoaded', () => { lerPedidos().then(() => { try { if (ligarPedidos()) save(); } catch (er) {} if (typeof render === 'function') render(); }); });
+
   /* ===== aba Financeiro (resultado das turmas e parceiros), no mesmo estilo da Visão do mês ===== */
   /* parceiro padrão: na Cristiano Convites, as turmas de parceiro vêm do cerimonial OLIMPO */
   function parceiroPadrao() {
@@ -331,8 +353,8 @@
     parceiroPadrao();
     const t = tot();
     const linhas = []
-      .concat((S.turmas || []).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: x.lista, ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
-      .concat((S.parc || []).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: 'Fechamento ' + (x.data || '—'), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
+      .concat((S.turmas || []).map((x) => ({ k: 't', og: 'direta', id: x.id, nome: x.curso + ' ' + x.per, sub: [x.lista, pedInfo(x)].filter(Boolean).join(' · '), ano: yT(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })))
+      .concat((S.parc || []).map((x) => ({ k: 'p', og: 'p:' + String(x.parceiro || 'Parceiro').trim().toUpperCase(), id: x.id, nome: x.nome, sub: ['Fechamento ' + (x.data || '—'), pedInfo(x)].filter(Boolean).join(' · '), ano: yP(x), total: x.total, rec: x.rec, custo: +x.custo || 0 })));
     v3xLinhas = linhas;
     const origens = ['direta'].concat([...new Set(linhas.filter((l) => l.k === 'p').map((l) => l.og))].sort());
     const nomeOg = (og) => og === 'direta' ? 'Turmas diretas' : 'Parceiro ' + og.slice(2);
@@ -390,7 +412,7 @@
     </div>
     <div class="vmpanel" style="margin-bottom:16px"><div class="vmph"><span class="vmpi e">↘</span><b>Turmas por origem</b><em>${linhas.length}</em><span class="sp"></span></div>
      <div class="fxtw"><table class="fxt"><thead><tr><th>Turma</th><th>Ano</th><th class="n">Fechado</th><th class="n">Recebido</th><th class="n">A receber</th><th>Progresso</th><th class="n">Margem</th><th></th></tr></thead><tbody>${tabela || '<tr><td colspan="8" class="mu" style="padding:16px">Nada fechado ainda.</td></tr>'}</tbody></table></div></div>
-    ${lanc.length ? `<div class="vmcols">
+    ${lanc.length && !(S.cx && S.cx.lancMig1228) ? `<div class="vmcols">
      <div class="vmpanel"><div class="vmph"><span class="vmpi s">↗</span><b>Despesas a pagar</b><em>${pend.length}</em><span class="sp"></span><b class="r">${BRL(t.pend)}</b></div>
       ${pend.map(desp).join('') || '<div class="vmempty">Nenhuma despesa pendente.</div>'}</div>
      <div class="vmpanel"><div class="vmph"><span class="vmpi e">✓</span><b>Despesas pagas</b><em>${pago.length}</em><span class="sp"></span><b>${BRL(t.desp)}</b></div>
@@ -632,9 +654,22 @@
     window.save.__auto = true;
     try { foto = tirar(); } catch (er) {}
     try { parceirosAntigos(); } catch (er) {}
+    try { if (lancAntigos()) save(); } catch (er) {}
   }
   /* pedido do dono (1.2.23): o que já tinha sido recebido dos parceiros antes da Visão do mês automática
      entra uma vez em "Convites com parceiros" de novembro de 2026 (só a diferença que ainda não tem lançamento). */
+  /* revisão 1.2.28 (item 10): as despesas da antiga aba "Pagamentos" (S.lanc, escondida) passam para Entradas e saídas,
+     uma vez, com a categoria "Despesa antiga" e no mês em que foram criadas. S.lanc fica guardado como estava. */
+  function lancAntigos() {
+    const c = cx(); if (c.lancMig1228) return false;
+    c.lancMig1228 = 1;
+    (S.lanc || []).forEach((l) => {
+      if (!l || c.mov.some((m) => m.auto === 'la:' + l.id)) return;
+      const t = +l.id > 1e12 ? new Date(+l.id) : new Date(), mes = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0');
+      c.mov.push({ id: uid(), tipo: 's', grupo: 'variaveis', desc: String(l.desc || 'Despesa'), valor: +l.valor || 0, dia: t.getDate(), mes, pago: !!l.pago, turmaId: '', cat: 'Despesa antiga', auto: 'la:' + l.id });
+    });
+    return true;
+  }
   function parceirosAntigos() {
     const c = cx(); if (c.parcAntes1223 || !(S.parc || []).length) return;
     const mes = '2026-11', hoje = new Date(), dia = ymNow() === mes ? hoje.getDate() : 30;
@@ -755,8 +790,7 @@
        <div class="opcalc" id="op-calc" style="grid-column:1/-1"></div>
        <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
-       <label>Telefone no rodapé<input id="op-tel" value="${esc((S.orcContato || {}).tel || '')}" placeholder="(77) 00000-0000"></label>
-       <label>E-mail no rodapé<input id="op-mail" value="${esc((S.orcContato || {}).email || '')}" placeholder="seuemail@gmail.com"></label></div>
+       <p class="note" style="grid-column:1/-1;margin:2px 0 0">Telefone e e-mail do rodapé: vêm de <b>Contratos → Dados da empresa</b>. Com o cabeçalho dos PDFs, o rodapé sai só com o nome (o contato já está no cabeçalho).</p></div>
       ${S.orc.acril ? `<label class="relop" style="margin-top:12px"><input type="checkbox" id="op-acr"${S.orc.comAcril ? ' checked' : ''}> Com acrílico <small>(${BRL(S.orc.acril)} por convite em ${ORC_PER[0]}, com os acréscimos de cada período)</small></label>` : ''}
       <label class="relop" style="margin-top:12px"><input type="checkbox" id="op-tab"${orcUlt.tabela ? ' checked' : ''}> Mostrar também a tabela completa de quantidades</label>
       ${cabCampo()}
@@ -767,8 +801,7 @@
       const mids = [...document.querySelectorAll('[data-opm]')].filter((c) => c.checked).map((c) => c.dataset.opm);
       if (!mids.length) { alert('Marque pelo menos um modelo.'); return; }
       const oo = opcoes(); if (oo.erro) { alert(oo.erro); return; }
-      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), opts: oo.opts, qs: oo.opts.map((x) => x.q), tabela: document.getElementById('op-tab').checked, acril: !!(document.getElementById('op-acr') || {}).checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim(), tel: g('op-tel').trim(), email: g('op-mail').trim() };
-      if (op.tel !== ((S.orcContato || {}).tel || '') || op.email !== ((S.orcContato || {}).email || '')) { S.orcContato = { tel: op.tel, email: op.email }; save(); }
+      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), opts: oo.opts, qs: oo.opts.map((x) => x.q), tabela: document.getElementById('op-tab').checked, acril: !!(document.getElementById('op-acr') || {}).checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim() };
       if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305), ou os formandos e os convites por formando, ou marque "Mostrar também a tabela completa".'); return; }
       orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length, cpf: g('op-cpf').trim() }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
@@ -792,7 +825,7 @@
     let emp = {}; try { const d = await window.api.load(); emp = (d && d.cfg && d.cfg.empresa) || {}; } catch (er) {}
     const nomeEmp = emp.nome || 'Cristiano Convites';
     const hoje = new Date(), dd = (d) => d.toLocaleDateString('pt-BR'), ate = new Date(hoje.getTime() + op.validade * 86400000);
-    const contato = [op.tel || emp.telefone, op.email || emp.email].filter(Boolean).map(esc).join(' · ');
+    const oc = S.orcContato || {}, contato = S.pdfCab ? '' : [emp.telefone || oc.tel, emp.email || oc.email].filter(Boolean).map(esc).join(' · ');
     const qs = op.qs.slice().sort((a, b) => a - b), optDe = (q) => (op.opts || []).find((x) => x.q === q) || { q };
     const dadosM = (mid) => {
       const M = modelOf(mid); if (!M) return null;

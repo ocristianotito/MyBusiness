@@ -598,26 +598,7 @@ function dc(l){
  return `<div class="cardk">${xb('del',l.id)}<h5>${esc(l.desc)}</h5><div class="amt ${l.pago?'g':'o'}">${BRL(l.valor)}</div><button class="btn ghost sm" data-act="tog" data-id="${l.id}">${l.pago?'Voltar para a pagar':'Marcar como paga'}</button></div>`}
 
 /* resumo dos convites com parceiros (Financeiro e Visão geral) */
-function parcResumo(){
- const ps=S.parc.filter(p=>p.total>0);
- const h=`<h3 class="sec">Convites com parceiros</h3>`;
- if(!ps.length)return h+`<p class="note">Nenhum convite com parceiro tem valor preenchido. Preencha o valor total de um cartão na aba "Convites com parceiros" e ele passa a aparecer aqui.</p>`;
- const T=sum(ps,p=>p.total),R=sum(ps,p=>p.rec),C=sum(ps,p=>p.custo||0);
- const linhas=ps.map(p=>{const c=p.custo||0;
-  return `<tr><td>${esc(p.nome)}</td><td>${esc(p.parceiro||'—')}</td><td>${yP(p)}</td><td>${BRL(p.total)}</td><td class="g">${BRL(p.rec)}</td><td class="o">${BRL(p.total-p.rec)}</td><td class="r">${c?BRL(c):'—'}</td><td>${BRL(p.rec-c)}</td><td class="g">${c?BRL(p.total-c):'—'}</td><td>${c?PCT((p.total-c)/p.total):'—'}</td></tr>`}).join('');
- return h+`<div class="grid">${kpi('Valor fechado',BRL(T),'t')}${kpi('Entradas (recebido)',BRL(R),'g')}${kpi('A receber',BRL(T-R),'o')}${kpi('Saídas (custo)',BRL(C),'r')}${kpi('Saldo (entradas − saídas)',BRL(R-C),R-C>=0?'g':'r')}${kpi('Lucro previsto',BRL(T-C),'g',C>0?'margem '+PCT(dv(T-C,T)):'informe o custo de cada convite')}</div>
- <div class="panel tw"><table><tr><th>Cliente / turma</th><th>Parceiro</th><th>Ano</th><th>Valor total</th><th>Recebido (entradas)</th><th>A receber</th><th>Custo (saídas)</th><th>Saldo</th><th>Lucro previsto</th><th>Margem</th></tr>${linhas}
- <tfoot><tr><td>Total</td><td></td><td></td><td>${BRL(T)}</td><td>${BRL(R)}</td><td>${BRL(T-R)}</td><td>${BRL(C)}</td><td>${BRL(R-C)}</td><td>${C?BRL(T-C):'—'}</td><td>${C?PCT(dv(T-C,T)):'—'}</td></tr></tfoot></table></div>`}
-
 /* ===== Clientes/Turmas ===== */
-function v0(){
- const anos=anosDe(S.turmas.map(yT));
- const quadros=anos.map(a=>{const ts=S.turmas.filter(x=>yT(x)===a);
-  return yrH(a,resT(ts))+`<div class="board">${COLS.map((c,i)=>{const l=ts.filter(x=>x.col===i);
-   return `<div class="col" data-col="${i}" data-year="${a}"><h4>${c}<em>${l.length}</em></h4>${l.map(x=>tcard(x,true)).join('')}</div>`}).join('')}</div>`}).join('');
- return `<h2>Clientes/Turmas</h2><p class="mu" style="margin-top:-8px">As turmas ficam separadas por ano. Clique em um cartão para ver as informações, arraste entre as etapas e use o X para excluir. Para editar os pagamentos, abra a lista de formandos da turma.</p>
- <button class="btn" data-act="addt" style="margin:0 0 4px">+ nova turma</button>${quadros||'<p class="note">Nenhuma turma cadastrada.</p>'}`}
-
 /* ===== Orçamentos (caixa de tamanho do convite) ===== */
 function v1(){
  const per=S.orcP,ms=S.orc.models;
@@ -638,49 +619,9 @@ function v1(){
  return `<div class="vmtop"><h2>Orçamentos</h2><span class="note">tabela de preços por tamanho e período</span><span class="sp" style="flex:1"></span><button class="btn ghost sm" data-orcpdf>Gerar orçamento em PDF</button><button class="btn sm" data-act="addm">+ novo modelo</button></div>${topo}<div class="panel"><div class="mhead"><div><h3 style="margin:0">${esc(m.nome)}</h3><small>${esc(m.capa||'')}${m.capa?' · ':''}período ${ORC_PER[per]}</small></div><div class="cbtns"><button class="btn ghost sm" style="margin:0" data-act="addrow" data-mid="${m.id}">+ linha</button><button class="btn ghost sm" style="margin:0" data-act="addcol" data-mid="${m.id}">+ coluna</button><button class="btn ghost sm" style="margin:0" data-act="mcols" data-mid="${m.id}">${S.mcols[m.id]?'Ocultar colunas extras':'Mostrar colunas extras'}</button><button class="xdel s" data-act="delm" data-mid="${m.id}" title="Excluir modelo">✕</button></div></div>${refNote}${window.__fotosFixas?window.__fotosFixas(m):''}${tabela}</div>`}
 
 /* ===== Visão geral ===== */
-function v2(){
- const t=tot(),anos=anosDe(S.turmas.map(yT)),res=t.R+t.PR-t.desp;
- const blocos=anos.map(a=>{const ts=S.turmas.filter(x=>yT(x)===a);
-  return yrH(a,resT(ts))+`<div class="panel">${ts.map(x=>{const p=dv(x.rec,x.total);
-   return `<div class="brow"><div>${esc(x.curso)} ${esc(x.per)} <small>(${esc(x.lista)})</small></div><div>${prog(p)}</div><div style="text-align:right">${PCT(p)}<br><small>${BRL(x.rec)}</small></div></div>`}).join('')}</div>`}).join('');
- return `<h2>Visão geral</h2><div class="grid">${kpi('Turmas',S.turmas.length)}${kpi('Formandos',t.form)}${kpi('Valor total fechado',BRL(t.T),'t')}${kpi('Recebido',BRL(t.R),'g')}${kpi('A receber',BRL(t.A),'o')}${kpi('% recebido',PCT(dv(t.R,t.T)))}</div>
- <div class="grid">${kpi('Convites luxo',sum(S.turmas,x=>x.luxo))}${kpi('Convites simplificado',sum(S.turmas,x=>x.simp))}${kpi('Fotos',sum(S.turmas,x=>x.foto))}${kpi('Resultado',BRL(res),res>=0?'g':'r','recebido (turmas + parceiros) − despesas pagas')}</div>
- ${parcResumo()}<h3 class="sec">Recebimento por turma</h3>${blocos||'<p class="note">Nenhuma turma cadastrada.</p>'}`}
-
 /* ===== Financeiro ===== */
-function v3(){
- const t=tot(),rec=t.R+t.PR,saldo=rec-t.desp,pm=S.meta>0?rec/S.meta:0;
- const ab=S.turmas.filter(x=>x.total-x.rec>0.005),pab=S.parc.filter(p=>p.total-p.rec>0.005);
- const anos=anosDe(ab.map(yT).concat(pab.map(yP)));
- const entradas=anos.map(a=>`<div class="ysub">${a}</div>`+ab.filter(x=>yT(x)===a).map(x=>tcard(x,false,true)).join('')+pab.filter(p=>yP(p)===a).map(p=>pcard(p,false,true)).join('')).join('')||'<p class="note">Nada a receber.</p>';
- const pend=S.lanc.filter(l=>!l.pago),pago=S.lanc.filter(l=>l.pago);
- return `<h2>Financeiro</h2><div class="grid">${kpi('Recebido',BRL(rec),'g','turmas + parceiros')}${kpi('Despesas pagas',BRL(t.desp),'r')}${kpi('Saldo em caixa',BRL(saldo),saldo>=0?'g':'r','recebido − despesas pagas')}${kpi('Meta do mês',BRL(S.meta),'t',S.meta>0?PCT(pm)+' atingido':'defina a meta abaixo')}${kpi('Previsto: entradas',BRL(t.A+t.PA),'o','a receber de turmas e parceiros')}${kpi('Previsto: saídas',BRL(t.pend),'o','despesas a pagar')}${kpi('Custo das turmas',BRL(t.C),'r','soma dos custos informados')}${kpi('Lucro previsto',BRL(t.T-t.C),'g',t.C>0?'margem '+PCT(dv(t.T-t.C,t.T)):'informe o custo de cada turma')}</div>
- ${parcResumo()}
- <div class="panel" style="margin-top:20px"><h3>Progresso da meta</h3>${prog(pm)}<label style="margin-top:12px">Meta do mês (R$)<input data-in="meta" inputmode="decimal" value="${S.meta?fin(S.meta):''}"></label></div>
- <div class="board"><div class="col"><h4>Entradas a receber<em>${ab.length+pab.length}</em></h4><button class="btn full" data-act="parc" style="margin:0 0 10px">+ convite com parceiro</button>${entradas}</div>
- <div class="col"><h4>Despesas a pagar<em>${pend.length}</em></h4>${pend.map(dc).join('')}<button class="btn full" data-act="add">+ nova despesa</button></div>
- <div class="col"><h4>Despesas pagas<em>${pago.length}</em></h4>${pago.map(dc).join('')}</div></div>`}
-
 /* ===== Pagamentos ===== */
-function v4(){
- const t=tot(),anos=anosDe(S.turmas.map(yT));
- const tabelas=anos.map(a=>{const ts=S.turmas.filter(x=>yT(x)===a);
-  return yrH(a,resT(ts))+`<div class="panel tw"><table><tr><th>Turma</th><th>Lista</th><th>Formandos</th><th>Valor total</th><th>Recebido</th><th>A receber</th><th style="min-width:160px">Progresso</th><th></th></tr>
-  ${ts.map(x=>{const p=dv(x.rec,x.total);
-   return `<tr><td>${esc(x.curso)} ${esc(x.per)}</td><td>${esc(x.lista)}</td><td>${x.form}</td><td>${BRL(x.total)}</td><td class="g">${BRL(x.rec)}</td><td class="o">${BRL(x.total-x.rec)}</td><td>${prog(p)}<small>${PCT(p)}</small></td><td><div class="cbtns"><button class="btn sm" style="margin:0" data-act="lista" data-id="${x.id}">Editar pagamentos</button><button class="btn ghost sm" style="margin:0" data-act="edit" data-id="${x.id}">Custo</button></div></td></tr>`}).join('')}
-  <tfoot><tr><td>Total ${a}</td><td></td><td>${sum(ts,x=>x.form)}</td><td>${BRL(sum(ts,x=>x.total))}</td><td>${BRL(sum(ts,x=>x.rec))}</td><td>${BRL(sum(ts,x=>x.total-x.rec))}</td><td></td><td></td></tr></tfoot></table></div>`}).join('');
- return `<h2>Pagamentos</h2><div class="grid">${kpi('Turmas',S.turmas.length)}${kpi('Formandos',t.form)}${kpi('Valor total fechado',BRL(t.T),'t')}${kpi('Recebido',BRL(t.R),'g')}${kpi('A receber',BRL(t.A),'o')}${kpi('% recebido',PCT(dv(t.R,t.T)))}</div>${tabelas||'<p class="note">Nenhuma turma cadastrada.</p>'}`}
-
 /* ===== Convites com parceiros ===== */
-function v5(){
- const t=tot(),anos=anosDe(S.parc.map(yP));
- if(!anos.length)anos.push(ANO_PADRAO);
- const quadros=anos.map(a=>{const ps=S.parc.filter(p=>yP(p)===a);
-  return yrH(a,ps.length+' convite(s) · fechado '+BRL(sum(ps,p=>p.total))+' · recebido '+BRL(sum(ps,p=>p.rec))+' · custo '+BRL(sum(ps,p=>p.custo||0)))+`<div class="board">${PCOLS.map((c,i)=>{const l=ps.filter(x=>x.mes===i);
-   return `<div class="col" data-col="${i}" data-year="${a}"><h4>${c}<em>${l.length}</em></h4>${l.map(x=>pcard(x,true)).join('')}<button class="btn full" data-act="parc" data-mes="${i}" data-ano="${a}">+ adicionar um cartão</button></div>`}).join('')}</div>`}).join('');
- return `<h2>Convites com parceiros</h2><p class="mu" style="margin-top:-8px">Os convites ficam separados por ano da turma e, dentro de cada ano, por mês de fechamento. Arraste os cartões entre os meses (arrastar para outro ano muda o ano do cartão). Clique em um cartão para ver as informações, use "Editar pagamento" para preencher os valores (e escolher o modelo do orçamento) e o X para excluir.</p>
- <div class="grid">${kpi('Convites',S.parc.length)}${kpi('Valor total',BRL(t.PT),'t')}${kpi('Recebido',BRL(t.PR),'g')}${kpi('A receber',BRL(t.PA),'o')}${kpi('Custo informado',BRL(t.PC),'r')}</div>${quadros}`}
-
 /* ===== Lista de formandos de uma turma ===== */
 function lres(T){
  const r={n:T.alunos.length,luxo:0,simp:0,foto:0,vegq:0,ffq:0,veg:0,ff:0,vf:0,ent:0,pago:0,ok:0,w:0,x:0};
@@ -706,7 +647,7 @@ function lrow(T,a,rg,qt){
  +`${CT('vf',I('vf',c.vf?fin(c.vf):'','n b'+(c.ov?' ovr':''),'decimal'))}${CT('ent',I('ent',fmtIn(nz(a.ent)),'n g','decimal',fin(c.vf*T.pe/100)))}${CT('pago',I('pago',fmtIn(nz(a.pago)),'n g','decimal'))}<td class="o" data-lr="${a.id}">${BRL(c.rest)}</td><td>${I('forma',a.forma)}</td><td data-ls="${a.id}">${badge(c.sit)}</td><td><button class="xdel s" data-act="dela" data-aid="${a.id}" title="Excluir formando">✕</button></td></tr>`}
 
 function vL(){
- const T=turmaLista();if(!T)return v0();
+ const T=turmaLista();if(!T)return window.v3x();
  const rg=!S.lrg,qt=!S.lqt,r=lres(T);
  const lk=(id,l,v,cls)=>`<div class="kpi"><small>${l}</small><b id="${id}" class="${cls||''}">${v}</b></div>`;
  const th=(t,c)=>`<th${c?` class="${c}"`:''}>${t}</th>`;
@@ -727,65 +668,6 @@ window.addEventListener('resize',setSticky);
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.lt){const T=turmaLista();if(T){T[t.dataset.lt]=t.value;save()}}});
 /* ===== relatório da turma ===== */
 const RCSS='.rp{font-family:Segoe UI,Arial,sans-serif;color:#17323a;font-size:12px}.rp h1{font-size:22px;margin:0 0 2px}.rp .s{color:#5b727a;margin-bottom:14px}.rp h2{font-size:15px;margin:18px 0 8px;border-bottom:2px solid #14b8a6;padding-bottom:4px}.rp table{border-collapse:collapse;width:100%}.rp th{background:#dfeaeb;text-align:left;padding:6px 7px;border:1px solid #c3d3d5;font-size:11px}.rp td{padding:5px 7px;border:1px solid #d4e0e0}.rp .n{text-align:right;white-space:nowrap}.rp tfoot td{background:#eef4f4;font-weight:700}.rp .res{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.rp .res div{border:1px solid #c3d3d5;border-radius:6px;padding:7px 9px}.rp .res small{display:block;color:#5b727a;font-size:10px}.rp .res b{font-size:14px}.rp .ok{color:#15803d;font-weight:700}.rp .w{color:#b45309;font-weight:700}.rp .x{color:#1d4ed8;font-weight:700}.rp .cm{margin:0 0 6px;padding:6px 8px;border-left:3px solid #e11d48;background:#fff7f8;white-space:pre-wrap}.rp .obs{white-space:pre-wrap;border:1px solid #c3d3d5;padding:8px;border-radius:6px;margin-bottom:6px}.rp tr{page-break-inside:avoid}';
-function relBody(T,o){const r=lres(T),sT={ok:'Quitado',w:'Pendente',x:'Pago a mais'},R=v=>BRL(v),K=(l,v)=>`<div><small>${l}</small><b>${v}</b></div>`;
- const L=T.alunos.map(a=>({a:a,c:lcalc(T,a)})).filter(x=>!o.pend||x.c.rest>0.005);
- let h=`<h1>Relatório da turma: ${esc(T.curso)} ${esc(T.per)}</h1><div class="s">Lista: ${esc(T.lista)} · gerado em ${new Date().toLocaleDateString('pt-BR')}${o.pend?' · somente formandos com valor a pagar':''}</div>`;
- if(o.obs)h+=`<div class="obs">${esc(o.obs)}</div>`;
- if(o.res){const cu=+T.custo||0;h+=`<h2>Resumo</h2><div class="res">${K('Formandos',r.n)}${K('Valor total',R(r.vf))}${K('Recebido (valor pago)',R(r.pago))}${K('A receber',R(r.rest))}${K('% recebido',PCT(r.p))}${K('Situação',sitTxt(r))}${K('Convites luxo / simplificado',r.luxo+' / '+r.simp)}${K('Fotos',r.foto)}${K('Vegetal',R(r.veg))}${K('Foto família',R(r.ff))}${K('Entrada total',R(r.ent))}${cu?K('Custo da turma',R(cu)):''}${cu?K('Lucro previsto',R(r.vf-cu)+' · '+PCT(dv(r.vf-cu,r.vf))):''}</div>`}
- if(o.list){const th=(t,c)=>`<th${c?` class="${c}"`:''}>${t}</th>`,S0=k=>L.reduce((s,x)=>s+(+x.a[k]||0),0),S1=k=>L.reduce((s,x)=>s+x.c[k],0);
-  h+=`<h2>Formandos${o.pend?' com valor a pagar':''} (${L.length})</h2><table><thead><tr>${th('Formando')}${o.rg?th('RG')+th('CPF')+th('Telefone'):''}${o.qt?th('Luxo','n')+th('Simples','n')+th('Foto','n')+th('Vegetal','n')+th('F. família','n'):''}${th('Valor por formando','n')}${th('Entrada','n')}${th('Valor pago','n')}${th('Restante','n')}${th('Forma de pagamento')}${th('Situação')}</tr></thead><tbody>`
-  +L.map(x=>{const a=x.a,c=x.c;return `<tr><td><b>${esc(a.nome)}</b></td>${o.rg?`<td>${esc(a.rg)}</td><td>${esc(a.cpf)}</td><td>${esc(a.tel)}</td>`:''}${o.qt?`<td class="n">${a.luxo||''}</td><td class="n">${a.simp||''}</td><td class="n">${a.foto||''}</td><td class="n">${a.qv||''}</td><td class="n">${a.qf||''}</td>`:''}<td class="n">${R(c.vf)}</td><td class="n">${R(c.ent)}</td><td class="n">${R(c.pago)}</td><td class="n">${R(c.rest)}</td><td>${esc(a.forma)}</td><td class="${c.sit}">${sT[c.sit]||'—'}</td></tr>`}).join('')
-  +`</tbody><tfoot><tr><td>TOTAL (${L.length})</td>${o.rg?'<td></td><td></td><td></td>':''}${o.qt?`<td class="n">${S0('luxo')}</td><td class="n">${S0('simp')}</td><td class="n">${S0('foto')}</td><td class="n">${S0('qv')}</td><td class="n">${S0('qf')}</td>`:''}<td class="n">${R(S1('vf'))}</td><td class="n">${R(S1('ent'))}</td><td class="n">${R(S1('pago'))}</td><td class="n">${R(S1('rest'))}</td><td></td><td></td></tr></tfoot></table>`}
- if(o.cm){const cs=[];L.forEach(x=>{const m=x.a.cm||{};[['vf','Valor por formando'],['ent','Entrada'],['pago','Valor pago']].forEach(p=>{if(m[p[0]])cs.push(`<div class="cm"><b>${esc(x.a.nome)}</b> · ${p[1]}<br>${esc(m[p[0]])}</div>`)})});if(cs.length)h+=`<h2>Comentários</h2>`+cs.join('')}
- return h}
-const loadJs=u=>new Promise((ok,er)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>er(new Error('não foi possível carregar a biblioteca de PDF'));document.head.appendChild(s)});
-async function pdfLib(){if(!(window.jspdf&&window.jspdf.jsPDF))await loadJs('vendor/jspdf.umd.min.js');if(!window.jspdf.jsPDF.API.autoTable)await loadJs('vendor/jspdf.plugin.autotable.min.js');return window.jspdf.jsPDF}
-async function pdfRel(T,o){const J=await pdfLib(),d=new J({orientation:'landscape',unit:'mm',format:'a4'}),r=lres(T),sT={ok:'Quitado',w:'Pendente',x:'Pago a mais'},R=v=>BRL(v).replace(/\u00a0/g,' ');
- const L=T.alunos.map(a=>({a:a,c:lcalc(T,a)})).filter(x=>!o.pend||x.c.rest>0.005);
- let y=14;d.setFont('helvetica','bold');d.setFontSize(16);d.text('Relatório da turma: '+T.curso+' '+T.per,14,y);y+=6;
- d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(90,114,122);d.text('Lista: '+T.lista+' - gerado em '+new Date().toLocaleDateString('pt-BR')+(o.pend?' - somente formandos com valor a pagar':''),14,y);y+=6;d.setTextColor(23,50,58);
- if(o.obs){const ls=d.splitTextToSize(o.obs,269);d.text(ls,14,y);y+=ls.length*4.5+2}
- const base={margin:{left:14,right:14},styles:{fontSize:8,cellPadding:1.6,textColor:[23,50,58],lineColor:[195,211,213],lineWidth:.1},headStyles:{fillColor:[223,234,235],textColor:[23,50,58],fontStyle:'bold'}};
- if(o.res){const cu=+T.custo||0,K=[['Formandos',r.n],['Valor total',R(r.vf)],['Recebido (valor pago)',R(r.pago)],['A receber',R(r.rest)],['% recebido',PCT(r.p)],['Situação',sitTxt(r)],['Convites luxo / simplificado',r.luxo+' / '+r.simp],['Fotos',r.foto],['Vegetal',R(r.veg)],['Foto família',R(r.ff)],['Entrada total',R(r.ent)]];
-  if(cu){K.push(['Custo da turma',R(cu)]);K.push(['Lucro previsto',R(r.vf-cu)+' ('+PCT(dv(r.vf-cu,r.vf))+')'])}
-  const rows=[];for(let i=0;i<K.length;i+=2)rows.push([K[i][0],String(K[i][1]),K[i+1]?K[i+1][0]:'',K[i+1]?String(K[i+1][1]):'']);
-  d.autoTable(Object.assign({},base,{startY:y,body:rows,theme:'grid',columnStyles:{0:{fontStyle:'bold',fillColor:[238,244,244]},2:{fontStyle:'bold',fillColor:[238,244,244]}}}));y=d.lastAutoTable.finalY+6}
- if(o.list){const S0=k=>L.reduce((s,x)=>s+(+x.a[k]||0),0),S1=k=>L.reduce((s,x)=>s+x.c[k],0);
-  const head=['Formando'].concat(o.rg?['RG','CPF','Telefone']:[],o.qt?['Luxo','Simples','Foto','Vegetal','F. família']:[],['Valor por formando','Entrada','Valor pago','Restante','Forma de pagamento','Situação']);
-  const body=L.map(x=>{const a=x.a,c=x.c;return [a.nome||''].concat(o.rg?[a.rg||'',a.cpf||'',a.tel||'']:[],o.qt?[a.luxo||'',a.simp||'',a.foto||'',a.qv||'',a.qf||'']:[],[R(c.vf),R(c.ent),R(c.pago),R(c.rest),a.forma||'',sT[c.sit]||'-'])});
-  const foot=[['TOTAL ('+L.length+')'].concat(o.rg?['','','']:[],o.qt?[S0('luxo'),S0('simp'),S0('foto'),S0('qv'),S0('qf')]:[],[R(S1('vf')),R(S1('ent')),R(S1('pago')),R(S1('rest')),'',''])];
-  const ini=1+(o.rg?3:0),nq=o.qt?5:0,cs={};for(let i=ini;i<ini+nq+4;i++)cs[i]={halign:'right'};
-  d.setFont('helvetica','bold');d.setFontSize(11);d.text('Formandos'+(o.pend?' com valor a pagar':'')+' ('+L.length+')',14,y+1);
-  d.autoTable(Object.assign({},base,{startY:y+3,head:[head],body:body,foot:foot,showFoot:'lastPage',theme:'grid',styles:Object.assign({},base.styles,{fontSize:o.rg&&o.qt?6.5:7.5}),columnStyles:cs,footStyles:{fillColor:[238,244,244],textColor:[23,50,58],fontStyle:'bold'},
-   didParseCell:h=>{if(h.section==='body'&&h.column.index===head.length-1){const t=h.cell.raw;h.cell.styles.fontStyle='bold';h.cell.styles.textColor=t==='Quitado'?[21,128,61]:t==='Pendente'?[180,83,9]:t==='Pago a mais'?[29,78,216]:[23,50,58]}}}));y=d.lastAutoTable.finalY+6}
- if(o.cm){const rows=[];L.forEach(x=>{const m=x.a.cm||{};[['vf','Valor por formando'],['ent','Entrada'],['pago','Valor pago']].forEach(p=>{if(m[p[0]])rows.push([(x.a.nome||'')+' - '+p[1],m[p[0]]])})});
-  if(rows.length){if(y>180){d.addPage();y=14}d.setFont('helvetica','bold');d.setFontSize(11);d.text('Comentários',14,y+1);d.autoTable(Object.assign({},base,{startY:y+3,head:[['Formando / campo','Comentário']],body:rows,theme:'grid',columnStyles:{0:{cellWidth:80}}}))}}
- const n=d.getNumberOfPages();for(let i=1;i<=n;i++){d.setPage(i);d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(120);d.text('Página '+i+' de '+n,283,205,{align:'right'})}
- return d.output('blob')}
-async function baixaPdf(T,o,btn){let dl=null;try{if(window.claude&&claude.use)dl=await claude.use('downloads')}catch(e){}
- if(!dl){alert('O download não está disponível aqui. Use "Baixar relatório (.html)" ou abra o painel pelo link no Claude.');return}
- const tx=btn.textContent;btn.textContent='Gerando PDF...';btn.disabled=true;
- try{const blob=await pdfRel(T,o),nome='relatorio-'+(T.curso+'-'+T.per).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase()+'.pdf';await dl.save({filename:nome,data:blob})}
- catch(e){if(!e||e.code!=='declined')alert('Não foi possível gerar o PDF ('+((e&&e.message)||'erro')+'). Use "Baixar relatório (.html)".')}
- btn.textContent=tx;btn.disabled=false}
-function showRel(T,o){const body=relBody(T,o),old=document.getElementById('relov');if(old)old.remove();
- const v=document.createElement('div');v.id='relov';v.style.cssText='position:fixed;inset:0;background:#e9eef0;z-index:30;overflow:auto';
- v.innerHTML=`<style>${RCSS}</style><div class="rbar" style="position:sticky;top:0;background:#0f161d;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;z-index:2"><button class="btn" id="rl-pr">Baixar PDF</button><button class="btn ghost" id="rl-dl">Baixar relatório (.html)</button><button class="btn ghost" id="rl-x">Fechar</button></div><div style="max-width:1100px;margin:16px auto;background:#fff;padding:24px;border-radius:8px"><div class="rp">${body}</div></div>`;
- document.body.appendChild(v);
- document.getElementById('rl-x').onclick=()=>v.remove();
- document.getElementById('rl-pr').onclick=function(){baixaPdf(T,o,this)};
- document.getElementById('rl-dl').onclick=async()=>{let dl=null;try{if(window.claude&&claude.use)dl=await claude.use('downloads')}catch(e){}
-  if(!dl){alert('O download não está disponível aqui. Use Imprimir / salvar em PDF.');return}
-  const nome='relatorio-'+(T.curso+'-'+T.per).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase()+'.html',
-   doc='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório '+esc(T.curso)+' '+esc(T.per)+'</title><style>'+RCSS+'body{margin:24px}@page{size:A4 landscape;margin:12mm}</style></head><body><div class="rp">'+body+'</div></body></html>';
-  try{await dl.save({filename:nome,data:doc})}catch(e){if(!e||e.code!=='declined')alert('Não foi possível salvar o arquivo.')}}}
-function openRel(){const T=turmaLista();if(!T)return;const o=document.createElement('div');o.className='ov';
- const ck=(id,l,on)=>`<label style="flex-direction:row;align-items:center;gap:8px;color:var(--tx);font-size:14px"><input type="checkbox" id="${id}"${on?' checked':''} style="width:auto"> ${l}</label>`;
- o.innerHTML=`<div class="dlg"><h2>Gerar relatório</h2><div class="sub">${esc(T.curso)} ${esc(T.per)} · ${esc(T.lista)}</div><div style="display:grid;gap:10px">${ck('ro-res','Resumo da turma (totais, situação e custo)',1)}${ck('ro-list','Lista de formandos',1)}${ck('ro-rg','Incluir RG, CPF e telefone',0)}${ck('ro-qt','Incluir quantidades (luxo, simplificado, foto, vegetal, foto família)',1)}${ck('ro-cm','Incluir comentários dos valores',1)}${ck('ro-pend','Mostrar só quem ainda deve',0)}<label>Observação (opcional)<textarea id="ro-obs" rows="3" style="width:100%;background:var(--card2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:10px;font:inherit"></textarea></label></div><div class="acts"><button class="btn ghost" id="ro-can">Cancelar</button><button class="btn" id="ro-go">Gerar relatório</button></div></div>`;
- document.body.appendChild(o);const g=id=>document.getElementById(id).checked;
- document.getElementById('ro-can').onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};
- document.getElementById('ro-go').onclick=()=>{const op={res:g('ro-res'),list:g('ro-list'),rg:g('ro-rg'),qt:g('ro-qt'),cm:g('ro-cm'),pend:g('ro-pend'),obs:document.getElementById('ro-obs').value.trim()};o.remove();showRel(T,op)}}
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-rel]');if(b)openRel()});
 /* comentários nos valores (como as notas do Excel) */
 function openCm(aid,f){const t=S.turmas.find(x=>x.alunos.some(a=>a.id===aid)),a=t&&t.alunos.find(x=>x.id===aid);if(!a)return;
  const nomes={vf:'Valor por formando',ent:'Entrada',pago:'Valor pago'},o=document.createElement('div');o.className='ov';
@@ -840,7 +722,7 @@ function mhtml(){
   ${f('data','Data do fechamento',x.data||'','full','Ex.: 08/01')}
   <label>Modelo do convite (Orçamentos)<select id="p-modelo">${S.orc.models.map(m=>`<option value="${m.id}"${m.id===mid0?' selected':''}>${esc(m.nome)}</option>`).join('')}</select></label>${f('qtd','Quantidade de convites',nz(x.qtd))}
   <div style="grid-column:1/-1"><button class="btn ghost sm" style="margin:0" data-act="calcparc">Calcular valor total pelo orçamento</button><p class="note" id="p-hint" style="margin:6px 0 0">Se a quantidade ficar vazia, usa luxo + simplificado. Se o valor total já tiver sido digitado, o sistema pergunta antes de substituir.</p></div>
-  ${f('total','Valor total (R$)',nz(x.total))}${f('rec','Valor recebido (R$)',nz(x.rec))}${f('custo','Custo (R$)',nz(x.custo),'full')}
+  ${f('total','Valor total (R$)',nz(x.total))}${f('rec','Valor recebido (R$)',nz(x.rec))}<label class="full">Custo (R$) · soma das saídas desta turma<input id="p-custo" readonly class="ro" value="${fmtIn(nz(x.custo))}"><small class="note">Para mudar, lance as saídas desta turma em <b>Entradas e saídas</b>.</small></label>${window.__pedidoCampo?window.__pedidoCampo(x,'p-ped'):''}
   ${f('form','Formandos',nz(x.form))}${f('luxo','Convites luxo',nz(x.luxo))}${f('simp','Convites simplificado',nz(x.simp))}${f('foto','Fotos',nz(x.foto))}
   ${f('unit','Valor unitário luxo (R$)',nz(x.unit))}${f('ent','Entrada combinada (%)',nz(x.ent))}${f('entv','Valor da entrada (R$), vazio usa o %',nz(x.entv))}</div>
   <p class="note">O valor a receber, o percentual, a etapa, o valor da entrada, o ticket por formando, o lucro previsto e a margem são calculados automaticamente. O cartão só entra no Financeiro quando o valor total é preenchido. O ano define em qual grupo o cartão aparece.</p>
@@ -848,7 +730,7 @@ function mhtml(){
  const x=S.turmas.find(t=>t.id===modal.id);if(!x)return'';
  const head=`<h2>${esc(x.curso)} · ${esc(x.per)}</h2><div class="sub">${esc(x.lista)}</div>`;
  if(modal.t==='edit'){
-  return `<div class="ov"><div class="dlg">${head}<div class="fg"><label class="full">Custo da turma (R$)<input id="ed-custo" inputmode="decimal" value="${x.custo?fin(x.custo):''}"></label><label>Entrada combinada (%)<input id="ed-pe" inputmode="decimal" value="${x.pe?fin(x.pe):''}"></label><label>Valor da entrada (R$)<input id="ed-entv" inputmode="decimal" value="${x.entv>0?fin(x.entv):''}" placeholder="${(x.alunos&&x.alunos.length)?fin(lres(x).ent):''}"></label></div>
+  return `<div class="ov"><div class="dlg">${head}<div class="fg"><label class="full">Custo da turma (R$) · soma das saídas desta turma<input id="ed-custo" readonly class="ro" value="${x.custo?fin(x.custo):''}" title="Para mudar, lance ou edite as saídas da turma em Financeiro → Entradas e saídas"><small class="note">Para mudar, lance ou edite as saídas desta turma em <b>Entradas e saídas</b> (gráfica, fotografia, acrílico…).</small></label>${window.__pedidoCampo?window.__pedidoCampo(x,'ed-ped'):''}<label>Entrada combinada (%)<input id="ed-pe" inputmode="decimal" value="${x.pe?fin(x.pe):''}"></label><label>Valor da entrada (R$)<input id="ed-entv" inputmode="decimal" value="${x.entv>0?fin(x.entv):''}" placeholder="${(x.alunos&&x.alunos.length)?fin(lres(x).ent):''}"></label></div>
   <p class="note">Valor da entrada: se ficar vazio, usa a soma da coluna Entrada da lista (ou o percentual, quando não há lista). Digite um valor para ajustar, por exemplo quando algum formando não deu a entrada. A entrada de cada formando se edita na própria lista.</p></div>
   <p class="note">Lucro previsto = valor total − custo da turma. O valor total, o recebido, as quantidades e o número de formandos vêm da lista de formandos (botão "Abrir lista").</p>
   <div class="acts"><button class="btn ghost" data-act="close">Cancelar</button><button class="btn ghost" data-act="lista" data-id="${x.id}">Abrir lista</button><button class="btn" data-act="saveed">Salvar</button></div></div></div>`}
@@ -860,12 +742,12 @@ function mhtml(){
 
 function render(){
  if(lista!=null&&!turmaLista())lista=null;
- if(!(S.tab>=0&&S.tab<TABS.length))S.tab=0;
+ if(![6,7,3,1].includes(S.tab))S.tab=6;
  const y=window.scrollY,sc={},lw0=document.querySelector('.lw'),lws=lw0?lw0.scrollLeft:0;
  document.querySelectorAll('.mscroll').forEach(e=>sc[e.dataset.m]=e.scrollLeft);
  document.getElementById('nav').innerHTML=[6,7,3,1].map(i=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${TABS[i]}</button>`).join('');
  let html;
- try{html=lista!=null?vL():[v0,v1,v2,(window.v3x||v3),v4,v5,v6,window.v7][S.tab]()}
+ try{html=lista!=null?vL():[v6,v1,v6,window.v3x,v6,v6,v6,window.v7][S.tab]()}
  catch(err){html='<div class="panel"><h3 class="r">Erro ao montar a tela</h3><p>'+esc(err&&err.message)+'</p></div>'}
  document.getElementById('app').innerHTML=html;
  let mh='';
@@ -982,7 +864,7 @@ document.addEventListener('click',e=>{
   if(x){x.custo=isNaN(cv)?0:cv;const pe2=document.getElementById('ed-pe'),en2=document.getElementById('ed-entv'),pv=pe2?num(pe2.value):NaN,ev2=en2?num(en2.value):NaN;
   if(!isNaN(pv)&&(pv<0||pv>100)){alert('A entrada combinada deve ficar entre 0 e 100%.');return}
   if(!isNaN(ev2)&&ev2<0){alert('O valor da entrada não pode ser negativo.');return}
-  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2}
+  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2;const pd=document.getElementById('ed-ped');if(pd)x.pedido=pd.value}
   modal=null}
  if(a==='saveparc'){
   const gt=k=>document.getElementById('p-'+k).value.trim(),g=k=>num(gt(k));
@@ -998,7 +880,7 @@ document.addEventListener('click',e=>{
   let T=isNaN(tv)?0:tv;const R0=isNaN(rv)?0:rv;
   
   const old=modal.id==null?null:S.parc.find(p=>p.id===modal.id);
-  const dados={nome:nome,parceiro:parceiro,data:data,mes:mes,ano:Math.round(av),custo:isNaN(cv)?0:cv,unit:isNaN(uv)?0:uv,ent:isNaN(ev)?0:ev,entv:(isNaN(evv)||evv<0)?null:evv,modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};
+  const dados={nome:nome,parceiro:parceiro,data:data,mes:mes,ano:Math.round(av),custo:isNaN(cv)?0:cv,unit:isNaN(uv)?0:uv,ent:isNaN(ev)?0:ev,entv:(isNaN(evv)||evv<0)?null:evv,modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};const pd=document.getElementById('p-ped');if(pd)dados.pedido=pd.value;
   ['form','luxo','simp','foto'].forEach(k=>{const v=g(k);dados[k]=isNaN(v)||v<0?0:Math.round(v)});
   let auto=0,calc=false;
   if(modal.ci&&Math.abs(T-modal.ci.val)<0.005){auto=T;calc=!modal.ci.exact}

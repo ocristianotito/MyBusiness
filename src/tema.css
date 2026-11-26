@@ -437,3 +437,15 @@ body.fin .esrefsum{padding:10px 16px;border-bottom:1px solid var(--c-bd);backgro
 body.fin .esrefsum .r{color:#F87168}
 @media (max-width:1300px){body.fin .vmrow2.es2{grid-template-columns:1fr}}
 .mod-prod .pnext.pent{color:#4BCE97}.mod-prod .pnext.pent:hover{border-color:#4BCE97;background:#12372b}
+/* campos só de leitura (custo vindo das saídas) */
+body.fin input.ro{background:transparent;border-style:dashed;color:var(--c-tx);cursor:default}
+/* Dashboard: chip da fase inteiro nas próximas colações */
+.drow{grid-template-columns:12px minmax(0,1fr) auto 92px 24px}
+.drow .mu.up{display:flex;align-items:center;gap:6px}
+.drow .chip.fasec{white-space:nowrap;flex-shrink:0;text-transform:none;margin-left:0}
+.mresp{display:flex;flex-direction:column;gap:2px;padding:9px 0 0;font-weight:600}.mresp small{font-weight:400}
+/* calendário: colações das turmas */
+.ev.pz.colz{border-left-color:#9F8FEF}.ev.pz.colz .pzi{color:#9F8FEF}
+/* cartão numa etapa de mês diferente da colação */
+.cardk .chip.mesx{background:#3a2c14;color:#f4d27a;border:1px solid #5c4b14;cursor:pointer;font:inherit;font-size:11px}
+.cardk .chip.mesx:hover{border-color:#f4d27a}

@@ -32,6 +32,12 @@ function collect(from, to) {
     if (!d || d < from || d > to || !visible(c)) return;
     put(c.prazo, { k: 'card', id, c, date: c.prazo });
   });
+  // colações das turmas (data no pedido): aparecem junto com os prazos
+  if (agShowPz && typeof colacaoDe === 'function') cards.forEach((c, id) => {
+    const k = colacaoDe(c), d = parseD(k);
+    if (!d || d < from || d > to || !visible(c)) return;
+    put(k, { k: 'card', col: true, id, c, date: k });
+  });
   byDay.forEach((l) => l.sort((a, b) => {
     const ka = a.k === 'card' ? -1 : (a.ev.allDay ? 0 : 1 + (AG.toMin(a.ev.start) || 0));
     const kb = b.k === 'card' ? -1 : (b.ev.allDay ? 0 : 1 + (AG.toMin(b.ev.start) || 0));
@@ -41,6 +47,7 @@ function collect(from, to) {
 }
 
 function chipHTML(it, drag) {
+  if (it.k === 'card' && it.col) return `<div class="ev pz colz${isDone(it.c) ? ' done' : ''}" data-card="${esc(it.id)}" data-date="${it.date}" title="Colação da turma"><span class="pzi">🎓</span>${esc(it.c.title || 'Pedido')}</div>`;
   if (it.k === 'card') {
     const di = dueInfo(it.c), late = di && di.cls === 'late', done = isDone(it.c);
     return `<div class="ev pz${late ? ' late' : ''}${done ? ' done' : ''}"${drag ? ' draggable="true"' : ''} data-card="${esc(it.id)}" data-date="${it.date}" title="Prazo do pedido · ${esc(colById(colOf(it.c)).name)}"><span class="pzi">Prazo</span>${esc(it.c.title || 'Pedido')}</div>`;
@@ -55,7 +62,7 @@ function headHTML(title) {
    <h3>${title}</h3>
    <div class="seg"><button data-ag="mes" class="${agView === 'mes' ? 'on' : ''}">Mês</button><button data-ag="semana" class="${agView === 'semana' ? 'on' : ''}">Semana</button></div>
    <label class="tog"><input type="checkbox" data-agf="ev"${agShowEv ? ' checked' : ''}> Compromissos</label>
-   <label class="tog"><input type="checkbox" data-agf="pz"${agShowPz ? ' checked' : ''}> Prazos dos pedidos</label>
+   <label class="tog"><input type="checkbox" data-agf="pz"${agShowPz ? ' checked' : ''}> Prazos e colações</label>
    <span class="hsp"></span>
    <button class="btn sm" data-ag="novo">+ Novo compromisso</button></div>`;
 }
@@ -68,7 +75,7 @@ function sideHTML() {
     const items = byDay.get(k).filter((it) => it.k === 'card' ? !isDone(it.c) : !(k === AG.iso(from) && !it.ev.allDay && AG.startAt(it.ev, k) + 30 * 60000 < now));
     if (!items.length) return '';
     return `<div class="sdday">${dayLabel(k)}</div>` + items.map((it) => it.k === 'card'
-      ? `<button class="sditem" data-card="${esc(it.id)}"><i style="background:${PAL.laranja}"></i><span><b>${esc(it.c.title || 'Pedido')}</b><small>Prazo de entrega</small></span></button>`
+      ? `<button class="sditem" data-card="${esc(it.id)}"><i style="background:${it.col ? '#9F8FEF' : PAL.laranja}"></i><span><b>${esc(it.c.title || 'Pedido')}</b><small>${it.col ? 'Colação' : 'Prazo de entrega'}</small></span></button>`
       : `<button class="sditem" data-ev="${esc(it.id)}" data-date="${k}"><i style="background:${tipoOf(it.ev).c}"></i><span><b>${esc(it.ev.title || tipoOf(it.ev).n)}</b><small>${esc(fmtT(it.ev))}${it.ev.local ? ' · ' + esc(it.ev.local) : ''}${it.ev.lembrete >= 0 ? ' · 🔔' : ''}</small></span></button>`).join('');
   }).join('');
   return `<aside class="agside"><h4>Próximos 14 dias</h4>${body || '<p class="note">Nada marcado. Clique num dia do calendário para criar um compromisso.</p>'}</aside>`;
