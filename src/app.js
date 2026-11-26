@@ -138,6 +138,14 @@ async function init(){
     const w=norm(col.name).split(/\s+/)[0],c=porNome.get(norm(col.name))||porNome.get(w);
     return Object.assign({},col,{c:c&&/^#[0-9a-f]{6}$/i.test(c)?c:(PAL_LCOL[col.c]||col.c)})})});
    persist()}
+  /* pedido do dono (1.2.28): etapa ENTREGUE no fim do quadro (aprovado ainda não é finalizado).
+     Se já existir uma etapa ENTREGUE/ENTREGUES, ela é usada; senão é criada como a última. Roda uma vez. */
+  if(cfg&&Array.isArray(cfg.cols)&&cfg.cols.length&&!cfg.entregue1228){
+   const cols=cfg.cols.slice(),sem=n=>String(n||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+   let en=cols.find(c=>/^ENTREGUES?$/.test(sem(c.name)));
+   if(!en){en={id:'lent'+Date.now().toString(36),name:'ENTREGUE',c:'#4BCE97'};cols.push(en)}
+   cfg=Object.assign({},cfg,{cols,colEnt:en.id,entregue1228:1});
+   persist()}
   /* pedido do dono (1.2.18): etapas REVISÃO e APROVADO antes da última (ENTREGUES), usadas pelos botões do cartão.
      Se já existir uma etapa com esse nome, ela é usada. Os ids ficam em cfg.colRev / cfg.colAprov. Roda uma vez. */
   if(cfg&&Array.isArray(cfg.cols)&&!cfg.revAprov1218){
@@ -229,12 +237,17 @@ function renderTop(){
 /* ===== quadro ===== */
 /* botões rápidos do cartão: levam o pedido para a etapa REVISÃO ou APROVADO */
 function qaBtns(c){
- const cs=C().cols,r=cs.find(x=>x.id===C().colRev),a=cs.find(x=>x.id===C().colAprov),at=colOf(c);if(!r&&!a)return'';
- return `<span class="qa">${r&&at!==r.id?`<button data-qa="rev" title="Mover para ${esc(r.name)}">Revisão</button>`:''}${a&&at!==a.id?`<button data-qa="apr" title="Mover para ${esc(a.name)}">Aprovado</button>`:''}</span>`}
+ const cs=C().cols,r=cs.find(x=>x.id===C().colRev),a=cs.find(x=>x.id===C().colAprov),en=cs.find(x=>x.id===colEnt()),at=colOf(c);if(!r&&!a&&!en)return'';
+ return `<span class="qa">${r&&at!==r.id?`<button data-qa="rev" title="Mover para ${esc(r.name)}">Revisão</button>`:''}${a&&at!==a.id?`<button data-qa="apr" title="Mover para ${esc(a.name)}">Aprovado</button>`:''}${en&&at!==en.id?`<button data-qa="ent" title="Mover para ${esc(en.name)}: pedido finalizado">Entregue</button>`:''}</span>`}
+window.marcarEntregue=id=>moverQA(id,'ent');
+/* etapa ENTREGUE (a última do quadro): o pedido finalizado, depois de aprovado e impresso */
+const colEnt=()=>C().colEnt&&C().cols.some(x=>x.id===C().colEnt)?C().colEnt:lastCol();
 function moverQA(id,qual){
- const c=cards.get(id),col=qual==='rev'?C().colRev:C().colAprov,alvo=C().cols.find(x=>x.id===col);if(!c||!alvo)return;
+ const c=cards.get(id),col=qual==='rev'?C().colRev:qual==='ent'?colEnt():C().colAprov,alvo=C().cols.find(x=>x.id===col);if(!c||!alvo)return;
  const ult=sorted([...cards.entries()].filter(([k,x])=>k!==id&&colOf(x)===col)).pop();
- saveCard(id,Object.assign({},c,{col,ord:(ult?(ult[1].ord||0):0)+1024,atualizado:Date.now()}));
+ const next=Object.assign({},c,{col,ord:(ult?(ult[1].ord||0):0)+1024,atualizado:Date.now()});
+ if(col===lastCol()&&colOf(c)!==col)next.entregueEm=Date.now();
+ saveCard(id,next);
  toast((c.title||'Pedido')+' → '+alvo.name)}
 /* fase da Produtividade com a cor dela (produtividade.js) */
 const faseChip=c=>{const f=typeof window.faseDaTurma==='function'?window.faseDaTurma(c):null;return f?`<span class="chip fasec" style="--fc:${esc(f.c)}" title="Fase na Produtividade">${esc(f.name)}</span>`:''};

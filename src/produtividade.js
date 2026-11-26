@@ -62,7 +62,7 @@
       <h5>${esc(c.title || 'Sem título')}</h5>${c.sub ? `<div class="s">${esc(c.sub)}</div>` : ''}
       <div class="pmeta">${col ? `<span class="chip colac" title="Data da colação">Colação ${fmtColacao(col).slice(0, 5)}</span>` : ''}${d ? `<span class="chip ${d.cls}" title="Prazo de entrega">${esc(d.txt)}</span>` : ''}${n != null ? `<span class="chip ptempo" title="Tempo nesta fase">${tempo(n)}</span>` : ''}</div>
       ${andamento(id, c)}
-      <div class="pfoot">${r ? `<span class="av" title="Responsável: ${esc(r)}">${esc(initials(r))}</span><span class="prn">${esc(r)}</span>` : '<span class="prn mu">Sem responsável</span>'}<span class="sp"></span>${ultima ? '' : `<button class="pnext" data-pnext="${esc(id)}" title="Mover para ${esc(prox.name)}">Próxima fase →</button>`}</div></div>`;
+      <div class="pfoot">${r ? `<span class="av" title="Responsável: ${esc(r)}">${esc(initials(r))}</span><span class="prn">${esc(r)}</span>` : '<span class="prn mu">Sem responsável</span>'}<span class="sp"></span>${ultima ? `<button class="pnext pent" data-pent="${esc(id)}" title="Pedido finalizado: vai para a etapa Entregue nas Demandas e sai deste quadro">Entregue ✓</button>` : `<button class="pnext" data-pnext="${esc(id)}" title="Mover para ${esc(prox.name)}">Próxima fase →</button>`}</div></div>`;
   }
 
   // turmas sempre pela data da colação, a mais próxima primeiro; sem data no fim (pedido do dono)
@@ -107,6 +107,8 @@
   box.addEventListener('click', (e) => {
     const nx = e.target.closest('[data-pnext]');
     if (nx) { e.stopPropagation(); const c = cards.get(nx.dataset.pnext), fs = fases(), i = fs.indexOf(faseDe(c)); if (fs[i + 1]) mover(nx.dataset.pnext, fs[i + 1].id); return; }
+    const pe = e.target.closest('[data-pent]');
+    if (pe) { e.stopPropagation(); if (typeof window.marcarEntregue === 'function') { window.marcarEntregue(pe.dataset.pent); renderProdutividade(); } return; }
     const tg = e.target.closest('[data-ptog]');
     if (tg) { e.stopPropagation(); const k = tg.dataset.ptog; if (abertos.has(k)) abertos.delete(k); else abertos.add(k); return renderProdutividade(); }
     if (e.target.closest('[data-pcfg]')) { e.stopPropagation(); return configurar(); }
