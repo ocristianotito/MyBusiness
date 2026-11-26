@@ -234,5 +234,12 @@ rep("const ORC_PER=['2027.1','2027.2','2028.1','2028.2'];",
     "if(n<0)return Math.round(3.75*i*100)/100;const st=n>0&&a[n-1]!=null?(+a[n]||0)-(+a[n-1]||0):3.75;return Math.round(((+a[n]||0)+st*(i-n))*100)/100}")
 rep("*(1+(S.orc.acr[i]||0)/100)*100)/100;", "*(1+acrDe(i)/100)*100)/100;")
 rep('value="${fin(S.orc.acr[i]||0)}"', 'value="${fin(acrDe(i))}"')
+# Acrílico: valor por convite no primeiro período (S.orc.acril) e projeção para os outros períodos com os mesmos acréscimos
+rep("value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>",
+    "value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>"
+    "<div class=\"oacril\"><label>Acrílico · valor por convite em ${ORC_PER[0]} (R$)<input data-acril inputmode=\"decimal\" value=\"${S.orc.acril?fin(S.orc.acril):''}\" placeholder=\"Ex.: 12,50\"></label>"
+    "${S.orc.acril?`<div class=\"oacp\"><small>Projeção com os acréscimos acima</small><div>${ORC_PER.map((p,i)=>`<span class=\"${i===per?'on':''}\"><b>${p}</b>${BRL(acrilDe(i))}</span>`).join('')}</div></div>`:'<div class=\"oacp\"><small>Digite o valor do acrílico para ver a projeção de cada período.</small></div>'}</div>")
+rep("function acrDe(i){", "function acrilDe(i){const b=+S.orc.acril||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\nfunction acrDe(i){")
+rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.acril!==undefined){const v=num(t.value);S.orc.acril=isNaN(v)||v<=0?0:v;return render()}\n if(t.dataset.ac!==undefined){")
 (root / 'src' / 'financeiro.html').write_text(doc, encoding='utf-8')
 print('ok', len(doc))

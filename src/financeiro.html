@@ -368,6 +368,7 @@ function tot(){
 /* ===== orçamento ===== */
 const QTDS=[70,100,150,200,250,300,350,400,450,500,550,600];
 const ORC_PER=['2027.1','2027.2','2028.1','2028.2','2029.1','2029.2','2030.1','2030.2','2031.1','2031.2'];
+function acrilDe(i){const b=+S.orc.acril||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}
 function acrDe(i){const a=S.orc.acr||[];if(a[i]!=null&&a[i]!=='')return +a[i]||0;let n=Math.min(a.length,i)-1;while(n>=0&&(a[n]==null||a[n]===''))n--;if(n<0)return Math.round(3.75*i*100)/100;const st=n>0&&a[n-1]!=null?(+a[n]||0)-(+a[n-1]||0):3.75;return Math.round(((+a[n]||0)+st*(i-n))*100)/100}
 const OCOLS=[
 {k:'unit',n:'Convite unitário'},
@@ -621,7 +622,7 @@ function v1(){
  if(S.orcN!=null&&ms.length>S.orcN&&ms.length)S.orcM=ms[ms.length-1].id;
  S.orcN=ms.length;
  const m=ms.find(x=>x.id===S.orcM)||ms[0];
- const topo=`<div class="panel"><div class="orow"><label>Tamanho do convite<select data-sel="mod">${ms.map(x=>`<option value="${x.id}"${m&&x.id===m.id?' selected':''}>${esc(x.nome)}${x.capa?' · '+esc(x.capa):''}</option>`).join('')}</select></label><label>Período<select data-sel="per">${ORC_PER.map((p,i)=>`<option value="${i}"${i===per?' selected':''}>${p}</option>`).join('')}</select></label>${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac="${i}" inputmode="decimal" value="${fin(acrDe(i))}"></label>`).join('')}</div>
+ const topo=`<div class="panel"><div class="orow"><label>Tamanho do convite<select data-sel="mod">${ms.map(x=>`<option value="${x.id}"${m&&x.id===m.id?' selected':''}>${esc(x.nome)}${x.capa?' · '+esc(x.capa):''}</option>`).join('')}</select></label><label>Período<select data-sel="per">${ORC_PER.map((p,i)=>`<option value="${i}"${i===per?' selected':''}>${p}</option>`).join('')}</select></label>${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac="${i}" inputmode="decimal" value="${fin(acrDe(i))}"></label>`).join('')}</div><div class="oacril"><label>Acrílico · valor por convite em ${ORC_PER[0]} (R$)<input data-acril inputmode="decimal" value="${S.orc.acril?fin(S.orc.acril):''}" placeholder="Ex.: 12,50"></label>${S.orc.acril?`<div class="oacp"><small>Projeção com os acréscimos acima</small><div>${ORC_PER.map((p,i)=>`<span class="${i===per?'on':''}"><b>${p}</b>${BRL(acrilDe(i))}</span>`).join('')}</div></div>`:'<div class="oacp"><small>Digite o valor do acrílico para ver a projeção de cada período.</small></div>'}</div>
  <div class="lbtns" style="margin-top:12px"></div>
  <p class="note" style="margin-top:10px">Escolha o tamanho do convite na caixa "Tamanho do convite" e a tabela dele aparece logo abaixo. Total = convite unitário × quantidade + Vegetal + Família + Layout + as colunas extras (e as colunas que você criar). A coluna Gráfica só mostra convite unitário × quantidade e não entra na soma do total. Todas as células são editáveis, inclusive a quantidade. Use "+ linha" e "+ coluna" para acrescentar e o X para excluir. Se você apagar um valor digitado, volta o valor de referência.</p></div>`;
  if(!m)return `<div class="vmtop"><h2>Orçamentos</h2><span class="note">tabela de preços por tamanho e período</span><span class="sp" style="flex:1"></span><button class="btn ghost sm" data-orcpdf>Gerar orçamento em PDF</button><button class="btn sm" data-act="addm">+ novo modelo</button></div>${topo}<p class="note">Nenhum modelo cadastrado. Use "+ novo modelo".</p>`;
@@ -1059,6 +1060,7 @@ document.addEventListener('change',e=>{
   return render()}
  if(t.dataset.oi){const p=t.dataset.oi.split('|');const k=ek(p[0],p[1],ORC_PER[S.orcP],p[2]),v=num(t.value);
   if(isNaN(v))delete S.orc.ed[k];else S.orc.ed[k]=v;return render()}
+ if(t.dataset.acril!==undefined){const v=num(t.value);S.orc.acril=isNaN(v)||v<=0?0:v;return render()}
  if(t.dataset.ac!==undefined){const v=num(t.value);S.orc.acr[+t.dataset.ac]=isNaN(v)?0:v;return render()}
  if(t.dataset.sel==='per'){S.orcP=+t.value;return render()}
  const k=t.dataset.in;if(!k)return;
