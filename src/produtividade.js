@@ -38,11 +38,30 @@
   function ativos() {   // pedidos ainda não entregues
     return [...cards.entries()].filter(([, c]) => !isDone(c));
   }
+  // andamento: barra com uma parte por fase (feitas, a atual e as que faltam) e, ao abrir, as datas de cada fase.
+  // c.fHist = {faseId: quando entrou}; turmas antigas só têm c.faseEm (a data da fase atual).
+  const abertos = new Set();
+  const dm = (t) => { const d = new Date(t); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const nd = (n) => n <= 0 ? 'menos de 1 dia' : n === 1 ? '1 dia' : n + ' dias';
+  function andamento(id, c) {
+    const fs = fases(), at = fs.indexOf(faseDe(c)), tot = fs.length, pct = tot > 1 ? Math.round(at / (tot - 1) * 100) : 100;
+    const h = Object.assign({}, c.fHist || {}); if (c.faseEm && !h[faseDe(c).id]) h[faseDe(c).id] = c.faseEm;
+    const bar = `<div class="pbar" title="${esc(faseDe(c).name)} · etapa ${at + 1} de ${tot}">${fs.map((f, i) => `<i class="${i < at ? 'ok' : i === at ? 'at' : ''}" style="--sc:${esc(f.c)}" title="${esc(f.name)}"></i>`).join('')}</div>`;
+    const ab = abertos.has(id);
+    const det = ab ? `<ol class="pand">${fs.map((f, i) => {
+      const ent = h[f.id], prox = fs.slice(i + 1).map((x) => h[x.id]).find(Boolean);
+      const quando = i < at ? (ent ? dm(ent) + (prox ? ' → ' + dm(prox) + ' · ' + nd(Math.round((prox - ent) / 86400000)) : '') : 'concluída')
+        : i === at ? (ent ? (dias(ent) === 0 ? 'começou hoje' : 'desde ' + dm(ent) + ' · ' + tempo(dias(ent))) : 'em andamento') : 'falta';
+      return `<li class="${i < at ? 'ok' : i === at ? 'at' : ''}" style="--sc:${esc(f.c)}"><span class="pm">${i < at ? '✓' : i === at ? '●' : '○'}</span><b>${esc(f.name)}</b><small>${quando}</small></li>`;
+    }).join('')}</ol>` : '';
+    return `<div class="pprog">${bar}<button class="ptog" data-ptog="${esc(id)}"><span>Etapa ${at + 1} de ${tot} · <b>${pct}%</b></span><em>${ab ? '▾ ocultar' : '▸ andamento'}</em></button>${det}</div>`;
+  }
   function cartao(id, c, ultima, prox) {
     const d = dueInfo(c), col = colacaoDe(c), r = respDe(c), n = dias(c.faseEm);
     return `<div class="cardk pcard${n != null && n > 7 ? ' parado' : ''}" draggable="true" tabindex="0" data-id="${esc(id)}">
       <h5>${esc(c.title || 'Sem título')}</h5>${c.sub ? `<div class="s">${esc(c.sub)}</div>` : ''}
       <div class="pmeta">${col ? `<span class="chip colac" title="Data da colação">Colação ${fmtColacao(col).slice(0, 5)}</span>` : ''}${d ? `<span class="chip ${d.cls}" title="Prazo de entrega">${esc(d.txt)}</span>` : ''}${n != null ? `<span class="chip ptempo" title="Tempo nesta fase">${tempo(n)}</span>` : ''}</div>
+      ${andamento(id, c)}
       <div class="pfoot">${r ? `<span class="av" title="Responsável: ${esc(r)}">${esc(initials(r))}</span><span class="prn">${esc(r)}</span>` : '<span class="prn mu">Sem responsável</span>'}<span class="sp"></span>${ultima ? '' : `<button class="pnext" data-pnext="${esc(id)}" title="Mover para ${esc(prox.name)}">Próxima fase →</button>`}</div></div>`;
   }
 
@@ -76,7 +95,11 @@
     if (!antes) ord = (l.length ? (l[l.length - 1][1].fOrd || 0) : 0) + 1024;
     else { const i = l.findIndex(([k]) => k === antes), nx = l[i] ? (l[i][1].fOrd || 0) : 0, pv = i > 0 ? (l[i - 1][1].fOrd || 0) : nx - 2048; ord = (pv + nx) / 2; }
     const next = Object.assign({}, c, { fase: faseId, fOrd: ord });
-    if (!mesma) { next.faseEm = Date.now(); next.atualizado = Date.now(); }
+    if (!mesma) { const ag = Date.now(), h = Object.assign({}, c.fHist || {});
+      if (c.faseEm && !h[faseDe(c).id]) h[faseDe(c).id] = c.faseEm;   // guarda a data da fase de onde saiu (turmas antigas)
+      // voltou para uma fase anterior: as fases depois dela deixam de contar como feitas
+      const fs = fases(), i = fs.findIndex((f) => f.id === faseId); fs.slice(i + 1).forEach((f) => { delete h[f.id]; });
+      h[faseId] = ag; next.fHist = h; next.faseEm = ag; next.atualizado = ag; }
     saveCard(id, next);
     if (!mesma) toast((c.title || 'Turma') + ' → ' + (fases().find((f) => f.id === faseId) || {}).name);
   }
@@ -84,6 +107,8 @@
   box.addEventListener('click', (e) => {
     const nx = e.target.closest('[data-pnext]');
     if (nx) { e.stopPropagation(); const c = cards.get(nx.dataset.pnext), fs = fases(), i = fs.indexOf(faseDe(c)); if (fs[i + 1]) mover(nx.dataset.pnext, fs[i + 1].id); return; }
+    const tg = e.target.closest('[data-ptog]');
+    if (tg) { e.stopPropagation(); const k = tg.dataset.ptog; if (abertos.has(k)) abertos.delete(k); else abertos.add(k); return renderProdutividade(); }
     if (e.target.closest('[data-pcfg]')) { e.stopPropagation(); return configurar(); }
   });
   box.addEventListener('input', (e) => { if (e.target.id === 'pq') { busca = e.target.value; const p = e.target.selectionStart; renderProdutividade(); const i = document.getElementById('pq'); if (i) { i.focus(); i.setSelectionRange(p, p); } } });

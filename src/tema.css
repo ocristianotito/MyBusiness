@@ -379,3 +379,18 @@ body.fin .oacbox{display:flex;align-items:center;gap:8px;height:38px;padding:0 1
 body.fin .oacbox input{margin:0;width:auto}body.fin .oacbox small{color:var(--c-mu);font-size:12px}
 body.fin .oacbtn{align-self:flex-end;margin:0 0 2px auto!important}
 body.fin .oacpan{margin-top:14px;padding-top:14px;border-top:1px solid var(--c-bd)}
+/* Produtividade: andamento de cada turma (barra das fases + datas) */
+.mod-prod .pprog{margin:-2px 0 9px}
+.mod-prod .pbar{display:flex;gap:3px;height:7px}
+.mod-prod .pbar i{flex:1;border-radius:3px;background:var(--c-sunk);border:1px solid var(--c-bd)}
+.mod-prod .pbar i.ok{background:var(--sc);border-color:transparent;opacity:.55}
+.mod-prod .pbar i.at{background:var(--sc);border-color:transparent;box-shadow:0 0 0 1px var(--c-bg),0 0 6px var(--sc)}
+.mod-prod .ptog{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;padding:5px 0 0;color:var(--c-mu);font:inherit;font-size:11.5px;cursor:pointer}
+.mod-prod .ptog b{color:var(--c-tx)}.mod-prod .ptog em{font-style:normal;color:var(--c-teal);font-weight:600}.mod-prod .ptog:hover em{text-decoration:underline}
+.mod-prod .pand{list-style:none;margin:6px 0 0;padding:8px 9px;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);display:flex;flex-direction:column;gap:5px}
+.mod-prod .pand li{display:grid;grid-template-columns:14px 1fr;column-gap:6px;font-size:11.5px;color:var(--c-mu)}
+.mod-prod .pand li .pm{grid-row:1/3;text-align:center;font-size:11px;line-height:16px}
+.mod-prod .pand li b{font-weight:600;font-size:11px;letter-spacing:.3px}.mod-prod .pand li small{font-size:11px}
+.mod-prod .pand li.ok .pm{color:var(--sc)}.mod-prod .pand li.ok b{color:var(--c-tx)}
+.mod-prod .pand li.at .pm{color:var(--sc)}.mod-prod .pand li.at b{color:var(--sc)}.mod-prod .pand li.at small{color:var(--c-tx)}
+.mod-prod .pand li:not(.ok):not(.at){opacity:.6}
