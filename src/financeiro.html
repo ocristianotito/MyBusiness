@@ -284,7 +284,7 @@ function mkTurma(d){
 const P0=[].map((x,i)=>({id:9000+i,nome:x[0],parceiro:'',data:x[1],ano:ANO_PADRAO,mes:x[2],total:x[3]||0,rec:0,custo:x[4]||0,form:0,luxo:0,simp:0,foto:0,unit:0,ent:0}));
 /* ===== PARTE 4: funções, cálculos e estado ===== */
 const KEY='dashboard_convites_v2';
-const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Turmas e parceiros','Pagamentos','Convites com parceiros','Visão do mês'];
+const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Turmas e parceiros','Pagamentos','Convites com parceiros','Visão do mês','Entradas e saídas'];
 const COLS=['Até 25% pago','25% a 50% pago','50% a 99% pago','Quitado'];
 const PCOLS=['Janeiro','Fevereiro','Março','Abril','Outros'];
 const SIT={w:'Pendente',ok:'Quitado',x:'Pago a mais'};
@@ -863,9 +863,9 @@ function render(){
  if(!(S.tab>=0&&S.tab<TABS.length))S.tab=0;
  const y=window.scrollY,sc={},lw0=document.querySelector('.lw'),lws=lw0?lw0.scrollLeft:0;
  document.querySelectorAll('.mscroll').forEach(e=>sc[e.dataset.m]=e.scrollLeft);
- document.getElementById('nav').innerHTML=[6,3,1].map(i=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${TABS[i]}</button>`).join('');
+ document.getElementById('nav').innerHTML=[6,7,3,1].map(i=>`<button class="${i===S.tab&&lista==null?'on':''}" data-tab="${i}">${TABS[i]}</button>`).join('');
  let html;
- try{html=lista!=null?vL():[v0,v1,v2,(window.v3x||v3),v4,v5,v6][S.tab]()}
+ try{html=lista!=null?vL():[v0,v1,v2,(window.v3x||v3),v4,v5,v6,window.v7][S.tab]()}
  catch(err){html='<div class="panel"><h3 class="r">Erro ao montar a tela</h3><p>'+esc(err&&err.message)+'</p></div>'}
  document.getElementById('app').innerHTML=html;
  let mh='';

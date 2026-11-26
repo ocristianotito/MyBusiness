@@ -394,3 +394,37 @@ body.fin .oacpan{margin-top:14px;padding-top:14px;border-top:1px solid var(--c-b
 .mod-prod .pand li.ok .pm{color:var(--sc)}.mod-prod .pand li.ok b{color:var(--c-tx)}
 .mod-prod .pand li.at .pm{color:var(--sc)}.mod-prod .pand li.at b{color:var(--sc)}.mod-prod .pand li.at small{color:var(--c-tx)}
 .mod-prod .pand li:not(.ok):not(.at){opacity:.6}
+/* Financeiro → Entradas e saídas */
+body.fin .es .vmtop{flex-wrap:wrap}
+body.fin .esseg{display:flex;gap:3px;background:var(--c-sunk);border:1px solid var(--c-bd);border-radius:var(--r-ctl);padding:3px;margin-left:6px}
+body.fin .esseg button{background:none;border:0;color:var(--c-mu);border-radius:6px;padding:5px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+body.fin .esseg button.on{background:var(--c-card2);color:var(--c-teal)}
+body.fin .vmcards.es4{grid-template-columns:1fr 1fr 1fr}
+body.fin .vmrow2.es2{grid-template-columns:1fr 1fr}
+body.fin .esb{display:grid;grid-template-columns:minmax(0,170px) 1fr 110px;gap:10px;align-items:center;font-size:12.5px;padding:5px 0}
+body.fin .esb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--c-tx)}
+body.fin .esb i{height:9px;background:var(--c-sunk);border-radius:5px;overflow:hidden;display:block}
+body.fin .esb i b{display:block;height:100%;border-radius:5px;background:#F87168}body.fin .esb i b.g{background:#4BCE97}
+body.fin .esb em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--c-tx)}
+body.fin .esfil{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--c-bd)}
+body.fin .esfil input{flex:1;min-width:220px}body.fin .esfil select{width:auto;min-width:170px}
+body.fin .eswrap{overflow-x:auto}
+body.fin table.estab{width:100%;border-collapse:collapse;font-size:13px}
+body.fin table.estab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--c-mu);padding:9px 12px;border-bottom:1px solid var(--c-bd);white-space:nowrap}
+body.fin table.estab td{padding:9px 12px;border-bottom:1px solid var(--c-bd);vertical-align:middle}
+body.fin table.estab .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+body.fin table.estab tbody tr:hover td{background:rgba(255,255,255,.02)}
+body.fin table.estab tfoot td{font-weight:700;border-bottom:0}
+body.fin table.estab .mu{color:var(--c-mu)}
+body.fin .esd{white-space:nowrap;color:var(--c-mu);font-variant-numeric:tabular-nums}
+body.fin .esdesc{font-weight:600}
+body.fin .estp{font-size:11.5px;font-weight:600;white-space:nowrap}body.fin .estp.e{color:#4BCE97}body.fin .estp.s{color:#F87168}
+body.fin .escat{font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--c-sunk);border:1px solid var(--c-bd);white-space:nowrap}
+body.fin .esv.e{color:#4BCE97;font-weight:700}body.fin .esv.s{color:#F87168;font-weight:700}
+body.fin tr.pend .esv{opacity:.7}
+body.fin .espg{background:var(--c-sunk);border:1px solid var(--c-bd);color:var(--c-mu);border-radius:99px;padding:3px 10px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+body.fin .espg:hover{border-color:var(--c-teal);color:var(--c-teal)}
+body.fin .espg.on{background:#12372b;border-color:#1f6b4f;color:#4BCE97}
+body.fin .esact{white-space:nowrap;text-align:right}
+body.fin .esact button{background:none;border:0;color:var(--c-mu);font:inherit;font-size:12px;cursor:pointer;padding:2px 5px}body.fin .esact button:hover{color:var(--c-tx)}
+@media (max-width:1100px){body.fin .vmrow2.es2,body.fin .vmcards.es4{grid-template-columns:1fr}}

@@ -25,10 +25,10 @@ rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'vend
 rep('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', 'vendor/jspdf.plugin.autotable.min.js')
 # aba nova "Visão do mês" (fluxo.js), mostrada primeiro e aberta ao entrar
 rep("const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Financeiro','Pagamentos','Convites com parceiros'];",
-    "const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Turmas e parceiros','Pagamentos','Convites com parceiros','Visão do mês'];")
+    "const TABS=['Clientes/Turmas','Orçamentos','Visão geral','Turmas e parceiros','Pagamentos','Convites com parceiros','Visão do mês','Entradas e saídas'];")
 rep("document.getElementById('nav').innerHTML=TABS.map((n,i)=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${n}</button>`).join('');",
-    "document.getElementById('nav').innerHTML=[6,3,1].map(i=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${TABS[i]}</button>`).join('');")
-rep("[v0,v1,v2,v3,v4,v5][S.tab]()", "[v0,v1,v2,(window.v3x||v3),v4,v5,v6][S.tab]()")
+    "document.getElementById('nav').innerHTML=[6,7,3,1].map(i=>`<button class=\"${i===S.tab&&lista==null?'on':''}\" data-tab=\"${i}\">${TABS[i]}</button>`).join('');")
+rep("[v0,v1,v2,v3,v4,v5][S.tab]()", "[v0,v1,v2,(window.v3x||v3),v4,v5,v6,window.v7][S.tab]()")
 rep("let S=load(),lista=null,modal=null,pendFocus=null;", "let S=load(),lista=null,modal=null,pendFocus=null;S.tab=6;")
 doc = doc.replace(" if(a==='add'){const d=prompt('Descrição da despesa:');", " if(a==='add'&&window.__vmAdd){return window.__vmAdd('s')}\n if(a==='add'){const d=prompt('Descrição da despesa:');", 1)
 rep("<div id=\"modal\"></div>\n<script>\n/* ===== PARTE 2", "<div id=\"modal\"></div>\n<script src=\"vendor/qrcode.js\"></script>\n<script src=\"fluxo.js\"></script>\n<script>\n/* ===== PARTE 2")

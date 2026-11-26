@@ -29,10 +29,10 @@
   }
   function itens(m) {
     const c = cx(), out = [];
-    c.mov.filter((x) => x.mes === m).forEach((x) => out.push({ src: 'mov', id: x.id, tipo: x.tipo, grupo: x.grupo, desc: x.desc, valor: x.valor, dia: x.dia, pago: !!x.pago, turmaId: x.turmaId }));
+    c.mov.filter((x) => x.mes === m).forEach((x) => out.push({ src: 'mov', id: x.id, tipo: x.tipo, grupo: x.grupo, desc: x.desc, valor: x.valor, dia: x.dia, pago: !!x.pago, turmaId: x.turmaId, para: x.para || '', cat: x.cat || '' }));
     c.rec.filter((r) => (r.desde || '0000-00') <= m && (!r.ate || m <= r.ate)).forEach((r) => {
       const st = c.recSt[r.id + '|' + m] || {};
-      out.push({ src: 'rec', id: r.id, tipo: r.tipo, grupo: r.grupo, desc: r.desc, valor: st.valor != null ? st.valor : r.valor, dia: r.dia, pago: !!st.pago, rec: true, turmaId: r.turmaId });
+      out.push({ src: 'rec', id: r.id, tipo: r.tipo, grupo: r.grupo, desc: r.desc, valor: st.valor != null ? st.valor : r.valor, dia: r.dia, pago: !!st.pago, rec: true, turmaId: r.turmaId, para: r.para || '', cat: r.cat || '' });
     });
     return out.sort((a, b) => (a.dia || 99) - (b.dia || 99) || String(a.desc).localeCompare(String(b.desc), 'pt-BR'));
   }
@@ -136,6 +136,8 @@
     const turmas = (S.turmas || []).map((t) => [t.id, t.curso + ' ' + t.per + (t.lista ? ' · ' + t.lista : '')]);
     dialog(`<h2>${novo ? (tipo === 'e' ? 'Nova entrada' : 'Nova saída') : 'Editar lançamento'}</h2><div class="sub">${ymNome(mes)}${src === 'rec' ? ' · repete todo mês: o valor e o pago valem para este mês' : ''}</div>
       <div class="fg"><label class="full">Descrição<input id="vm-desc" value="${esc(it.desc)}" placeholder="${tipo === 'e' ? 'Ex.: Parcela comissão Direito UNEX' : 'Ex.: Gráfica, aluguel, internet'}"></label>
+      <label>${tipo === 'e' ? 'De quem (pessoa ou empresa)' : 'Para quem (empresa ou pessoa)'}<input id="vm-para" list="vm-paras" value="${esc(it.para || '')}" placeholder="${tipo === 'e' ? 'Ex.: Comissão Direito UNEX' : 'Ex.: Gráfica Silva, Papelaria Central'}"><datalist id="vm-paras">${parasUsados().map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
+      <label>Categoria<input id="vm-cat" list="vm-cats" value="${esc(it.cat || '')}" placeholder="${tipo === 'e' ? 'Ex.: Turma, Venda avulsa' : 'Ex.: Material, Gráfica, Aluguel'}"><datalist id="vm-cats">${catsDe(tipo).map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       <label>Grupo<select id="vm-grp">${GRUPOS[tipo].map(([k, n]) => `<option value="${k}"${it.grupo === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
       <label>Valor (R$)<input id="vm-val" inputmode="decimal" value="${fmtV(it.valor)}" placeholder="deixe vazio para definir depois"></label>
       <label>Dia do mês<input id="vm-dia" inputmode="numeric" value="${it.dia || ''}" placeholder="1 a 31"></label>
@@ -149,19 +151,32 @@
       const g = (i) => { const el = document.getElementById(i); return el ? el.value : ''; };
       const desc = g('vm-desc').trim(); if (!desc) { document.getElementById('vm-err').textContent = 'Escreva uma descrição.'; return; }
       const valor = parseV(g('vm-val')), dia = Math.min(31, Math.max(0, parseInt(g('vm-dia'), 10) || 0)) || '', pago = document.getElementById('vm-pago').checked;
+      const para = g('vm-para').trim(), cat = g('vm-cat').trim();
       const grp = g('vm-grp'), tur = g('vm-tur'), repetir = document.getElementById('vm-rec') && document.getElementById('vm-rec').checked;
       if (src === 'rec') {
-        const r = c.rec.find((x) => x.id === id); Object.assign(r, { desc, grupo: grp, dia, turmaId: tur || '' });
+        const r = c.rec.find((x) => x.id === id); Object.assign(r, { desc, grupo: grp, dia, turmaId: tur || '', para, cat });
         const k = id + '|' + mes; c.recSt[k] = Object.assign({}, c.recSt[k] || {}, { pago, valor: valor });
         if (r.valor == null && valor != null) r.valor = valor;
       } else if (novo && repetir) {
-        const nid = uid(); c.rec.push({ id: nid, tipo, grupo: grp, desc, valor, dia, desde: mes, turmaId: tur || '' });
+        const nid = uid(); c.rec.push({ id: nid, tipo, grupo: grp, desc, valor, dia, desde: mes, turmaId: tur || '', para, cat });
         if (pago) c.recSt[nid + '|' + mes] = { pago: true, valor };
       } else if (novo) {
-        c.mov.push({ id: uid(), tipo, grupo: grp, desc, valor, dia, pago, mes, turmaId: tur || '' });
-      } else Object.assign(it, { desc, grupo: grp, valor, dia, pago, turmaId: tur || '' });
+        c.mov.push({ id: uid(), tipo, grupo: grp, desc, valor, dia, pago, mes, turmaId: tur || '', para, cat });
+      } else Object.assign(it, { desc, grupo: grp, valor, dia, pago, turmaId: tur || '', para, cat });
       aberto[grp] = true; fechar(); salvar();
     });
+    // a categoria escolhe o grupo da Visão do mês (se você não tiver mudado o grupo à mão)
+    const ci = ov && ov.querySelector('#vm-cat'), gs = ov && ov.querySelector('#vm-grp');
+    if (ci && gs) { let mexeu = !novo; gs.addEventListener('change', () => { mexeu = true; });
+      ci.addEventListener('input', () => { if (mexeu) return; const k = grupoDaCat(tipo, ci.value); if (k) gs.value = k; }); }
+  }
+  function grupoDaCat(tipo, cat) {
+    const c = String(cat || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!c) return '';
+    if (tipo === 'e') return /turma|comiss/.test(c) ? 'turmas' : /parceir/.test(c) ? 'parceiros' : 'outras';
+    if (/grafic|material|fornecedor|papel|impress/.test(c)) return 'graficas';
+    if (/aluguel|conta|luz|agua|internet|funcionari|salari|imposto|taxa/.test(c)) return 'fixas';
+    return 'variaveis';
   }
   function excluir(src, id) {
     const c = cx(), x = src === 'mov' ? c.mov.find((m) => m.id === id) : c.rec.find((m) => m.id === id); if (!x) return;
@@ -188,6 +203,89 @@
       if (!e.target.closest('[data-ok]')) return; c.saldoBase = parseV(document.getElementById('vm-sb').value) || 0; c.saldoMes = document.getElementById('vm-sm').value || ymNow(); fechar(); salvar();
     });
   }
+  /* ===== aba "Entradas e saídas": todos os lançamentos (os mesmos da Visão do mês) numa lista, com
+     para quem / de quem saiu ou entrou o dinheiro e a categoria (material, gráfica, aluguel…) ===== */
+  const CATS = { s: ['Material', 'Gráfica', 'Fornecedor', 'Pagamento de funcionário', 'Aluguel', 'Contas (luz, água, internet)', 'Impostos e taxas', 'Transporte e entrega', 'Marketing', 'Equipamentos', 'Outros'],
+    e: ['Turma', 'Parceiro', 'Venda avulsa', 'Outros'] };
+  const turmaNome = (id) => { const t = (S.turmas || []).find((x) => x.id == id); return t ? (String(t.curso || '') + ' ' + String(t.per || '')).trim() : ''; };
+  const catDe = (x) => x.cat || CAT[x.grupo] || (x.tipo === 'e' ? 'Entrada' : 'Saída');
+  const paraDe = (x) => x.para || (x.turmaId ? turmaNome(x.turmaId) : '');
+  function parasUsados() { const c = cx(); return [...new Set(c.mov.concat(c.rec).map((x) => String(x.para || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
+  function catsDe(tipo) { const c = cx(); return [...new Set(CATS[tipo].concat(c.mov.concat(c.rec).filter((x) => x.tipo === tipo).map((x) => String(x.cat || '').trim()).filter(Boolean)))]; }
+  let esModo = 'mes', esTipo = '', esCat = '', esBusca = '';
+  try { const o = JSON.parse(localStorage.getItem('cc.es') || '{}'); esModo = o.modo || 'mes'; esTipo = o.tipo || ''; } catch (er) {}
+  const esGuardar = () => { try { localStorage.setItem('cc.es', JSON.stringify({ modo: esModo, tipo: esTipo })); } catch (er) {} };
+  function esItens() {
+    const ano = mes.slice(0, 4), ms = esModo === 'ano' ? Array.from({ length: 12 }, (_, i) => ano + '-' + String(i + 1).padStart(2, '0')) : [mes];
+    const l = []; ms.forEach((m) => itens(m).forEach((x) => l.push(Object.assign({ m }, x))));
+    return l.sort((a, b) => (a.m < b.m ? -1 : a.m > b.m ? 1 : 0) || (a.dia || 99) - (b.dia || 99));
+  }
+  function barras(l, chave, cls) {
+    const g = {}; l.forEach((x) => { const k = chave(x) || '—'; g[k] = (g[k] || 0) + (x.valor || 0); });
+    const ord = Object.entries(g).sort((a, b) => b[1] - a[1]).slice(0, 8), max = ord.length ? ord[0][1] : 0;
+    return ord.length ? ord.map(([k, v]) => `<div class="esb"><span title="${esc(k)}">${esc(k)}</span><i><b class="${cls}" style="width:${max ? Math.max(2, v / max * 100) : 0}%"></b></i><em>${BRL(v)}</em></div>`).join('') : '<div class="vmempty">Nada no período.</div>';
+  }
+  window.v7 = function v7() {
+    const todos = esItens(), q = esBusca.trim().toLowerCase();
+    const l = todos.filter((x) => (!esTipo || x.tipo === esTipo) && (!esCat || catDe(x) === esCat) && (!q || [x.desc, paraDe(x), catDe(x)].some((t) => String(t || '').toLowerCase().includes(q))));
+    const pg = (x) => x.pago, eP = soma(l.filter((x) => x.tipo === 'e' && pg(x))), sP = soma(l.filter((x) => x.tipo === 's' && pg(x)));
+    const eA = soma(l.filter((x) => x.tipo === 'e' && !pg(x))), sA = soma(l.filter((x) => x.tipo === 's' && !pg(x)));
+    const cats = [...new Set(todos.map(catDe))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const per = esModo === 'ano' ? 'Ano de ' + mes.slice(0, 4) : ymNome(mes);
+    const dt = (x) => (x.dia ? String(x.dia).padStart(2, '0') : '—') + '/' + x.m.slice(5);
+    const linha = (x) => `<tr class="${x.tipo}${x.pago ? '' : ' pend'}"><td class="esd">${dt(x)}</td>
+      <td><span class="estp ${x.tipo}">${x.tipo === 'e' ? '↘ Entrada' : '↗ Saída'}</span></td>
+      <td class="esdesc">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}</td>
+      <td>${paraDe(x) ? esc(paraDe(x)) : '<span class="mu">—</span>'}</td>
+      <td><span class="escat">${esc(catDe(x))}</span></td>
+      <td class="n esv ${x.tipo}">${x.valor == null ? '<span class="mu">sem valor</span>' : (x.tipo === 's' ? '− ' : '+ ') + BRL(x.valor)}</td>
+      <td><button class="espg${x.pago ? ' on' : ''}" data-es="tog" data-src="${x.src}" data-id="${x.id}" data-m="${x.m}" title="${x.pago ? 'Marcar como não pago' : 'Marcar como pago'}">${x.pago ? (x.tipo === 'e' ? '✓ Recebido' : '✓ Pago') : (x.tipo === 'e' ? 'A receber' : 'A pagar')}</button></td>
+      <td class="esact"><button data-es="edit" data-src="${x.src}" data-id="${x.id}" data-m="${x.m}">Editar</button><button data-es="del" data-src="${x.src}" data-id="${x.id}" data-m="${x.m}">Excluir</button></td></tr>`;
+    const sai = l.filter((x) => x.tipo === 's'), ent = l.filter((x) => x.tipo === 'e');
+    return `<div class="vm es">
+    <div class="vmtop"><button class="btn ghost sm" data-es="mes" data-d="-1" title="Anterior">◂</button><button class="btn ghost sm" data-es="mes" data-d="1" title="Próximo">▸</button><h2>${per}</h2>
+      <div class="esseg"><button class="${esModo === 'mes' ? 'on' : ''}" data-es="modo" data-v="mes">Mês</button><button class="${esModo === 'ano' ? 'on' : ''}" data-es="modo" data-v="ano">Ano</button></div>
+      ${mes !== ymNow() ? '<button class="btn ghost sm" data-es="hoje">Hoje</button>' : ''}<span class="sp" style="flex:1"></span>
+      <button class="btn ghost sm" data-es="add" data-tipo="e">+ Entrada</button><button class="btn sm" data-es="add" data-tipo="s">+ Saída</button></div>
+    <div class="vmcards es4">
+      <div class="vmc"><div class="vmcl"><span class="vmpi e">↘</span>Entradas recebidas</div><b class="g">${BRL(eP)}</b><div class="note">${eA ? 'a receber: ' + BRL(eA) : 'nada a receber'}</div></div>
+      <div class="vmc"><div class="vmcl"><span class="vmpi s">↗</span>Saídas pagas</div><b class="r">${BRL(sP)}</b><div class="note">${sA ? 'a pagar: ' + BRL(sA) : 'nada a pagar'}</div></div>
+      <div class="vmc lucro"><div class="vmcl"><span class="vmci">⇄</span>Saldo do período</div><b class="${eP - sP >= 0 ? 'g' : 'r'}">${BRL(eP - sP)}</b><div class="note">recebido − pago</div></div>
+    </div>
+    <div class="vmrow2 es2">
+      <div class="vmc"><div class="vmcl">Para onde foi o dinheiro <small>saídas por categoria</small></div>${barras(sai, catDe, 'r')}</div>
+      <div class="vmc"><div class="vmcl">Para quem foi <small>saídas por empresa ou pessoa</small></div>${barras(sai.filter((x) => paraDe(x)), paraDe, 'r')}</div>
+    </div>
+    <div class="vmpanel"><div class="esfil"><input type="search" id="es-q" placeholder="Buscar por descrição, empresa ou categoria" value="${esc(esBusca)}">
+      <select id="es-tipo"><option value="">Entradas e saídas</option><option value="e"${esTipo === 'e' ? ' selected' : ''}>Só entradas</option><option value="s"${esTipo === 's' ? ' selected' : ''}>Só saídas</option></select>
+      <select id="es-cat"><option value="">Todas as categorias</option>${cats.map((c) => `<option${c === esCat ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <span class="note">${l.length} lançamento(s)</span></div>
+      <div class="eswrap"><table class="estab"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Para quem / De quem</th><th>Categoria</th><th class="n">Valor</th><th>Situação</th><th></th></tr></thead>
+      <tbody>${l.map(linha).join('') || `<tr><td colspan="8"><div class="vmempty">Nenhum lançamento ${esModo === 'ano' ? 'neste ano' : 'neste mês'}${esTipo || esCat || q ? ' com esse filtro' : ''}. Use "+ Saída" para registrar um gasto: material, gráfica, pagamento…</div></td></tr>`}</tbody>
+      ${l.length ? `<tfoot><tr><td colspan="5">Total ${esTipo === 'e' ? 'das entradas' : esTipo === 's' ? 'das saídas' : '(entradas − saídas)'}</td><td class="n">${BRL(soma(ent) - soma(sai))}</td><td colspan="2"></td></tr></tfoot>` : ''}</table></div></div>
+    <p class="note">Os lançamentos são os mesmos da Visão do mês: o que você registra aqui aparece lá também. Clique em "A pagar" / "A receber" quando o dinheiro sair ou entrar.</p>
+    </div>`;
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-es]'); if (!b || !b.closest('.es')) return;
+    const a = b.dataset.es, c = cx();
+    if (a === 'mes') { mes = ymAdd(mes, esModo === 'ano' ? 12 * +b.dataset.d : +b.dataset.d); return render(); }
+    if (a === 'hoje') { mes = ymNow(); return render(); }
+    if (a === 'modo') { esModo = b.dataset.v; esGuardar(); return render(); }
+    if (a === 'add') { if (esModo === 'ano' && mes.slice(0, 4) !== ymNow().slice(0, 4)) mes = mes.slice(0, 4) + '-01'; else if (esModo === 'ano') mes = ymNow(); return editar(b.dataset.tipo); }
+    if (b.dataset.m) mes = b.dataset.m;   // edição/pago valem para o mês do lançamento
+    if (a === 'edit') return editar(null, b.dataset.src, b.dataset.id);
+    if (a === 'del') return excluir(b.dataset.src, b.dataset.id);
+    if (a === 'tog') {
+      if (b.dataset.src === 'mov') { const x = c.mov.find((m) => m.id === b.dataset.id); if (x) x.pago = !x.pago; }
+      else { const k = b.dataset.id + '|' + mes; c.recSt[k] = Object.assign({}, c.recSt[k] || {}); c.recSt[k].pago = !c.recSt[k].pago; }
+      return salvar();
+    }
+  });
+  document.addEventListener('change', (e) => { const t = e.target; if (!t.closest || !t.closest('.es')) return;
+    if (t.id === 'es-tipo') { esTipo = t.value; esGuardar(); render(); } else if (t.id === 'es-cat') { esCat = t.value; render(); } });
+  document.addEventListener('input', (e) => { const t = e.target; if (t.id !== 'es-q' || !t.closest('.es')) return;
+    esBusca = t.value; const p = t.selectionStart; render(); const i = document.getElementById('es-q'); if (i) { i.focus(); i.setSelectionRange(p, p); } });
   window.__vmAdd = (tipo) => { S.tab = 6; render(); editar(tipo || 's'); };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-vm]'); if (!b || !b.closest('.vm')) return;
