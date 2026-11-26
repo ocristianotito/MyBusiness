@@ -428,3 +428,10 @@ body.fin .espg.on{background:#12372b;border-color:#1f6b4f;color:#4BCE97}
 body.fin .esact{white-space:nowrap;text-align:right}
 body.fin .esact button{background:none;border:0;color:var(--c-mu);font:inherit;font-size:12px;cursor:pointer;padding:2px 5px}body.fin .esact button:hover{color:var(--c-tx)}
 @media (max-width:1100px){body.fin .vmrow2.es2,body.fin .vmcards.es4{grid-template-columns:1fr}}
+/* saídas ligadas a turmas */
+body.fin .vmrow2.es2{grid-template-columns:1fr 1fr 1fr}
+body.fin .estur{display:block;font-weight:500;font-size:11.5px;color:var(--c-teal);margin-top:2px}
+body.fin .vmrefinfo{display:block;color:var(--c-mu);font-size:12px;margin-top:6px;line-height:1.45}body.fin .vmrefinfo b{color:var(--c-tx)}
+body.fin .esrefsum{padding:10px 16px;border-bottom:1px solid var(--c-bd);background:var(--c-sunk);font-size:13px}
+body.fin .esrefsum .r{color:#F87168}
+@media (max-width:1300px){body.fin .vmrow2.es2{grid-template-columns:1fr}}

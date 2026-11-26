@@ -29,7 +29,7 @@
   }
   function itens(m) {
     const c = cx(), out = [];
-    c.mov.filter((x) => x.mes === m).forEach((x) => out.push({ src: 'mov', id: x.id, tipo: x.tipo, grupo: x.grupo, desc: x.desc, valor: x.valor, dia: x.dia, pago: !!x.pago, turmaId: x.turmaId, para: x.para || '', cat: x.cat || '' }));
+    c.mov.filter((x) => x.mes === m).forEach((x) => out.push({ src: 'mov', id: x.id, tipo: x.tipo, grupo: x.grupo, desc: x.desc, valor: x.valor, dia: x.dia, pago: !!x.pago, turmaId: x.turmaId, para: x.para || '', cat: x.cat || '', ref: x.ref || '' }));
     c.rec.filter((r) => (r.desde || '0000-00') <= m && (!r.ate || m <= r.ate)).forEach((r) => {
       const st = c.recSt[r.id + '|' + m] || {};
       out.push({ src: 'rec', id: r.id, tipo: r.tipo, grupo: r.grupo, desc: r.desc, valor: st.valor != null ? st.valor : r.valor, dia: r.dia, pago: !!st.pago, rec: true, turmaId: r.turmaId, para: r.para || '', cat: r.cat || '' });
@@ -141,6 +141,7 @@
       <label>Grupo<select id="vm-grp">${GRUPOS[tipo].map(([k, n]) => `<option value="${k}"${it.grupo === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
       <label>Valor (R$)<input id="vm-val" inputmode="decimal" value="${fmtV(it.valor)}" placeholder="deixe vazio para definir depois"></label>
       <label>Dia do mês<input id="vm-dia" inputmode="numeric" value="${it.dia || ''}" placeholder="1 a 31"></label>
+      ${tipo === 's' && src !== 'rec' && opcoesRef().length ? `<label class="full">Turma desta saída (opcional)<select id="vm-ref"><option value="">— nenhuma —</option>${refGrupos().map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n]) => `<option value="${k}"${it.ref === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><small class="vmrefinfo" id="vm-refinfo"></small></label>` : ''}
       ${tipo === 'e' && turmas.length ? `<label>Turma (opcional)<select id="vm-tur"><option value="">—</option>${turmas.map(([i, n]) => `<option value="${i}"${it.turmaId == i ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}
       <label class="full" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="vm-pago" style="width:auto"${it.pago ? ' checked' : ''}> Já foi ${tipo === 'e' ? 'recebido' : 'pago'} neste mês</label>
       ${novo || src === 'rec' ? `<label class="full" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="vm-rec" style="width:auto"${src === 'rec' ? ' checked disabled' : ''}> Repetir todo mês a partir de ${ymNome(mes).toLowerCase()}</label>` : ''}</div>
@@ -151,7 +152,7 @@
       const g = (i) => { const el = document.getElementById(i); return el ? el.value : ''; };
       const desc = g('vm-desc').trim(); if (!desc) { document.getElementById('vm-err').textContent = 'Escreva uma descrição.'; return; }
       const valor = parseV(g('vm-val')), dia = Math.min(31, Math.max(0, parseInt(g('vm-dia'), 10) || 0)) || '', pago = document.getElementById('vm-pago').checked;
-      const para = g('vm-para').trim(), cat = g('vm-cat').trim();
+      const para = g('vm-para').trim(), cat = g('vm-cat').trim(), ref = g('vm-ref'), ref0 = (it && it.ref) || '';
       const grp = g('vm-grp'), tur = g('vm-tur'), repetir = document.getElementById('vm-rec') && document.getElementById('vm-rec').checked;
       if (src === 'rec') {
         const r = c.rec.find((x) => x.id === id); Object.assign(r, { desc, grupo: grp, dia, turmaId: tur || '', para, cat });
@@ -161,11 +162,16 @@
         const nid = uid(); c.rec.push({ id: nid, tipo, grupo: grp, desc, valor, dia, desde: mes, turmaId: tur || '', para, cat });
         if (pago) c.recSt[nid + '|' + mes] = { pago: true, valor };
       } else if (novo) {
-        c.mov.push({ id: uid(), tipo, grupo: grp, desc, valor, dia, pago, mes, turmaId: tur || '', para, cat });
-      } else Object.assign(it, { desc, grupo: grp, valor, dia, pago, turmaId: tur || '', para, cat });
+        c.mov.push({ id: uid(), tipo, grupo: grp, desc, valor, dia, pago, mes, turmaId: tur || '', para, cat, ref });
+      } else Object.assign(it, { desc, grupo: grp, valor, dia, pago, turmaId: tur || '', para, cat, ref });
+      if (src !== 'rec') { recalcCusto(ref); if (ref0 !== ref) recalcCusto(ref0); }
       aberto[grp] = true; fechar(); salvar();
     });
     // a categoria escolhe o grupo da Visão do mês (se você não tiver mudado o grupo à mão)
+    const rs = ov && ov.querySelector('#vm-ref'), ri = ov && ov.querySelector('#vm-refinfo');
+    if (rs && ri) { const info = () => { const k = rs.value; if (!k) { ri.textContent = ''; return; } const l = ligadas(k).filter((x) => x.id !== id), t = l.reduce((a, x) => a + (+x.valor || 0), 0);
+        ri.innerHTML = l.length ? `Esta turma já tem <b>${BRL(t)}</b> em ${l.length} saída(s): ${l.map((x) => esc(x.cat || x.desc)).slice(0, 4).join(', ')}${l.length > 4 ? '…' : ''}. O valor desta saída soma no custo da turma.` : 'Primeira saída desta turma: o valor vira o custo dela em Turmas e parceiros.'; };
+      rs.addEventListener('change', info); info(); }
     const ci = ov && ov.querySelector('#vm-cat'), gs = ov && ov.querySelector('#vm-grp');
     if (ci && gs) { let mexeu = !novo; gs.addEventListener('change', () => { mexeu = true; });
       ci.addEventListener('input', () => { if (mexeu) return; const k = grupoDaCat(tipo, ci.value); if (k) gs.value = k; }); }
@@ -174,7 +180,7 @@
     const c = String(cat || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (!c) return '';
     if (tipo === 'e') return /turma|comiss/.test(c) ? 'turmas' : /parceir/.test(c) ? 'parceiros' : 'outras';
-    if (/grafic|material|fornecedor|papel|impress/.test(c)) return 'graficas';
+    if (/grafic|material|fornecedor|papel|impress|foto|acril/.test(c)) return 'graficas';
     if (/aluguel|conta|luz|agua|internet|funcionari|salari|imposto|taxa/.test(c)) return 'fixas';
     return 'variaveis';
   }
@@ -183,7 +189,7 @@
     dialog(`<h2>Excluir lançamento</h2><p>${src === 'rec' ? `"${esc(x.desc)}" se repete todo mês. Excluir remove <b>todas</b> as repetições, inclusive dos meses anteriores. Para manter o histórico, use "Parar de repetir" na janela de edição.` : `Excluir "${esc(x.desc)}" de ${ymNome(mes).toLowerCase()}?`}</p>
       <div class="acts"><button class="btn ghost" data-x>Cancelar</button><button class="btn danger" data-ok>Excluir</button></div>`, (e) => {
       if (!e.target.closest('[data-ok]')) return;
-      if (src === 'mov') c.mov = c.mov.filter((m) => m.id !== id);
+      if (src === 'mov') { c.mov = c.mov.filter((m) => m.id !== id); if (x.ref) recalcCusto(x.ref); }
       else { c.rec = c.rec.filter((m) => m.id !== id); Object.keys(c.recSt).forEach((k) => { if (k.indexOf(id + '|') === 0) delete c.recSt[k]; }); }
       fechar(); salvar();
     });
@@ -205,14 +211,14 @@
   }
   /* ===== aba "Entradas e saídas": todos os lançamentos (os mesmos da Visão do mês) numa lista, com
      para quem / de quem saiu ou entrou o dinheiro e a categoria (material, gráfica, aluguel…) ===== */
-  const CATS = { s: ['Material', 'Gráfica', 'Fornecedor', 'Pagamento de funcionário', 'Aluguel', 'Contas (luz, água, internet)', 'Impostos e taxas', 'Transporte e entrega', 'Marketing', 'Equipamentos', 'Outros'],
+  const CATS = { s: ['Material', 'Gráfica', 'Fotografia', 'Acrílico', 'Fornecedor', 'Pagamento de funcionário', 'Aluguel', 'Contas (luz, água, internet)', 'Impostos e taxas', 'Transporte e entrega', 'Marketing', 'Equipamentos', 'Outros'],
     e: ['Turma', 'Parceiro', 'Venda avulsa', 'Outros'] };
   const turmaNome = (id) => { const t = (S.turmas || []).find((x) => x.id == id); return t ? (String(t.curso || '') + ' ' + String(t.per || '')).trim() : ''; };
   const catDe = (x) => x.cat || CAT[x.grupo] || (x.tipo === 'e' ? 'Entrada' : 'Saída');
   const paraDe = (x) => x.para || (x.turmaId ? turmaNome(x.turmaId) : '');
   function parasUsados() { const c = cx(); return [...new Set(c.mov.concat(c.rec).map((x) => String(x.para || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   function catsDe(tipo) { const c = cx(); return [...new Set(CATS[tipo].concat(c.mov.concat(c.rec).filter((x) => x.tipo === tipo).map((x) => String(x.cat || '').trim()).filter(Boolean)))]; }
-  let esModo = 'mes', esTipo = '', esCat = '', esBusca = '';
+  let esModo = 'mes', esTipo = '', esCat = '', esBusca = '', esRef = '';
   try { const o = JSON.parse(localStorage.getItem('cc.es') || '{}'); esModo = o.modo || 'mes'; esTipo = o.tipo || ''; } catch (er) {}
   const esGuardar = () => { try { localStorage.setItem('cc.es', JSON.stringify({ modo: esModo, tipo: esTipo })); } catch (er) {} };
   function esItens() {
@@ -227,7 +233,7 @@
   }
   window.v7 = function v7() {
     const todos = esItens(), q = esBusca.trim().toLowerCase();
-    const l = todos.filter((x) => (!esTipo || x.tipo === esTipo) && (!esCat || catDe(x) === esCat) && (!q || [x.desc, paraDe(x), catDe(x)].some((t) => String(t || '').toLowerCase().includes(q))));
+    const l = todos.filter((x) => (!esTipo || x.tipo === esTipo) && (!esCat || catDe(x) === esCat) && (!esRef || x.ref === esRef) && (!q || [x.desc, paraDe(x), catDe(x), nomeRef(x.ref)].some((t) => String(t || '').toLowerCase().includes(q))));
     const pg = (x) => x.pago, eP = soma(l.filter((x) => x.tipo === 'e' && pg(x))), sP = soma(l.filter((x) => x.tipo === 's' && pg(x)));
     const eA = soma(l.filter((x) => x.tipo === 'e' && !pg(x))), sA = soma(l.filter((x) => x.tipo === 's' && !pg(x)));
     const cats = [...new Set(todos.map(catDe))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -235,7 +241,7 @@
     const dt = (x) => (x.dia ? String(x.dia).padStart(2, '0') : '—') + '/' + x.m.slice(5);
     const linha = (x) => `<tr class="${x.tipo}${x.pago ? '' : ' pend'}"><td class="esd">${dt(x)}</td>
       <td><span class="estp ${x.tipo}">${x.tipo === 'e' ? '↘ Entrada' : '↗ Saída'}</span></td>
-      <td class="esdesc">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}</td>
+      <td class="esdesc">${esc(x.desc)}${x.rec ? ' <i class="vmrep" title="Repete todo mês">↻</i>' : ''}${x.ref && nomeRef(x.ref) ? `<small class="estur">🎓 ${esc(nomeRef(x.ref))}</small>` : ''}</td>
       <td>${paraDe(x) ? esc(paraDe(x)) : '<span class="mu">—</span>'}</td>
       <td><span class="escat">${esc(catDe(x))}</span></td>
       <td class="n esv ${x.tipo}">${x.valor == null ? '<span class="mu">sem valor</span>' : (x.tipo === 's' ? '− ' : '+ ') + BRL(x.valor)}</td>
@@ -255,11 +261,14 @@
     <div class="vmrow2 es2">
       <div class="vmc"><div class="vmcl">Para onde foi o dinheiro <small>saídas por categoria</small></div>${barras(sai, catDe, 'r')}</div>
       <div class="vmc"><div class="vmcl">Para quem foi <small>saídas por empresa ou pessoa</small></div>${barras(sai.filter((x) => paraDe(x)), paraDe, 'r')}</div>
+      <div class="vmc"><div class="vmcl">Custo por turma <small>saídas ligadas a cada turma</small></div>${barras(sai.filter((x) => x.ref && nomeRef(x.ref)), (x) => nomeRef(x.ref), 'r')}</div>
     </div>
     <div class="vmpanel"><div class="esfil"><input type="search" id="es-q" placeholder="Buscar por descrição, empresa ou categoria" value="${esc(esBusca)}">
       <select id="es-tipo"><option value="">Entradas e saídas</option><option value="e"${esTipo === 'e' ? ' selected' : ''}>Só entradas</option><option value="s"${esTipo === 's' ? ' selected' : ''}>Só saídas</option></select>
       <select id="es-cat"><option value="">Todas as categorias</option>${cats.map((c) => `<option${c === esCat ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      ${opcoesRef().length ? `<select id="es-ref"><option value="">Todas as turmas</option>${refGrupos().map(([g, ls]) => `<optgroup label="${g}">${ls.map(([k, n]) => `<option value="${k}"${k === esRef ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}
       <span class="note">${l.length} lançamento(s)</span></div>
+      ${esRef ? `<div class="esrefsum">🎓 <b>${esc(nomeRef(esRef))}</b>: custo total <b class="r">${BRL(ligadas(esRef).reduce((t, m) => t + (+m.valor || 0), 0))}</b> em ${ligadas(esRef).length} saída(s), somando todos os meses · é o custo da turma em Turmas e parceiros</div>` : ''}
       <div class="eswrap"><table class="estab"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Para quem / De quem</th><th>Categoria</th><th class="n">Valor</th><th>Situação</th><th></th></tr></thead>
       <tbody>${l.map(linha).join('') || `<tr><td colspan="8"><div class="vmempty">Nenhum lançamento ${esModo === 'ano' ? 'neste ano' : 'neste mês'}${esTipo || esCat || q ? ' com esse filtro' : ''}. Use "+ Saída" para registrar um gasto: material, gráfica, pagamento…</div></td></tr>`}</tbody>
       ${l.length ? `<tfoot><tr><td colspan="5">Total ${esTipo === 'e' ? 'das entradas' : esTipo === 's' ? 'das saídas' : '(entradas − saídas)'}</td><td class="n">${BRL(soma(ent) - soma(sai))}</td><td colspan="2"></td></tr></tfoot>` : ''}</table></div></div>
@@ -283,7 +292,7 @@
     }
   });
   document.addEventListener('change', (e) => { const t = e.target; if (!t.closest || !t.closest('.es')) return;
-    if (t.id === 'es-tipo') { esTipo = t.value; esGuardar(); render(); } else if (t.id === 'es-cat') { esCat = t.value; render(); } });
+    if (t.id === 'es-tipo') { esTipo = t.value; esGuardar(); render(); } else if (t.id === 'es-cat') { esCat = t.value; render(); } else if (t.id === 'es-ref') { esRef = t.value; if (esRef) { esModo = 'ano'; } render(); } });
   document.addEventListener('input', (e) => { const t = e.target; if (t.id !== 'es-q' || !t.closest('.es')) return;
     esBusca = t.value; const p = t.selectionStart; render(); const i = document.getElementById('es-q'); if (i) { i.focus(); i.setSelectionRange(p, p); } });
   window.__vmAdd = (tipo) => { S.tab = 6; render(); editar(tipo || 's'); };
@@ -563,9 +572,28 @@
     if (delta > 0.005) c.mov.push({ id: uid(), tipo: 'e', grupo, desc, valor: r2(delta), dia: d, mes: m, pago: true, turmaId: '', auto: chave });
   }
   function autoCusto(chave, desc, total) {
-    const c = cx(), x = c.mov.find((v) => v.auto === chave);
-    if (x) { if (total > 0.005) { x.valor = r2(total); x.desc = desc; } else c.mov.splice(c.mov.indexOf(x), 1); return; }
-    if (total > 0.005) c.mov.push({ id: uid(), tipo: 's', grupo: 'graficas', desc, valor: r2(total), dia: new Date().getDate(), mes: ymNow(), pago: false, turmaId: '', auto: chave });
+    const c = cx(), x = c.mov.find((v) => v.auto === chave), ref = refDaChave(chave);
+    if (x) { if (total > 0.005) { x.valor = r2(total); x.desc = desc; x.ref = ref; } else c.mov.splice(c.mov.indexOf(x), 1); return; }
+    if (total > 0.005) c.mov.push({ id: uid(), tipo: 's', grupo: 'graficas', desc, valor: r2(total), dia: new Date().getDate(), mes: ymNow(), pago: false, turmaId: '', auto: chave, ref });
+  }
+  /* saídas ligadas a uma turma (ref 't:id' turma direta, 'p:id' turma de parceiro): o custo da turma é a soma delas.
+     O custo digitado na própria turma é a saída automática "Custo · …" (auto 'ct:id' / 'cp:id'), que também conta. */
+  const refDaChave = (k) => /^ct:/.test(k) ? 't:' + k.slice(3) : /^cp:/.test(k) ? 'p:' + k.slice(3) : '';
+  const objDoRef = (ref) => { const [k, id] = String(ref || '').split(':'); if (!id) return null; return ((k === 't' ? S.turmas : k === 'p' ? S.parc : null) || []).find((x) => String(x.id) === id) || null; };
+  const nomeRef = (ref) => { const o = objDoRef(ref); if (!o) return ''; return ref[0] === 't' ? nomeT(o) : (o.nome || 'Turma de parceiro') + ' · ' + String(o.parceiro || 'parceiro').trim(); };
+  function ligadas(ref) { const c = cx(); if (!ref) return []; c.mov.forEach((m) => { if (!m.ref && m.auto && refDaChave(m.auto)) m.ref = refDaChave(m.auto); }); return c.mov.filter((m) => m.ref === ref && m.tipo === 's'); }
+  function recalcCusto(ref) {
+    const o = objDoRef(ref); if (!o) return;
+    o.custo = r2(ligadas(ref).reduce((t, m) => t + (+m.valor || 0), 0)) || 0;
+    if (foto) foto = tirar();   // não é custo digitado à mão: não mexe na saída automática
+  }
+  function opcoesRef() { return refGrupos().reduce((a, [, l]) => a.concat(l), []); }
+  function refGrupos() {
+    const g = [];
+    const ts = (S.turmas || []).map((t) => ['t:' + t.id, nomeT(t) + (t.lista ? ' · ' + t.lista : '')]).sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+    const ps = (S.parc || []).map((p) => ['p:' + p.id, (p.nome || 'Turma de parceiro') + ' · ' + String(p.parceiro || 'parceiro').trim()]).sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+    if (ts.length) g.push(['Turmas', ts]); if (ps.length) g.push(['Turmas de parceiros', ps]);
+    return g;
   }
   const nomeT = (t) => ((t.curso || '') + ' ' + (t.per || '')).trim() || 'Turma';
   // parceiros e custos: compara com a última gravação (são editados em janelas com botão Salvar)
@@ -575,14 +603,16 @@
     pcus: Object.fromEntries((S.parc || []).map((p) => [p.id, +p.custo || 0])),
     tcus: Object.fromEntries((S.turmas || []).map((t) => [t.id, +t.custo || 0]))
   });
+  // custo digitado à mão na turma: a saída automática fica com a diferença para as outras saídas ligadas (gráfica, foto…)
+  const outras = (ref) => ligadas(ref).filter((m) => !m.auto).reduce((t, m) => t + (+m.valor || 0), 0);
   function comparar() {
     if (!foto) { foto = tirar(); return; }
     (S.parc || []).forEach((p) => {
       const nome = (p.nome || 'Turma de parceiro') + ' · ' + String(p.parceiro || 'parceiro').trim();
       const d = r2((+p.rec || 0) - (foto.prec[p.id] || 0)); if (Math.abs(d) > 0.005) autoEntrada('pc:' + p.id, 'parceiros', nome, d);
-      if (Math.abs((+p.custo || 0) - (foto.pcus[p.id] || 0)) > 0.005) autoCusto('cp:' + p.id, 'Custo · ' + nome, +p.custo || 0);
+      if (Math.abs((+p.custo || 0) - (foto.pcus[p.id] || 0)) > 0.005) autoCusto('cp:' + p.id, 'Custo · ' + nome, (+p.custo || 0) - outras('p:' + p.id));
     });
-    (S.turmas || []).forEach((t) => { if (Math.abs((+t.custo || 0) - (foto.tcus[t.id] || 0)) > 0.005) autoCusto('ct:' + t.id, 'Custo · ' + nomeT(t), +t.custo || 0); });
+    (S.turmas || []).forEach((t) => { if (Math.abs((+t.custo || 0) - (foto.tcus[t.id] || 0)) > 0.005) autoCusto('ct:' + t.id, 'Custo · ' + nomeT(t), (+t.custo || 0) - outras('t:' + t.id)); });
     foto = tirar();
   }
   // formandos: compara o valor pago de quando o campo foi aberto com o de quando foi confirmado
