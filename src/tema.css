@@ -449,3 +449,10 @@ body.fin input.ro{background:transparent;border-style:dashed;color:var(--c-tx);c
 /* cartão numa etapa de mês diferente da colação */
 .cardk .chip.mesx{background:#3a2c14;color:#f4d27a;border:1px solid #5c4b14;cursor:pointer;font:inherit;font-size:11px}
 .cardk .chip.mesx:hover{border-color:#f4d27a}
+/* janela do PDF: adicionais (acrílico, foto vegetal, foto família) */
+body.fin .opext{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}body.fin .opext label{display:flex;align-items:center;gap:6px;margin:0}
+body.fin .oacchk>span:first-child{display:block;font-size:12px;color:var(--c-mu)}
+body.fin .oacgrp{display:flex;gap:6px;flex-wrap:wrap}
+body.fin .oacgrp .oacbox{margin-top:5px}
+body.fin .orow .oacchk{flex:0 1 auto!important}
+body.fin .oacgrp{flex-wrap:nowrap}body.fin .orow .oacgrp label.oacbox{flex:0 0 auto!important;min-width:0!important}

@@ -791,7 +791,7 @@
        <label style="grid-column:1/-1">Descrição abaixo do tamanho<input id="op-desc" value="${esc(orcUlt.desc != null ? orcUlt.desc : 'Capa dura 3 partes')}" placeholder="Ex.: Capa dura 3 partes"></label>
        <label>Validade (dias)<input id="op-v" inputmode="numeric" value="${esc(orcUlt.validade || 15)}"></label><span></span>
        <p class="note" style="grid-column:1/-1;margin:2px 0 0">Telefone e e-mail do rodapé: vêm de <b>Contratos → Dados da empresa</b>. Com o cabeçalho dos PDFs, o rodapé sai só com o nome (o contato já está no cabeçalho).</p></div>
-      ${S.orc.acril ? `<label class="relop" style="margin-top:12px"><input type="checkbox" id="op-acr"${S.orc.comAcril ? ' checked' : ''}> Com acrílico <small>(${BRL(S.orc.acril)} por convite em ${ORC_PER[0]}, com os acréscimos de cada período)</small></label>` : ''}
+      ${typeof EXTRAS !== 'undefined' && EXTRAS.some((e) => +S.orc[e.k] > 0) ? `<div class="relop opext" style="margin-top:12px"><b>Adicionais</b>${EXTRAS.filter((e) => +S.orc[e.k] > 0).map((e) => `<label><input type="checkbox" data-opext="${e.k}"${S.orc[e.f] ? ' checked' : ''}> ${e.n} <small>(${BRL(+S.orc[e.k])} por convite em ${ORC_PER[0]})</small></label>`).join('')}</div>` : ''}
       <label class="relop" style="margin-top:12px"><input type="checkbox" id="op-tab"${orcUlt.tabela ? ' checked' : ''}> Mostrar também a tabela completa de quantidades</label>
       ${cabCampo()}
       <label class="opobs">Observações<textarea id="op-obs" rows="4" placeholder="Condições de pagamento, prazo de entrega, o que está incluso…">${esc(orcUlt.obs || '')}</textarea></label>
@@ -801,7 +801,7 @@
       const mids = [...document.querySelectorAll('[data-opm]')].filter((c) => c.checked).map((c) => c.dataset.opm);
       if (!mids.length) { alert('Marque pelo menos um modelo.'); return; }
       const oo = opcoes(); if (oo.erro) { alert(oo.erro); return; }
-      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), opts: oo.opts, qs: oo.opts.map((x) => x.q), tabela: document.getElementById('op-tab').checked, acril: !!(document.getElementById('op-acr') || {}).checked, desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim() };
+      const op = { mids, per: +g('op-p'), para: g('op-para').trim(), opts: oo.opts, qs: oo.opts.map((x) => x.q), tabela: document.getElementById('op-tab').checked, extras: Object.fromEntries([...document.querySelectorAll('[data-opext]')].map((c) => [c.dataset.opext, c.checked])), desc: g('op-desc').trim(), validade: parseInt(g('op-v'), 10) || 0, obs: g('op-obs').trim() };
       if (!op.qs.length && !op.tabela) { alert('Informe pelo menos uma quantidade (ex.: 135 / 225 / 305), ou os formandos e os convites por formando, ou marque "Mostrar também a tabela completa".'); return; }
       orcUlt = { validade: op.validade, obs: op.obs, tabela: op.tabela, desc: op.desc, todos: mids.length === ms.length, cpf: g('op-cpf').trim() }; try { localStorage.setItem('cc.orcPdf', JSON.stringify(orcUlt)); } catch (er) {}
       ok.disabled = true; ok.textContent = 'Gerando…';
@@ -829,7 +829,7 @@
     const qs = op.qs.slice().sort((a, b) => a - b), optDe = (q) => (op.opts || []).find((x) => x.q === q) || { q };
     const dadosM = (mid) => {
       const M = modelOf(mid); if (!M) return null;
-      const linhas = rowsOf(M).map((q) => ({ q, t: typeof orcTotA === 'function' ? orcTotA(mid, q, op.per, op.acril) : orcTot(mid, q, op.per) })).filter((x) => x.t > 0);
+      const linhas = rowsOf(M).map((q) => ({ q, t: typeof orcTotA === 'function' ? orcTotA(mid, q, op.per, op.extras) : orcTot(mid, q, op.per) })).filter((x) => x.t > 0);
       // quantidade fora da tabela: usa o valor por convite da faixa MENOR mais próxima (quanto menor a quantidade, maior o valor
       // por convite). Abaixo da primeira linha, usa a primeira linha.
       const preco = (q) => {
@@ -840,7 +840,8 @@
     };
     const lista = op.mids.map(dadosM).filter(Boolean), multi = lista.length > 1;
     const fmtForm = fmtN;
-    const desc = (d) => [op.desc, d.M.capa, op.acril ? 'Com acrílico' : ''].filter(Boolean).map(esc).join(' · ');
+    const extN = typeof EXTRAS !== 'undefined' ? EXTRAS.filter((e) => op.extras && op.extras[e.k]).map((e) => e.n.toLowerCase()) : [];
+    const desc = (d) => [op.desc, d.M.capa, extN.length ? 'Com ' + extN.join(', ').replace(/, ([^,]*)$/, ' e $1') : ''].filter(Boolean).map(esc).join(' · ');
     const bloco = (d) => `<section class="modelo${multi ? ' quebra' : ''}" style="${tomDe(d.M.id)}">
       ${multi ? `<div class="mtop"><b>Convite ${esc(d.tam)}</b>${desc(d) ? `<i>${desc(d)}</i>` : ''}</div>` : ''}
       ${d.fotos.length ? `<div class="fotos n${d.fotos.length}">${d.fotos.map((u) => `<img src="${u}">`).join('')}</div>` : ''}

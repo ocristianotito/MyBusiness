@@ -234,28 +234,37 @@ rep("const ORC_PER=['2027.1','2027.2','2028.1','2028.2'];",
     "if(n<0)return Math.round(3.75*i*100)/100;const st=n>0&&a[n-1]!=null?(+a[n]||0)-(+a[n-1]||0):3.75;return Math.round(((+a[n]||0)+st*(i-n))*100)/100}")
 rep("*(1+(S.orc.acr[i]||0)/100)*100)/100;", "*(1+acrDe(i)/100)*100)/100;")
 rep('value="${fin(S.orc.acr[i]||0)}"', 'value="${fin(acrDe(i))}"')
-# Acrílico: opção "Com acrílico" ao lado do Período. O valor por convite (S.orc.acril, no primeiro período) fica na janela
-# expansível dos acréscimos; com a opção marcada, a tabela ganha a coluna Acrílico (valor do período × quantidade) e o total inclui.
-# orcTot continua sem acrílico (é usado nos valores dos parceiros); a tela e o PDF usam orcTotA.
+# Adicionais por convite (pedido do dono): Acrílico, Foto vegetal e Foto família, ao lado do Período.
+# O valor por convite de cada um (no primeiro período) fica na janela expansível "Acréscimos e adicionais" e sobe com os
+# mesmos acréscimos dos convites. Marcado, a tabela ganha a coluna (valor do período × quantidade) e o total inclui.
+# orcTot continua sem adicionais (é usado nos valores dos parceiros); a tela e o PDF usam orcTotA.
+# As colunas antigas Vegetal/Família (valores digitados por linha) só aparecem se o modelo tiver algum valor digitado nelas.
 rep("${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>",
-    "<label class=\"oacchk\"><span>Acrílico</span><span class=\"oacbox\"><input type=\"checkbox\" data-acon${S.orc.comAcril?' checked':''}${S.orc.acril?'':' disabled'}> Com acrílico"
-    "<small>${S.orc.acril?BRL(acrilDe(per))+' por convite em '+ORC_PER[per]:'informe o valor em Acréscimos e acrílico'}</small></span></label>"
-    "<button class=\"btn ghost sm oacbtn\" data-act=\"acrab\">${acrAberto()?'▾':'▸'} Acréscimos e acrílico</button></div>"
+    "<div class=\"oacchk\"><span>Adicionais · por convite em ${ORC_PER[per]}</span><span class=\"oacgrp\">${EXTRAS.map(e=>`<label class=\"oacbox\"><input type=\"checkbox\" data-exton=\"${e.k}\"${S.orc[e.f]&&+S.orc[e.k]>0?' checked':''}${+S.orc[e.k]>0?'':' disabled'}> ${e.n}"
+    "<small>${+S.orc[e.k]>0?BRL(extDe(e,per)):'sem valor'}</small></label>`).join('')}</span></div>"
+    "<button class=\"btn ghost sm oacbtn\" data-act=\"acrab\">${acrAberto()?'▾':'▸'} Acréscimos e adicionais</button></div>"
     "${acrAberto()?`<div class=\"oacpan\"><div class=\"orow\">${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>"
-    "<div class=\"orow\" style=\"margin-top:12px\"><label style=\"flex:0 1 300px\">Acrílico · valor por convite em ${ORC_PER[0]} (R$)<input data-acril inputmode=\"decimal\" value=\"${S.orc.acril?fin(S.orc.acril):''}\" placeholder=\"Ex.: 12,50\"></label>"
-    "<span class=\"note\" style=\"align-self:center\">Nos outros períodos o acrílico sobe com os mesmos acréscimos dos convites.</span></div></div>`:''}")
-rep("function acrDe(i){", "function acrilDe(i){const b=+S.orc.acril||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\n"
-    "function acrQ(q,i,com){return (com===undefined?S.orc.comAcril:com)&&S.orc.acril?Math.round(acrilDe(i)*q*100)/100:0}\n"
+    "<div class=\"orow\" style=\"margin-top:12px\">${EXTRAS.map(e=>`<label style=\"flex:0 1 250px\">${e.n} · por convite em ${ORC_PER[0]} (R$)<input data-ext=\"${e.k}\" inputmode=\"decimal\" value=\"${+S.orc[e.k]>0?fin(+S.orc[e.k]):''}\" placeholder=\"Ex.: 12,50\"></label>`).join('')}"
+    "<span class=\"note\" style=\"align-self:center;flex:1 1 220px\">O valor é multiplicado pela quantidade de convites e sobe nos outros períodos com os mesmos acréscimos dos convites.</span></div></div>`:''}")
+rep("function acrDe(i){", "const EXTRAS=[{k:'acril',n:'Acrílico',f:'comAcril'},{k:'fvAd',n:'Foto vegetal',f:'comFv'},{k:'ffAd',n:'Foto família',f:'comFf'}];\n"
+    "function extDe(e,i){const b=+S.orc[e.k]||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\n"
+    "function acrilDe(i){return extDe(EXTRAS[0],i)}\n"
+    "function extOn(e,com){const c=com&&typeof com==='object'?com[e.k]:com===undefined?S.orc[e.f]:(e.k==='acril'?com:S.orc[e.f]);return !!c&&+S.orc[e.k]>0}\n"
+    "function extQ(e,q,i,com){return extOn(e,com)?Math.round(extDe(e,i)*q*100)/100:0}\n"
+    "function acrQ(q,i,com){return EXTRAS.reduce((s,e)=>s+extQ(e,q,i,com),0)}\n"
     "function orcTotA(m,q,i,com){return orcTot(m,q,i)+acrQ(q,i,com)}\n"
     "function acrAberto(){try{return localStorage.getItem('cc.orcAcr')==='1'}catch(e){return false}}\n"
     "function acrDe(i){")
-rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.acril!==undefined){const v=num(t.value);S.orc.acril=isNaN(v)||v<=0?0:v;if(!S.orc.acril)S.orc.comAcril=false;return render()}\n"
-    " if(t.dataset.acon!==undefined){S.orc.comAcril=t.checked;return render()}\n if(t.dataset.ac!==undefined){")
+rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.ext!==undefined){const e=EXTRAS.find(x=>x.k===t.dataset.ext);if(e){const v=num(t.value);S.orc[e.k]=isNaN(v)||v<=0?0:v;if(!S.orc[e.k])S.orc[e.f]=false}return render()}\n"
+    " if(t.dataset.exton!==undefined){const e=EXTRAS.find(x=>x.k===t.dataset.exton);if(e)S.orc[e.f]=t.checked;return render()}\n if(t.dataset.ac!==undefined){")
 rep("<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTot(m.id,q,per);",
-    "${acrQ(1,per)?'<th>Acrílico</th>':''}<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTotA(m.id,q,per);")
-rep("${xs.map(c=>inp(c.k,q)).join('')}<td class=\"tt\">", "${xs.map(c=>inp(c.k,q)).join('')}${acrQ(1,per)?`<td style=\"text-align:right\">${BRL(acrQ(q,per))}</td>`:''}<td class=\"tt\">")
+    "${EXTRAS.filter(e=>extOn(e)).map(e=>`<th>${e.n}</th>`).join('')}<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTotA(m.id,q,per);")
+rep("${xs.map(c=>inp(c.k,q)).join('')}<td class=\"tt\">", "${xs.map(c=>inp(c.k,q)).join('')}${EXTRAS.filter(e=>extOn(e)).map(e=>`<td style=\"text-align:right\">${BRL(extQ(e,q,per))}</td>`).join('')}<td class=\"tt\">")
+rep(" const cs=OCOLS.filter(c=>!c.x||S.mcols[m.id]),xs=m.xc||[],rows=rowsOf(m);",
+    " const usaCol=k=>Object.keys(S.orc.ed).some(x=>x.indexOf(m.id+'|')===0&&x.endsWith('|'+k)&&+S.orc.ed[x]>0);\n"
+    " const cs=OCOLS.filter(c=>(!c.x||S.mcols[m.id])&&((c.k!=='veg'&&c.k!=='fam')||usaCol(c.k))),xs=m.xc||[],rows=rowsOf(m);")
 rep(" if(a==='addm'){", " if(a==='acrab'){try{localStorage.setItem('cc.orcAcr',acrAberto()?'0':'1')}catch(e){}return render()}\n if(a==='addm'){")
-rep("+ as colunas extras (e as colunas que você criar).", "+ as colunas extras (e as colunas que você criar) + o acrílico, quando \"Com acrílico\" estiver marcado.")
+rep("+ as colunas extras (e as colunas que você criar).", "+ as colunas extras (e as colunas que você criar) + os adicionais marcados (acrílico, foto vegetal, foto família: valor por convite × quantidade).")
 # Revisão 1.2.28 (item 9): tira as abas antigas escondidas (Clientes/Turmas, Visão geral, Pagamentos, Convites com parceiros)
 # e o relatório antigo em jsPDF (o botão dele já não existe: o relatório é o de fluxo.js). Abre sempre numa aba visível.
 def tirar_funcao(nome):
@@ -288,5 +297,6 @@ rep("  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2}",
     "  if(pe2)x.pe=isNaN(pv)?0:pv;if(en2)x.entv=isNaN(ev2)?0:ev2;const pd=document.getElementById('ed-ped');if(pd)x.pedido=pd.value}")
 rep("modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};",
     "modelo:mid,qtd:isNaN(qv)||qv<0?0:Math.round(qv)};const pd=document.getElementById('p-ped');if(pd)dados.pedido=pd.value;")
+rep("Total = convite unitário × quantidade + Vegetal + Família + Layout", "Total = convite unitário × quantidade + Layout")
 (root / 'src' / 'financeiro.html').write_text(doc, encoding='utf-8')
 print('ok', len(doc))
