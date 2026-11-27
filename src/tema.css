@@ -456,3 +456,6 @@ body.fin .oacgrp{display:flex;gap:6px;flex-wrap:wrap}
 body.fin .oacgrp .oacbox{margin-top:5px}
 body.fin .orow .oacchk{flex:0 1 auto!important}
 body.fin .oacgrp{flex-wrap:nowrap}body.fin .orow .oacgrp label.oacbox{flex:0 0 auto!important;min-width:0!important}
+/* foto família: só frente / frente e verso (caixinha compacta) */
+body.fin .oacbox select,body.fin .opext select{width:auto!important;min-width:0!important;height:auto!important;padding:3px 6px!important;font-size:12px!important;margin:0!important;border-radius:6px}
+body.fin .opext label{white-space:nowrap}

@@ -240,25 +240,30 @@ rep('value="${fin(S.orc.acr[i]||0)}"', 'value="${fin(acrDe(i))}"')
 # orcTot continua sem adicionais (é usado nos valores dos parceiros); a tela e o PDF usam orcTotA.
 # As colunas antigas Vegetal/Família (valores digitados por linha) só aparecem se o modelo tiver algum valor digitado nelas.
 rep("${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>",
-    "<div class=\"oacchk\"><span>Adicionais · por convite em ${ORC_PER[per]}</span><span class=\"oacgrp\">${EXTRAS.map(e=>`<label class=\"oacbox\"><input type=\"checkbox\" data-exton=\"${e.k}\"${S.orc[e.f]&&+S.orc[e.k]>0?' checked':''}${+S.orc[e.k]>0?'':' disabled'}> ${e.n}"
-    "<small>${+S.orc[e.k]>0?BRL(extDe(e,per)):'sem valor'}</small></label>`).join('')}</span></div>"
+    "<div class=\"oacchk\"><span>Adicionais · por convite em ${ORC_PER[per]}</span><span class=\"oacgrp\">${EXTRAS.map(e=>`<label class=\"oacbox\"><input type=\"checkbox\" data-exton=\"${e.k}\"${S.orc[e.f]&&baseExt(e)>0?' checked':''}${baseExt(e)>0||(e.k==='ffAd'&&(+S.orc.ffAd>0||+S.orc.ffFV>0))?'':' disabled'}> ${e.n}"
+    "${e.k==='ffAd'?`<select data-ffmodo title=\"Impressão da foto família\"><option value=\"f\"${ffModo()!=='fv'?' selected':''}>só frente</option><option value=\"fv\"${ffModo()==='fv'?' selected':''}>frente e verso</option></select>`:''}"
+    "<small>${baseExt(e)>0?BRL(extDe(e,per)):'sem valor'}</small></label>`).join('')}</span></div>"
     "<button class=\"btn ghost sm oacbtn\" data-act=\"acrab\">${acrAberto()?'▾':'▸'} Acréscimos e adicionais</button></div>"
     "${acrAberto()?`<div class=\"oacpan\"><div class=\"orow\">${ORC_PER.map((p,i)=>`<label>Acréscimo ${p} (%)<input data-ac=\"${i}\" inputmode=\"decimal\" value=\"${fin(acrDe(i))}\"></label>`).join('')}</div>"
-    "<div class=\"orow\" style=\"margin-top:12px\">${EXTRAS.map(e=>`<label style=\"flex:0 1 250px\">${e.n} · por convite em ${ORC_PER[0]} (R$)<input data-ext=\"${e.k}\" inputmode=\"decimal\" value=\"${+S.orc[e.k]>0?fin(+S.orc[e.k]):''}\" placeholder=\"Ex.: 12,50\"></label>`).join('')}"
+    "<div class=\"orow\" style=\"margin-top:12px\">${EXTRAS.map(e=>`<label style=\"flex:0 1 230px\">${e.n}${e.k==='ffAd'?' só frente':''} · por convite em ${ORC_PER[0]} (R$)<input data-ext=\"${e.k}\" inputmode=\"decimal\" value=\"${+S.orc[e.k]>0?fin(+S.orc[e.k]):''}\" placeholder=\"Ex.: 12,50\"></label>`).join('')}"
+    "<label style=\"flex:0 1 230px\">Foto família frente e verso · por convite em ${ORC_PER[0]} (R$)<input data-ext=\"ffFV\" inputmode=\"decimal\" value=\"${+S.orc.ffFV>0?fin(+S.orc.ffFV):''}\" placeholder=\"Ex.: 9,00\"></label>"
     "<span class=\"note\" style=\"align-self:center;flex:1 1 220px\">O valor é multiplicado pela quantidade de convites e sobe nos outros períodos com os mesmos acréscimos dos convites.</span></div></div>`:''}")
 rep("function acrDe(i){", "const EXTRAS=[{k:'acril',n:'Acrílico',f:'comAcril'},{k:'fvAd',n:'Foto vegetal',f:'comFv'},{k:'ffAd',n:'Foto família',f:'comFf'}];\n"
-    "function extDe(e,i){const b=+S.orc[e.k]||0;return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\n"
+    "function ffModo(com){return com&&typeof com==='object'&&com.ffModo?com.ffModo:(S.orc.ffModo||'f')}\n"
+    "function baseExt(e,com){if(e.k==='ffAd'&&ffModo(com)==='fv')return +S.orc.ffFV||0;return +S.orc[e.k]||0}\n"
+    "function extDe(e,i,com){const b=baseExt(e,com);return Math.round(b*(1+acrDe(i)/100)/(1+acrDe(0)/100)*100)/100}\n"
     "function acrilDe(i){return extDe(EXTRAS[0],i)}\n"
-    "function extOn(e,com){const c=com&&typeof com==='object'?com[e.k]:com===undefined?S.orc[e.f]:(e.k==='acril'?com:S.orc[e.f]);return !!c&&+S.orc[e.k]>0}\n"
-    "function extQ(e,q,i,com){return extOn(e,com)?Math.round(extDe(e,i)*q*100)/100:0}\n"
+    "function extOn(e,com){const c=com&&typeof com==='object'?com[e.k]:com===undefined?S.orc[e.f]:(e.k==='acril'?com:S.orc[e.f]);return !!c&&baseExt(e,com)>0}\n"
+    "function extQ(e,q,i,com){return extOn(e,com)?Math.round(extDe(e,i,com)*q*100)/100:0}\n"
     "function acrQ(q,i,com){return EXTRAS.reduce((s,e)=>s+extQ(e,q,i,com),0)}\n"
     "function orcTotA(m,q,i,com){return orcTot(m,q,i)+acrQ(q,i,com)}\n"
     "function acrAberto(){try{return localStorage.getItem('cc.orcAcr')==='1'}catch(e){return false}}\n"
     "function acrDe(i){")
-rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.ext!==undefined){const e=EXTRAS.find(x=>x.k===t.dataset.ext);if(e){const v=num(t.value);S.orc[e.k]=isNaN(v)||v<=0?0:v;if(!S.orc[e.k])S.orc[e.f]=false}return render()}\n"
+rep(" if(t.dataset.ac!==undefined){", " if(t.dataset.ext!==undefined){const k=t.dataset.ext,v=num(t.value);if(k==='ffFV'||EXTRAS.some(x=>x.k===k))S.orc[k]=isNaN(v)||v<=0?0:v;EXTRAS.forEach(e=>{if(!(baseExt(e)>0)&&!(e.k==='ffAd'&&(+S.orc.ffAd>0||+S.orc.ffFV>0)))S.orc[e.f]=false});return render()}\n"
+    " if(t.dataset.ffmodo!==undefined){S.orc.ffModo=t.value;return render()}\n"
     " if(t.dataset.exton!==undefined){const e=EXTRAS.find(x=>x.k===t.dataset.exton);if(e)S.orc[e.f]=t.checked;return render()}\n if(t.dataset.ac!==undefined){")
 rep("<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTot(m.id,q,per);",
-    "${EXTRAS.filter(e=>extOn(e)).map(e=>`<th>${e.n}</th>`).join('')}<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTotA(m.id,q,per);")
+    "${EXTRAS.filter(e=>extOn(e)).map(e=>`<th>${e.n}${e.k==='ffAd'?(ffModo()==='fv'?' (frente e verso)':' (só frente)'):''}</th>`).join('')}<th>Total</th><th>Por convite</th><th></th></tr>${rows.map(q=>{const t=orcTotA(m.id,q,per);")
 rep("${xs.map(c=>inp(c.k,q)).join('')}<td class=\"tt\">", "${xs.map(c=>inp(c.k,q)).join('')}${EXTRAS.filter(e=>extOn(e)).map(e=>`<td style=\"text-align:right\">${BRL(extQ(e,q,per))}</td>`).join('')}<td class=\"tt\">")
 rep(" const cs=OCOLS.filter(c=>!c.x||S.mcols[m.id]),xs=m.xc||[],rows=rowsOf(m);",
     " const usaCol=k=>Object.keys(S.orc.ed).some(x=>x.indexOf(m.id+'|')===0&&x.endsWith('|'+k)&&+S.orc.ed[x]>0);\n"
